@@ -93,7 +93,10 @@ async def test_bsd_subject_cannot_hijack_a_generic_ticket(db_session: AsyncSessi
 
     # Nothing was appended to the generic ticket ...
     replies = (await db_session.execute(
-        select(TicketResponse).where(TicketResponse.ticket_id == generic.id)
+        select(TicketResponse).where(
+            TicketResponse.ticket_id == generic.id,
+            TicketResponse.is_internal.is_(False),
+        )
     )).scalars().all()
     assert replies == []
     # ... and the email became its own service desk ticket instead of vanishing.
@@ -123,7 +126,13 @@ async def test_bsd_subject_still_threads_onto_a_real_service_desk_ticket(db_sess
 
     assert again is not None and again.id == first.id
     replies = (await db_session.execute(
-        select(TicketResponse).where(TicketResponse.ticket_id == first.id)
+        select(TicketResponse).where(
+            TicketResponse.ticket_id == first.id,
+            # Correspondence only. Intake also writes internal notes — why an
+            # owner was picked, why the AI merged a thread — and they are not
+            # part of the exchange being asserted on here.
+            TicketResponse.is_internal.is_(False),
+        )
     )).scalars().all()
     assert [r.content for r in replies] == ["extra detail"]
 
@@ -148,7 +157,13 @@ async def test_redelivered_reply_is_not_appended_twice(db_session: AsyncSession)
     await db_session.commit()
 
     replies = (await db_session.execute(
-        select(TicketResponse).where(TicketResponse.ticket_id == first.id)
+        select(TicketResponse).where(
+            TicketResponse.ticket_id == first.id,
+            # Correspondence only. Intake also writes internal notes — why an
+            # owner was picked, why the AI merged a thread — and they are not
+            # part of the exchange being asserted on here.
+            TicketResponse.is_internal.is_(False),
+        )
     )).scalars().all()
     assert [r.content for r in replies] == ["my reply"]
 

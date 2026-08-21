@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.23.0] - 2026-08-21
+## [0.26.0] - 2026-08-21
 
 Which model does this run on? There were four answers, and one of them did nothing.
 
@@ -106,6 +106,570 @@ longer causes the next bug to be called BUG-003.
   API — and never read.
 - **Two notification toggles could not be switched on by anything.** The events
   existed and nothing emitted them.
+## [0.25.1] - 2026-08-21
+
+### Changed: a ticket is one email thread
+
+The request and the correspondence were two cards. The request *is* the first
+email and each reply is another, so splitting them meant reading one
+conversation across two boxes with different shapes — and the request, which
+carries the quoted history and the attachments, did not look like a message at
+all. One card now, oldest first, same entry shape throughout. The message that
+opened the ticket keeps a "Request" badge, and its attachments sit inside it,
+where they arrived.
+
+Nothing is hidden by the merge: `body` is the original inbound email and
+`correspondence` is the replies in both directions, so the desk's own outbound
+messages are still on the thread.
+
+### Fixed: quoted history in the request body
+
+The folding shipped on the correspondence entries only. The request body — the
+first thing on every ticket, and the one most likely to arrive forwarded twice —
+still rendered its markers raw.
+
+It would not have folded that body anyway. The splitter required everything
+after the boundary to be quote, attribution or blank, and real mail ends with
+the sender's own signature *after* the quoted block, so no boundary was ever
+accepted. The rule is now the first attribution line, or the start of a run of
+two or more quote-marked lines; the trailing signature folds with the history,
+as mail clients do. A body quoted from its first line still stays whole, and a
+lone `>` in prose is still ignored.
+
+Quote depth is indentation rather than markers. Peeling one level per step left
+`>` on the oldest lines of a deep thread — the same characters, fewer of them —
+so the quoted block recurses and no marker survives at any level. Wrapped
+attribution lines ("On <date>, <name> <addr>" / "wrote:") fold too; matching only
+the single-line form meant the same email rendered two ways depending on where
+it happened to wrap.
+
+### Added: links and images in email bodies
+
+Inbound mail is stored as text, and that conversion leaves artefacts: a
+signature logo becomes `[image: https://host/logo.png] <https://host/logo.png>`
+and every hyperlink appears twice as `url <url>`, repeated down the whole
+thread. Links are links now, duplicated pairs collapse to one, and an image
+placeholder becomes a chip naming its host.
+
+The email's own HTML is deliberately not used — dropping a partner's markup into
+the page would be a script-injection hole on a body anyone outside the workspace
+can send, and sanitising third-party HTML well is not a thing to take on for a
+signature logo. Images are not fetched until asked for either: a one-pixel image
+in a signature is how "has this been read" gets measured, and a full-size photo
+would take over the card.
+
+## [0.25.0] - 2026-08-21
+
+Service Desk, from the ops head's and the tech team's reports.
+
+### Fixed: a logged ticket reaches the partner's own KAM
+
+"Assignment based on Partner in Master Data is not working — I have to move
+every ticket to the right KAM by hand."
+
+A manual ticket is created through intake, and intake decides the owner from the
+sender address. For a logged call that address is the literal `manual@local`, so
+it matched no account and fell through to an arbitrary member of the desk. The
+account the operator picked in the dialog was applied to the ticket *afterwards*
+and never touched the assignee — so choosing the partner did nothing at all.
+
+Routing now runs after the operator's fields are applied, narrowest answer
+first: the account/product pairing, then the account's own owner. A named
+account that owns nobody says so on the ticket, because that case still gets an
+arbitrary assignee and is the one most in need of explaining.
+
+The unmatched case is now the desk's choice rather than a constant.
+`unmatched_assignment` defaults to **"random"** — the historical behaviour, so no
+existing desk changes on upgrade — and that is also the option that hid this
+class of bug: an arbitrarily-assigned ticket is indistinguishable from a
+deliberately-assigned one, so a missing domain mapping surfaced only as a KAM
+asking why a partner they do not handle is in their queue. "unassigned" leaves it
+visibly waiting and flagged for triage; "desk_head" gives it to one accountable
+person. The last-ditch workspace-owner fallback no longer fires under
+"unassigned", which would have quietly undone the setting.
+
+Master Data also warns when an account has no domains at all. Sender matching
+joins on the domain rows, so such an account can only ever be attached by hand —
+and the owner shown next to it makes that look configured.
+
+### Added: finishing the task resolves the ticket it came from
+
+`Ticket.linked_task_id` has been written by the convert-to-task flow since it
+existed and was read by nothing. The engineering finished, the card went to
+done, and the ticket stayed open — so the requester chased something fixed days
+earlier and the desk's open count was wrong.
+
+**Resolved, not Closed.** The ticket is a conversation with somebody outside the
+workspace and the developer who moved the card has not spoken to them; closing it
+there would end that conversation on a board action. Both status write paths are
+hooked, because a card can be completed from either and a ticket that closes only
+via one of them looks random. It goes through `update_ticket`, so `resolved_at`,
+the status-change row, the automation events and the activity entry all happen
+exactly as when a human resolves it, and it is idempotent on the transition so
+dragging a card back and forth does not re-resolve or re-notify.
+
+Notifications reach two audiences on two channels: the ticket's owner through the
+notification system (new `TICKET_RESOLVED` event, email on by default), and the
+requester by plain email since they usually have no account. The requester's copy
+is marked auto-generated — without that a watched Service Desk mailbox turns our
+own outbound message into a new ticket, so resolving one would open another.
+
+Fixes a pre-existing crash found on the way: the cycle/lead-time arithmetic on
+the done path subtracts `created_at` from an aware `now()`, which raises when a
+driver returns a naive timestamp. SQLite always does, so completing a task threw
+`TypeError` on any non-Postgres connection — which is why no test covered task
+completion through that path.
+
+### Added: a ticket has a title of its own
+
+There was no such column. The subject lived in `field_values["subject"]`, so the
+detail page headlined the **form** name and every ticket raised through one form
+read identically; sorting or filtering by subject went through a JSONB
+expression no index helps; and a form with no subject field produced tickets with
+nothing to call them.
+
+`tickets.title` is backfilled from where the subject has always been kept —
+trimmed, blanks and JSON nulls left NULL rather than becoming a title of "", and
+bounded to the column. Readers prefer the column and fall back to the submission
+blob, so a row the backfill could not fill displays exactly as before. The form
+name now sits under the heading instead of standing in for it.
+
+### Added: attachments and the task, while logging the call
+
+The log dialog can attach the files the requester sent and raise the project task
+in the same pass, with the project and who is picking it up. Converting a ticket
+to a task now carries the ticket's files onto the task as well — they reference
+the same stored objects rather than being re-uploaded, so deleting one copy
+cannot leave the other resolving — and takes an assignee, validated as a member
+of the workspace before work is put on them.
+
+The three steps run in that order because each needs the id the one before
+produced: the attachment endpoint is addressed by ticket, and the task copies the
+ticket's files as it is created. If a later step fails the ticket still exists and
+the dialog says what did not finish, because somebody is on the phone.
+
+### Added: pagination on the dashboard
+
+`GET /dashboard` returned every open ticket. It now takes `limit`/`offset` — but
+only the ticket list is paged: the stakeholder matrix and the open/breaching
+counts stay whole-desk, because a queue board reporting "3 waiting" when that is
+all that fitted on the page would be worse than a long page. The CSV export
+re-fetches unpaged, so pressing export never quietly gives you one page.
+
+### Changed: quoted email history is folded away
+
+Correspondence was rendered raw, so every reply carried the whole thread again
+behind `>` and `>>` markers and the newest message — the only part being read
+for — sat above screens of text already read, repeated once per reply. The quoted
+part is now folded behind a toggle. Folded, not dropped: it is the record of what
+was actually sent, and on a ticket forwarded twice it is sometimes the only place
+the original request survives.
+
+## [0.24.3] - 2026-08-20
+
+### Fixed: an attachment whose name was not ASCII returned a CORS error
+
+Reported from production immediately after 0.24.2:
+
+```
+Access to XMLHttpRequest at 'https://server.aexy.io/api/v1/task-attachments/…'
+from origin 'https://aexy.io' has been blocked by CORS policy:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+CORS was configured correctly, and the endpoint returned the right headers on a
+401 and on preflight. The real fault was `Content-Disposition`: it interpolated
+the filename straight into the header, and header values are encoded latin-1, so
+any character outside that range raised `UnicodeEncodeError` while the response
+was still being built.
+
+The character doing it in production was `\u202f`, a narrow no-break space —
+what macOS writes before AM/PM in a screenshot filename. So this was not an
+exotic-name edge case: it was every screenshot dragged off a Mac, which is most
+of what gets attached to a task. Devanagari, em dashes and emoji fail the same
+way.
+
+`CORSMiddleware` sits inside `ServerErrorMiddleware`, so a 500 raised in the
+router is answered by the outer one and never gets CORS headers added. The
+browser has no way to tell that apart from a real CORS refusal, and reports the
+symptom rather than the cause — which is why the message named the one thing
+that was not wrong.
+
+The name is now emitted in both forms: the plain one with non-ASCII characters
+substituted, so an extension survives for clients that pick an application from
+it, and an RFC 5987 `filename*` carrying the real name. Substitution rather than
+deletion matters here — `Screenshot 2026-08-20 at 3.46.22_PM.png` still reads as
+the file somebody recognises. A blank name falls back
+to "attachment", because an empty plain form reads as "no name given" and those
+clients answer with the last URL segment, which on these routes is a bare id.
+
+Ticket attachments had the identical bug and were more exposed to it — those
+names arrive from whoever emailed the desk. The service desk's own download had
+already solved this correctly; all three now share one builder rather than three
+copies of the reasoning.
+
+## [0.24.2] - 2026-08-20
+
+Two silences. An account that had stopped working and never said so, and a file
+that could not be fetched because nothing served the bucket it lived in.
+
+### Fixed: a connected account could stop working without telling anyone
+
+A desk went a day without tickets. The mailbox was fine, the schedule was fine,
+the worker was fine — Google had revoked the refresh token, the integration was
+marked inactive, and the poller's `is_active` clause skipped it on every tick.
+Finding that out meant reading the poller's query and then querying the database
+by hand.
+
+A connection that is refused now notifies the person who connected it and the
+workspace's owners and admins — the connector may have left, and an account
+nobody owns is the one that goes unnoticed longest. Email is on by default,
+because whoever can reconnect it is not necessarily looking at the app.
+
+It fires when the connection is refused, not when a sync fails. Timeouts, rate
+limits and one bad message all retry and resolve themselves; notifying on those
+teaches people to ignore the channel, which costs the one message that mattered.
+Wired into the three places a connection actually dies — Google auth failure
+mid-sync, Google refresh-token revocation, GitHub credentials refused — and
+GitHub notifies once per account rather than once per repository, since thirty
+repos would otherwise mean thirty notifications an hour.
+
+The notification also has to land somewhere that can fix it. Google pointed at
+`/settings/integrations`, which has no Google section; the accounts live on
+`/settings/connected-accounts`. GitHub pointed at `/settings/identity` while the
+Reconnect banner sits on `/settings/integrations`. And on the Google page the
+button did not exist: a disconnected account showed a red pill whose only
+neighbouring control was the bin, so the way back was to delete the account and
+re-add it — which on a desk mailbox is refused outright, leaving no way back at
+all. There is a Reconnect now, and the row says *why* it stopped: `last_error`
+was already on the response and the list ignored it.
+
+### Fixed: `check_auto_sync_integrations` never reported an outcome
+
+It announced itself every minute and said nothing about what it did, so a desk
+receiving no mail looked exactly like a desk with no mail to receive. It logs the
+tally now, and warns by name when a desk mailbox's integration is inactive, with
+the reason.
+
+### Fixed: a sync job whose worker died blocked that account forever
+
+`has_live_sync_job` matched pending/running with no age bound, so a job killed by
+a deploy, an OOM or a database that went away mid-sync reads as live
+indefinitely. Anything past an hour is marked failed and no longer blocks the
+next run. Timestamps are normalised before comparing — Postgres returns them
+aware and SQLite naive, and the raise would have been swallowed by the caller's
+broad `except` and reported as a failure to trigger, which is how both previous
+defects in this function hid.
+
+### Fixed: attachments 404'd because storage had no public route
+
+A task attachment resolved to
+`https://server.aexy.io/storage/aexy-storage/task-attachments/…`, and that host
+terminates at the backend. RustFS is `expose`-only in `docker-compose.prod.yml`,
+the nginx meant to broker it was never a service in that file, and
+`nginx/nginx.conf` was mounted by nothing — so the request reached FastAPI,
+which has no such route and answered `{"detail":"Not Found"}`. A 404 that reads
+like a deleted file and means an unrouted bucket.
+
+Presigning the URL, which an earlier fix did, could not have helped: a signature
+is only worth as much as the hostname carrying it.
+
+Task attachment reads now go through `GET /api/v1/task-attachments/{id}`. The
+backend already holds an internal connection to storage, so serving the bytes
+itself removes the dependency on a proxy existing, resolving, and leaving the
+signed path alone. Three ways to serve a dead link, gone. It also turns the URL
+from a capability token that anyone holding it can redeem into a membership
+check against the task — an attachment stops being readable when someone loses
+access, rather than when the signature happens to expire.
+
+The route is keyed on the attachment alone, with no workspace, sprint or team in
+the path, so one URL stays correct when a task moves between a sprint and the
+backlog. It resolves the governing workspace from the task, falling back to the
+sprint or the team for rows written before tasks carried a workspace, and
+refuses rather than serves when it can place the file with none of them.
+
+### Fixed: the AI metadata pipeline depended on the same missing hop
+
+It presigned a URL and fetched it over HTTP — routing our own bytes out through
+a public hostname to come back in. Where that hostname doesn't reach storage,
+every extraction failed as a 404 that said nothing about the cause. It reads the
+object directly whenever it holds the key, which is every case that isn't a
+genuinely remote file.
+
+### Added: a way to publish storage for everything else
+
+Drive files, compliance documents, chat downloads and assessment recordings are
+still handed presigned URLs, and those still need storage on a reachable
+hostname. `docker-compose.prod.yml` now has an `nginx` service behind an `edge`
+profile:
+
+    docker compose -f docker-compose.prod.yml --profile edge up -d
+
+Behind a profile because most deployments already terminate TLS elsewhere, and
+starting a second thing that wants port 80 would take a site down rather than
+fix one. The alternative is copying the `location /aexy-storage/` block into the
+proxy you already run.
+
+Two rules either way, both now stated in `DEPLOY.md` and the file-uploads guide:
+`S3_PUBLIC_ENDPOINT_URL` is a bare origin, and the path is not rewritten. SigV4
+signs the URI, so a `/storage` suffix signs a path the origin never sees and a
+prefix strip invalidates every signature. Two docs had been prescribing the
+suffix.
+
+## [0.24.1] - 2026-08-20
+
+### Fixed: adding an account 500'd instead of naming the clash
+
+```
+UniqueViolationError: duplicate key value violates unique constraint
+"uq_service_desk_account_domain"
+```
+
+The constraint is right — a domain decides which account a ticket belongs to, so
+two accounts claiming one has no correct answer. What was wrong is that it was
+refused as a 500, raised from inside an autoflush that `_replace_account_products`
+happened to trigger, so the person adding the account saw a stack trace naming a
+constraint rather than which entry to change, and no way to find the account
+already holding it.
+
+The clash is looked up before anything is written, and the message names both
+halves: the domain, and the account that has it. Update excludes the account's
+own rows, or renaming an account would refuse its own domains back to it. The
+pre-check runs inside `no_autoflush`, since flushing the pending domains to run
+the check is exactly what produced the 500. A second claim arriving between check
+and flush still hits the constraint, so that stays caught — the constraint
+remains what decides, and the message says to reload rather than pretending to
+know whose it is now.
+
+### Fixed: a database built by the older version of the email migration
+
+Reported from a deployment: `column "is_active" does not exist`, and the runner
+stops there, taking every migration behind it.
+
+This one was self-inflicted. The earlier fix renamed `dedicated_ips.status` to
+`is_active` because that is what the model says — correct for a database the ORM
+built, wrong for one this file built, which still has `status`. `CREATE TABLE IF
+NOT EXISTS` does nothing to an existing table, so the column never appears and
+the index over it cannot be created.
+
+Three renames shared the assumption. Each is now added with `ADD COLUMN IF NOT
+EXISTS` before anything indexes or writes it, and the two renames carry their old
+values across rather than leaving a column of defaults. Legacy columns are left
+in place — dropping somebody's data is not this file's call.
+`dedicated_ips.status` maps active/warming to true and pending/paused to false;
+defaulting every row to true would have quietly resumed sending from a paused IP,
+which is the one outcome here worth being careful about.
+
+Verified against four databases — one built by the previous version of this file
+carrying rows in all four legacy statuses, one built by the ORM, one empty, each
+run twice. All four converge on the app's schema and stay at three system
+schedules.
+
+## [0.24.0] - 2026-08-20
+
+### Added: search the ticket list, and sort it by any column
+
+The list had seven filters and no way to search. With a screen of tickets that is
+tolerable; a desk past twenty and climbing is looked through by the subject line
+somebody half-remembers, or the number in a colleague's message.
+
+Search matches subject, requester name and address, and the ticket number — typed
+as "SD-26", "sd 26" or "26", since the prefix is per-workspace and is not stored
+on the row. Deliberately not the body: the desk keeps whole email threads, so
+matching quoted history would return every reply in a chain for a word said once,
+ranked by nothing. LIKE metacharacters are escaped rather than rejected —
+somebody searching for a subject with "100%" in it means the character.
+
+Sorting is server-side, because the list is paged and sorting a page would
+reorder fifty rows out of six hundred and read as data loss. The key is a
+`Literal` on the filters model, so an unknown column is refused at the edge
+rather than reaching a query, and an id tiebreak sits under every order —
+without it two rows sharing a sort value can swap between pages, showing one
+twice and the other never. A column starts in the direction that reads as its
+interesting end, newest-first for a date and A→Z for text, and clicking the
+column already in force reverses it.
+
+Both live on `TicketFilters` alongside the filters, so a CSV export still carries
+exactly the rows, in exactly the order, of the screen it came from.
+
+### Added: filter chips, and an age column
+
+Ten controls sat in one wrapped row, each with its own label, all the same
+weight — two reached for constantly and eight rarely, and no answer at all to
+"which of these are set?" without reading every one. Search and state stay out
+front with a Filters button; the rest move behind it, opened by default whenever
+something inside is already set, so a narrowed list never hides its own reason.
+
+Each applied filter is a chip saying what it narrowed and to what, removable on
+its own, because clearing everything to undo one wrong choice is why people stop
+using filters. Values resolve to names — a chip reading `Customer: 352b8193-…`
+would be worse than no chip.
+
+The table grows an age column. It was sorted newest-first and showed no date at
+all, so "has this been sitting for a week" was unanswerable without opening rows.
+Age rather than a timestamp because that is the question being asked, and rounded
+down, so a ticket does not read as breaching a two-day target an hour before it
+does.
+
+### Fixed
+
+- **Three filters the API already supported were never on the screen** — vendor,
+  owner, and the caller's own queue. Owner keys on developer id, not the
+  membership row id, which looks identical in a dropdown and matches nothing.
+- **An empty search said the work did not exist.** "No open tickets. New email
+  requests will appear here automatically" is untrue of a desk with twenty
+  tickets and one bad search, and points the reader at waiting for mail instead
+  of at the filter they just set.
+
+## [0.23.3] - 2026-08-20
+
+### Fixed: mail that copies the desk opened no ticket
+
+The inbound webhook read one address — the first name in the To line — and looked
+for a mailbox at exactly that. A customer writing to their account manager and
+copying the desk resolved to the account manager, matched no mailbox, and
+returned False. No ticket, no log line, nothing on the desk to notice.
+
+Two ways to lose a request, not one: Cc was never parsed at all, and even within
+To only `[0]` was read, so a desk named second on a message addressed to two
+people was dropped the same way.
+
+Every recipient is now collected from all three payload shapes the providers
+send, and the mailbox is looked up across them. Plain To stays first so a desk
+addressed directly still wins when two desks are on one mail, and the address
+that matched is what intake receives as `to` — downstream reads that as "which
+desk is this", and on a copied-in message the first To is a customer's account
+manager. `_recipient_addresses` takes what the providers really send rather than
+what they document: a bare string, a comma-separated header, a list of strings,
+or a list of `{"Email": …}` dicts.
+
+The Gmail path finds its mailbox from the integration and was never affected.
+
+## [0.23.2] - 2026-08-20
+
+### Fixed: the email migration could not complete on a fresh database
+
+Answering "is this safe for production" turned up the case the earlier fixes
+missed: a fresh database where migrations run before the app starts. That is the
+normal deploy order, and it was the one order this file could not survive.
+
+Two blocks add columns to `email_campaigns` and `campaign_recipients`, each
+correctly wrapped in `IF EXISTS (…)` because both tables come from
+`migrate_email_marketing.sql`, which sorts after this file. Both blocks then
+appeared a second time, unguarded — so on a fresh database the unguarded copy
+aborts the migration and the runner stops, taking every later migration with it.
+
+With those gone the file completes on an empty database and then creates tables
+the ORM cannot use, because `create_all` adds missing *tables* and never missing
+*columns*. Fourteen columns across five tables existed only in the models. They
+are added as `ADD COLUMN IF NOT EXISTS` beside the ones already there, so both
+orders converge.
+
+### Fixed: the warming-schedule seed duplicated itself on a second run
+
+The seed is `ON CONFLICT DO NOTHING` against a unique constraint on
+`(workspace_id, name)`, and the system rows it inserts carry `workspace_id IS
+NULL`. Postgres treats NULLs as distinct in a unique constraint, so that clause
+never fires for them: a second run inserts a second complete set of Conservative,
+Moderate and Aggressive, and a third inserts a third — silently, with no error
+anywhere.
+
+Existing duplicates are collapsed, repointing `sending_domains` and
+`dedicated_ips` at the surviving row first so a schedule in use is not quietly
+detached, then a partial unique index on `name` where `workspace_id IS NULL AND
+is_system` makes the existing conflict clause mean something against any future
+writer.
+
+The predicate is narrowed to `is_system` deliberately. Covering every
+`workspace_id IS NULL` row while the dedupe only collapses system ones leaves a
+non-system row sharing a system schedule's name as a duplicate the dedupe had no
+mandate to remove — and `CREATE UNIQUE INDEX` fails on it. asyncpg runs the whole
+file as one implicit transaction, so that failure rolls back the migration and
+stops the runner: the same cascade this work exists to end, reintroduced by the
+fix for it.
+
+## [0.23.1] - 2026-08-20
+
+### Fixed: 81 migrations were queued behind one that had never applied
+
+The email-infrastructure migration was written against a schema the ORM models
+have since moved away from. Because the app creates these tables from the models
+on startup, its `CREATE TABLE`s were all skipped and only its indexes and seeds
+ran — against columns that no longer exist. The runner stops at the first
+failure, so 81 later migrations sat behind it.
+
+Four points of drift, each taken from the model rather than guessed:
+`dedicated_ips.status` is `is_active`, a boolean; `warming_progress.ip_id` is
+`dedicated_ip_id`; `warming_schedules` has neither `total_days` nor `is_active`,
+and does have `auto_adjust_volume`. Its seed also spells out the three thresholds,
+because the model's defaults are Python-side and leave the columns NOT NULL with
+no server default.
+
+### Fixed: two crashes reached the error boundary
+
+Both the same shape — an optional chain that stops one property too early.
+`departmentOf` read `functionCatalog?.options.find(…)`, where `?.` guards the
+object and nothing guards `.options`, so any catalogue response without that key
+took the whole dashboard down. `AiAccuracyPanel` read `data.by_request_type.map(…)`
+behind a `data.classified === 0` guard, which a payload missing `classified`
+walks straight past. Both now guard the property they actually index.
+
+A third looked identical and was not: `ticket.email_recipients` is non-optional
+in the type and always sent, so the mock was simply wrong. Guarding it would have
+hidden a broken fixture behind a defensive `??`; the fixture is fixed instead.
+
+The service desk e2e spec had been failing on all seven tests against a route
+table that had drifted from the API — accounts, vendors and products still mocked
+under the old partners/insurers/lobs names, `{}` where a list belonged, and three
+tests pointing at a settings path that is now a redirect. One of those was hiding
+a real gap rather than a fake one: the ticket list route matched a bare path, so
+once filters added a query string the empty-list fixtures silently stopped
+applying, and the test asserting "no misconfiguration message" was passing
+against a list of two tickets.
+
+### Fixed
+
+- **A ticket read `in_progress`** while every cell beside it went through a label
+  helper. `ticketFieldLabel` already existed for exactly this: the same state
+  should not read two ways on one screen.
+- **The digest and AI settings pages said the same sentence twice**, an inch
+  apart — one string feeding both the page header and the toggle beneath it. Each
+  toggle now says what it does.
+- **Ignored senders moves to its own card.** Sharing the department card, its
+  description read as if it explained the department picker.
+- **Two placeholders were clipped mid-word** — measured, not guessed: 203px of
+  text in 194px, and 295px in 262px. Widening the input was tried and rejected,
+  because at 240px the Add button wraps to its own line.
+- **`NotificationItem` imported `GitMerge` and `GitPullRequest` from
+  `next/navigation`**, which exports neither, breaking `tsc`.
+
+## [0.23.0] - 2026-08-20
+
+Six things, all found by running the catalogue generator against main and reading
+what it complained about.
+
+### Fixed
+
+- **Two capabilities sat outside the access model.** `documentation_impact` and
+  `gmail_push` had no `TAG_TO_CAPABILITY` entry — exactly what the MCP
+  catalogue's `--check` guard exists to catch. `gmail_push` maps to `system`
+  rather than a domain capability: an inbound Pub/Sub webhook is machine ingest,
+  not something an agent should be able to address at all.
+- **The generated catalogue fixture was stale by twelve operations.** A fixture
+  the code no longer matches is worse than none, because the check reports green
+  while the tool list a client receives disagrees with it.
+- **Two routes were registered twice.** `get_public_form` existed in both
+  `forms.py` and `public_forms.py` under the same prefix, and the four reminder
+  instance handlers were byte-identical copies within one file. In both cases the
+  later copy was unreachable — dead code still emitting a duplicate operation id.
+- **`days_open` was holding seconds.** The arithmetic divided correctly at the
+  end, but that is how a later measure gets the unit wrong. It is `open_seconds`.
+- **Service desk analytics reached for a private method** to reuse the ticket
+  scope clause. It is public now: a second module using a leading-underscore
+  method makes that boundary a lie rather than a rule, and the risk is a chart
+  narrowed differently from the list above it.
+- **The version was describing pre-feature code.** The service desk shipped under
+  0.22.1 without a bump.
 
 ## [0.22.1] - 2026-08-18
 

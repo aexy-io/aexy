@@ -395,6 +395,11 @@ NOTIFICATION_TEMPLATES = {
         "body_template": "{actor_name} assigned you ticket {ticket_reference}: {ticket_title}",
         "email_subject": "Ticket assigned to you: {ticket_title}",
     },
+    NotificationEventType.TICKET_RESOLVED: {
+        "title": "Ticket resolved",
+        "body_template": "{ticket_reference} was resolved: the task \"{task_title}\" is done. Confirm with the requester before closing it.",
+        "email_subject": "{ticket_reference} resolved: {ticket_title}",
+    },
     NotificationEventType.DESK_TICKET_ASSIGNED: {
         "title": "Service desk ticket assigned to you",
         "body_template": "{actor_name} made you the owner of {ticket_reference}: {ticket_title}",
@@ -419,6 +424,11 @@ NOTIFICATION_TEMPLATES = {
         "title": "Access Request Declined",
         "body_template": "Your request for access to {app_name} was not approved",
         "email_subject": "Access Request Update: {app_name}",
+    },
+    NotificationEventType.INTEGRATION_DISCONNECTED: {
+        "title": "{provider} disconnected: {account}",
+        "body_template": "{account} is no longer syncing. Reconnect it to resume.",
+        "email_subject": "Action needed: {account} stopped syncing",
     },
     NotificationEventType.USAGE_ALERT_80: {
         "title": "Usage Alert",

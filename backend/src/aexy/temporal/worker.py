@@ -113,8 +113,10 @@ def get_all_activities() -> list:
     )
     from aexy.temporal.activities.google_sync import (
         check_auto_sync_integrations,
+        renew_gmail_watches,
         sync_calendar,
         sync_gmail,
+        sync_gmail_push,
     )
     from aexy.temporal.activities.notifications import (
         send_notification_email,
@@ -386,6 +388,8 @@ def get_all_activities() -> list:
         sync_gmail,
         sync_calendar,
         check_auto_sync_integrations,
+        sync_gmail_push,
+        renew_gmail_watches,
         # Tracking
         send_standup_reminders,
         aggregate_daily_standups,

@@ -100,6 +100,25 @@ async def _refresh_google(
         logger.warning("Google refresh_token revoked for %s", owner_ref)
         revoke_handler(connection)
         await db.flush()
+        # A revoked refresh token never recovers by itself, and this is the only
+        # moment the system knows. Callers raise past this and the row is left
+        # inactive, so if nobody is told here nobody is told at all.
+        workspace_id = getattr(connection, "workspace_id", None)
+        if workspace_id:
+            from aexy.services.integration_health import (
+                notify_integration_disconnected,
+            )
+
+            await notify_integration_disconnected(
+                db,
+                workspace_id=str(workspace_id),
+                provider="Google",
+                account_label=getattr(connection, "google_email", None) or owner_ref,
+                reason="Google refused the saved credentials (invalid_grant)",
+                connected_by_id=getattr(connection, "connected_by_id", None),
+                settings_path="/settings/connected-accounts",
+            )
+            await db.flush()
         raise RefreshTokenRevokedError("Google refresh token is invalid or revoked")
 
     if resp.status_code != 200:

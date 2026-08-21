@@ -134,9 +134,11 @@ async def test_our_own_digest_does_not_become_a_ticket(db_session: AsyncSession)
 async def test_the_digest_marks_itself_on_the_way_out(db_session: AsyncSession, monkeypatch):
     """The other half of the pair above: the send has to stamp it.
 
-    The digest is the one desk send that goes through the transactional service
-    rather than the desk mailer, which is why it was the one that came back as a
-    ticket.
+    The digest used to be the one desk send that went through the transactional
+    service directly rather than the desk mailer, which is why it was the one
+    that came back as a ticket. It goes through the mailer now like everything
+    else — and the mailer stamps the marker on both of its routes, so this holds
+    whether the desk has a connected mailbox or not.
     """
     from aexy.services import email_service as email_module
     from aexy.services.service_desk_digest_service import ServiceDeskDigestService
@@ -144,9 +146,16 @@ async def test_the_digest_marks_itself_on_the_way_out(db_session: AsyncSession, 
     ws = await _workspace(db_session, "unactionable-digest-send")
     calls: list[dict] = []
 
+    class _Log:
+        """What the real `send_templated_email` returns. The mailer reads
+        `.status` to tell a delivery failure from an unconfigured deployment, so
+        a stub returning None would report every digest as undeliverable."""
+
+        status = "sent"
+
     async def _send(self, **kwargs):
         calls.append(kwargs)
-        return None
+        return _Log()
 
     monkeypatch.setattr(email_module.EmailService, "send_templated_email", _send)
 
@@ -319,3 +328,85 @@ async def test_an_ordinary_sender_is_unaffected(db_session: AsyncSession):
     await db_session.commit()
 
     assert ticket is not None
+
+
+@pytest.mark.asyncio
+async def test_a_partners_daily_automailer_can_finally_be_excluded(db_session: AsyncSession):
+    """The reported case: a whole address outranks Master Data.
+
+    ``dailyreport@`` sits on a domain mapped to a partner, so the account match
+    used to override the ignore entry — the mail opened a ticket every day and
+    nothing in the product could stop it. A full address is only ever typed into
+    this list by somebody who has seen that exact mail and decided it is noise.
+    """
+    ws = await _workspace(db_session, "unactionable-partner-automailer")
+    mailbox = await _mailbox(db_session, ws)
+    ws.settings = {"service_desk": {"ignored_senders": ["dailyreport@acme.example"]}}
+    account = ServiceDeskAccount(id=str(uuid4()), workspace_id=ws.id, name="Acme Broking")
+    db_session.add(account)
+    await db_session.flush()
+    db_session.add(
+        ServiceDeskAccountDomain(
+            id=str(uuid4()), workspace_id=ws.id, account_id=account.id, domain="acme.example"
+        )
+    )
+    await db_session.commit()
+
+    result = await ServiceDeskIntakeService(db_session).ingest(
+        _email(
+            from_email="dailyreport@acme.example",
+            subject="Acme daily position 2026-08-19",
+            message_id="partner-automailer-1",
+        ),
+        mailbox,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+
+    assert result is None
+    assert await _tickets(db_session, ws) == []
+
+
+@pytest.mark.asyncio
+async def test_silencing_one_address_does_not_silence_the_partner(db_session: AsyncSession):
+    """The reason the override existed. A colleague at the same partner writes
+    from their own address, and that is a request like any other."""
+    ws = await _workspace(db_session, "unactionable-partner-human")
+    mailbox = await _mailbox(db_session, ws)
+    ws.settings = {"service_desk": {"ignored_senders": ["dailyreport@acme.example"]}}
+    account = ServiceDeskAccount(id=str(uuid4()), workspace_id=ws.id, name="Acme Broking")
+    db_session.add(account)
+    await db_session.flush()
+    db_session.add(
+        ServiceDeskAccountDomain(
+            id=str(uuid4()), workspace_id=ws.id, account_id=account.id, domain="acme.example"
+        )
+    )
+    await db_session.commit()
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(
+            from_email="priya@acme.example",
+            subject="Endorsement request",
+            message_id="partner-human-1",
+        ),
+        mailbox,
+        "service_desk_gmail",
+    )
+    await db_session.commit()
+
+    assert ticket is not None
+
+
+def test_only_a_whole_address_outranks_master_data():
+    """The rule the override turns on, stated on its own."""
+    from aexy.services.service_desk_config import address_is_ignored
+
+    ignored = ["dailyreport@acme.example", "acme.example"]
+
+    assert address_is_ignored("dailyreport@acme.example", ignored) is True
+    # A domain entry covers this sender, but not as a whole address — so Master
+    # Data still gets to overrule it.
+    assert address_is_ignored("priya@acme.example", ignored) is False
+    assert address_is_ignored(None, ignored) is False
+    assert address_is_ignored("dailyreport@acme.example", []) is False

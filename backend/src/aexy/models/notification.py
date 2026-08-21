@@ -90,12 +90,22 @@ class NotificationEventType(str, Enum):
 
     # Ticket assignment (form tickets — the internal request queue)
     TICKET_ASSIGNED = "ticket_assigned"
+    # The work behind a ticket finished. Sent to the ticket's owner, who is
+    # usually not the person who completed the task — the developer closed a
+    # sprint task and has no idea a ticket was waiting on it.
+    TICKET_RESOLVED = "ticket_resolved"
 
     # Service desk. `pending_with` is the desk's real handoff — a ticket moves
     # between team queues far more often than it changes assigned owner, and the
     # queue it lands in is the one that has to act.
     DESK_TICKET_ASSIGNED = "desk_ticket_assigned"
     DESK_TICKET_PENDING_WITH_CHANGED = "desk_ticket_pending_with_changed"
+
+    # A connected account stopped working. Not "a sync failed" — one failed sync
+    # is noise and retries. This fires when the connection itself is refused and
+    # will keep being refused until a person reconnects it, which is the only
+    # sync problem a notification can actually resolve.
+    INTEGRATION_DISCONNECTED = "integration_disconnected"
 
     # Usage alerts (billing)
     USAGE_ALERT_80 = "usage_alert_80"  # 80% of limit reached
@@ -512,6 +522,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.WORKSPACE_JOIN_REQUEST.value,
         NotificationEventType.WORKSPACE_JOIN_APPROVED.value,
         NotificationEventType.WORKSPACE_JOIN_REJECTED.value,
+        NotificationEventType.INTEGRATION_DISCONNECTED.value,
     ],
     "mentions": [
         NotificationEventType.TASK_MENTIONED.value,
@@ -523,6 +534,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.TASK_STATUS_CHANGED.value,
         NotificationEventType.TASK_COMMENTED.value,
         NotificationEventType.TICKET_ASSIGNED.value,
+        NotificationEventType.TICKET_RESOLVED.value,
     ],
     "service_desk": [
         NotificationEventType.DESK_TICKET_ASSIGNED.value,
@@ -660,6 +672,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.TASK_STATUS_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.TASK_COMMENTED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.TICKET_ASSIGNED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default: the owner is told the work behind their ticket is
+    # finished and it is theirs to confirm with the requester. In-app alone
+    # would be missed by exactly the people who do not live on the board.
+    NotificationEventType.TICKET_RESOLVED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Service desk. These carry an external SLA clock, so both the new owner and
     # the queue a ticket lands in get email — the daily digest was previously the
     # only signal and it can be up to a day late.
@@ -687,6 +703,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.USAGE_ALERT_80: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.USAGE_ALERT_90: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.USAGE_ALERT_100: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Email on by default: the person who can reconnect the account is not
+    # necessarily looking at the app, and not looking is exactly how a desk goes
+    # a day without noticing its mail stopped.
+    NotificationEventType.INTEGRATION_DISCONNECTED: {"in_app": True, "email": True, "slack": False, "web_push": False},
     # Insights alerts
     NotificationEventType.INSIGHT_ALERT_WARNING: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.INSIGHT_ALERT_CRITICAL: {"in_app": True, "email": True, "slack": False, "web_push": True},

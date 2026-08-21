@@ -383,6 +383,17 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:3000"
+
+    # Gmail push (optional). Set both to turn Service Desk intake from a poll
+    # into a delivery: `gmail_push_topic` is the Pub/Sub topic Gmail publishes
+    # to ("projects/<project>/topics/<topic>"), and `gmail_push_token` is a
+    # shared secret the subscription appends to its push endpoint URL.
+    #
+    # Unset is the supported state, not a broken one — no watch is registered
+    # and every desk stays on the polling path, which remains the floor
+    # underneath push in any case.
+    gmail_push_topic: str | None = None
+    gmail_push_token: str | None = None
     # Extra origins (comma-separated, e.g. "https://aexy.io,https://app.aexy.io")
     # allowed as post-OAuth redirect targets beyond frontend_url + loopback.
     oauth_extra_redirect_hosts: str = ""

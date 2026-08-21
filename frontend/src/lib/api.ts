@@ -3696,6 +3696,18 @@ export const sprintApi = {
     await api.delete(`/sprints/${sprintId}/tasks/${taskId}/attachments/${attachmentId}`);
   },
 
+  // Fetch an attachment's bytes for preview/download. Takes no sprint or team:
+  // reads are addressed by attachment id alone, so the same call serves a task
+  // in a sprint and the same task once it moves to the backlog. The route is
+  // auth-gated, so a plain <img src> or <a href> can't reach it — callers turn
+  // the blob into an object URL.
+  downloadTaskAttachment: async (attachmentId: string): Promise<Blob> => {
+    const response = await api.get(`/task-attachments/${attachmentId}`, {
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
   assignTask: async (sprintId: string, taskId: string, developerId: string, reason?: string, confidence?: number): Promise<SprintTask> => {
     const response = await api.post(`/sprints/${sprintId}/tasks/${taskId}/assign`, {
       developer_id: developerId,
@@ -9029,6 +9041,10 @@ export interface Ticket {
   form_id: string;
   workspace_id: string;
   ticket_number: number;
+  /** The ticket's own headline. Null for tickets raised through a form with no
+   *  subject field — fall back to field_values, never to the form name, which
+   *  is identical for every ticket on that form. */
+  title?: string | null;
   submitter_email?: string;
   submitter_name?: string;
   email_verified: boolean;

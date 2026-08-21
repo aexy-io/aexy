@@ -1,9 +1,15 @@
 """Free mode — the desk must work end to end with AI switched off.
 
-The AI opt-in is off by default and is meant to be a paid upgrade, so the base
-product has to stand on its own: an email still becomes a tracked ticket, the
-owner is still chosen by rule (partner mapping, else the KAM pool), the clock
-still starts — and nothing in the path reaches a model or opens a file.
+A desk that has AI switched off has to stand on its own: an email still becomes
+a tracked ticket, the owner is still chosen by rule (partner mapping, else the
+KAM pool), the clock still starts — and nothing in the path reaches a model or
+opens a file.
+
+"Off" is now stated rather than assumed. The desk follows the workspace's AI
+switch, so these workspaces set the desk's own veto explicitly; relying on a
+default meant that when the default changed the suite still passed — the model
+call was made, raised, and was swallowed by the classifier's best-effort
+``except``, which is precisely the regression these tests exist to catch.
 
 These tests deliberately do NOT stub the classifier. They install a gateway and
 an attachment fetcher that raise on use, so any AI or file read that creeps back
@@ -35,8 +41,17 @@ from tests.conftest import seed_service_desk_taxonomy
 def _no_ai_no_mail(monkeypatch):
     """Any model call is a failure; acknowledgement mail is out of scope here."""
 
+    class _AIWasReached(BaseException):
+        """Deliberately not an ``Exception``.
+
+        The classifier wraps its whole body in a best-effort ``except
+        Exception``, so an AssertionError raised here was caught, logged as a
+        skipped classification, and the test passed while the model call had in
+        fact been attempted. Only something outside that hierarchy escapes.
+        """
+
     def _forbidden():
-        raise AssertionError("AI must not be reached when the workspace has not opted in")
+        raise _AIWasReached("AI must not be reached when this desk has AI switched off")
 
     async def _noop(self, *a, **k):
         return None
@@ -48,11 +63,16 @@ def _no_ai_no_mail(monkeypatch):
 async def _desk(
     db: AsyncSession, slug: str, kam_count: int = 2
 ) -> tuple[Workspace, ServiceDeskMailbox, list[str]]:
-    """A workspace with a shared mailbox and optional KAM pool. No AI opt-in."""
+    """A workspace with a shared mailbox and optional KAM pool. AI vetoed."""
     owner = Developer(email=f"owner-{slug}@bimaplan.co", name="Owner")
     db.add(owner)
     await db.flush()
-    ws = Workspace(name=f"WS {slug}", slug=slug, owner_id=owner.id)
+    ws = Workspace(
+        name=f"WS {slug}",
+        slug=slug,
+        owner_id=owner.id,
+        settings={"service_desk": {"ai_classification_enabled": False}},
+    )
     db.add(ws)
     await db.flush()
     # Stakeholders and request types are per-workspace rows now, not an enum, so

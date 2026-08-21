@@ -54,3 +54,26 @@ export function ticketFieldLabel(slug: string | null | undefined): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
+
+/**
+ * The one line to call a ticket by.
+ *
+ * `title` is the ticket's own subject. Before it existed the detail page and
+ * the list both showed `form_name`, so every ticket raised through one form
+ * displayed the same heading — the list read as forty rows of "Support
+ * request". Falls back to the submission blob for tickets predating the column,
+ * then to the reference, and never to the form name.
+ */
+export function ticketHeadline(ticket: {
+  title?: string | null;
+  field_values?: Record<string, unknown>;
+  ticket_number: number;
+}): string {
+  const fromColumn = ticket.title?.trim();
+  if (fromColumn) return fromColumn;
+  for (const key of ["title", "subject", "summary"]) {
+    const value = ticket.field_values?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return `TKT-${ticket.ticket_number}`;
+}

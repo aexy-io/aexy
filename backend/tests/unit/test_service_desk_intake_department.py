@@ -299,7 +299,13 @@ async def test_intake_assigns_to_the_chosen_department(
     async def _noop(self, *a, **k):
         return None
 
-    monkeypatch.setattr(ServiceDeskIntakeService, "_classify", _noop)
+    # `_classify` returns (issues, overflow) and its caller unpacks the pair, so
+    # the stub has to honour that shape. It went unnoticed while AI was off by
+    # default and the stub was never reached.
+    async def _no_candidates(self, *a, **k):
+        return [], False
+
+    monkeypatch.setattr(ServiceDeskIntakeService, "_classify", _no_candidates)
     monkeypatch.setattr(ServiceDeskIntakeService, "_send_receipt", _noop)
 
     ws, owner = await _workspace(db_session, "intake-e2e")

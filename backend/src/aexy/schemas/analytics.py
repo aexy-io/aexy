@@ -44,6 +44,12 @@ class MetricType(str, Enum):
     TEAM_HEALTH = "team_health"
     ATTRITION_RISK = "attrition_risk"
     ACTIVITY = "activity"
+    # The Service Desk is not a developer-analytics metric: it is a
+    # dimension-by-measure question ("volume by partner", "turnaround by
+    # product"). One member rather than a combinatorial explosion of them, with
+    # the pair supplied in the widget's own config — see
+    # `services.service_desk_analytics` for the vocabulary.
+    SERVICE_DESK = "service_desk"
 
 
 class ScheduleFrequency(str, Enum):

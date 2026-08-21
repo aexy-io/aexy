@@ -34,6 +34,7 @@ from aexy.models.service_desk import (
     ServiceDeskMailbox,
     ServiceDeskAccount,
     ServiceDeskAccountDomain,
+    ServiceDeskAccountProduct,
     ServiceDeskTicket,
     TicketOrigin,
     TicketPendingSegment,
@@ -42,7 +43,10 @@ from aexy.models.ticketing import Ticket, TicketForm, TicketResponse, TicketStat
 from aexy.models.workspace import Workspace, WorkspaceMember
 from aexy.schemas.service_desk import InboundEmail
 from aexy.services.service_desk_config import (
+    address_is_ignored,
     display_id as render_display_id,
+    domain_candidates,
+    forwarded_sender,
     force_ticket_id_into_subject,
     looks_automatic,
     normalise_ignored_senders,
@@ -51,6 +55,8 @@ from aexy.services.service_desk_config import (
     ticket_prefix,
     ticket_prefix_display,
 )
+from aexy.services.service_desk_links import ensure_requester_url
+from aexy.services.service_desk_templates import template_references
 from aexy.services.service_desk_mailer import OUTBOUND_MARKER_HEADER
 from aexy.services.service_desk_industry_templates import SEMANTIC_EXTERNAL
 from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy
@@ -79,6 +85,11 @@ _SPLIT_MIN_CONFIDENCE = 0.85
 # master data.
 # Below this the model is guessing, so a human is asked to confirm the fields.
 _LOW_CONFIDENCE = 0.6
+
+# How many past corrections are shown to the classifier. Small on purpose: they
+# are prompt text, so every extra example is paid for on every classification,
+# and beyond a handful they crowd out the message actually being read.
+_MAX_CORRECTION_EXAMPLES = 8
 _AI_MATCH_MIN_CONFIDENCE = 0.85
 _AI_MATCH_MAX_CANDIDATES = 20
 
@@ -120,17 +131,50 @@ def _address_of(email: str | None) -> str | None:
 
 
 async def ai_classification_enabled(db: AsyncSession, workspace_id: str) -> bool:
-    """Whether this workspace has opted in to AI reading of its mail.
+    """Whether AI may read this workspace's desk mail.
 
-    Off by default, and the single gate for every AI-dependent behaviour in the
-    desk: classification, LOB/request-type inference and auto-split. Module
-    level because the Gmail sync must consult it too — attachment bytes are
-    fetched only to feed the classifier, so with AI off no file is ever read.
+    The single gate for every AI-dependent behaviour in the desk: classification,
+    product/request-type inference, thread matching and auto-split.
+
+    It **follows the workspace's own AI switch** (``WorkspaceAISettings.
+    ai_enabled``) rather than asking for a second, separate yes. A per-feature
+    opt-in that defaulted off meant a workspace could turn AI on, see nothing
+    happen, and have no way to tell which of two switches was the reason — and
+    the workspace-level switch already exists precisely to be the one answer to
+    "AI on our data, or not".
+
+    The desk keeps a veto, not a duplicate: an explicit ``False`` stored here is
+    a deliberate "not on the service desk" and survives the workspace switch
+    being on. Absent (the common case) means inherit. An explicit ``True`` is
+    the value written before this was inheritable; it reads as inherit, because
+    the LLM gateway refuses the call anyway when the workspace has AI off.
+    """
+    from aexy.services.workspace_ai_settings_service import is_ai_enabled
+
+    ws = await db.get(Workspace, workspace_id)
+    if ws is None:
+        return False
+    if ((ws.settings or {}).get("service_desk") or {}).get("ai_classification_enabled") is False:
+        return False
+    return await is_ai_enabled(db, workspace_id)
+
+
+async def attachment_previews_enabled(db: AsyncSession, workspace_id: str) -> bool:
+    """Whether intake may read attachment *bytes* to build classifier previews.
+
+    Deliberately its own opt-in rather than riding on ``ai_classification_enabled``.
+    Classifying a subject and a body reads text the desk was sent anyway; opening
+    the PDF attached to it is a different question about a customer's documents,
+    and inheriting a workspace-wide "AI is fine" default would answer it on
+    somebody's behalf. Off unless switched on.
     """
     ws = await db.get(Workspace, workspace_id)
     if ws is None:
         return False
-    return bool(((ws.settings or {}).get("service_desk") or {}).get("ai_classification_enabled", False))
+    sd = (ws.settings or {}).get("service_desk") or {}
+    if not bool(sd.get("ai_attachment_previews_enabled", False)):
+        return False
+    return await ai_classification_enabled(db, workspace_id)
 
 
 def is_aexy_generated(email: InboundEmail) -> bool:
@@ -273,8 +317,19 @@ class ServiceDeskIntakeService:
         to act on. Infrastructure senders like ``no-reply@accounts.google.com``
         keep opening tickets until somebody says otherwise, and then stop.
 
-        A known account or vendor still overrides the list: the master data
-        somebody maintains deliberately outranks a broad domain entry.
+        How far Master Data may override the list depends on how the entry was
+        written, because the two forms are different statements:
+
+        * A **bare domain** is broad. A registered account or vendor outranks it,
+          so a domain ignored in passing cannot silence a counterparty somebody
+          deliberately configured.
+        * A **whole address** is specific, and now wins outright. It used to lose
+          to Master Data as well, which meant a partner's daily automailer —
+          ``dailyreport@partner.com``, on a domain mapped to that partner — could
+          not be excluded by any setting the product offered. It opened a ticket
+          every day, forever, and adding it to the list did nothing. Nobody types
+          a full address into this list except after seeing that exact mail and
+          deciding it is not a request.
         """
         ws = await self.db.get(Workspace, workspace_id)
         ignored = normalise_ignored_senders(
@@ -286,6 +341,8 @@ class ServiceDeskIntakeService:
         domain = _domain_of(email.from_email)
         if not sender_is_ignored(address, domain, ignored):
             return False
+        if address_is_ignored(address, ignored):
+            return True
         if await self._match_account(workspace_id, domain, address) is not None:
             return False
         return await self._match_vendor(workspace_id, domain, address) is None
@@ -719,27 +776,99 @@ class ServiceDeskIntakeService:
         origin = TicketOrigin.EMAIL.value
         needs_triage = False
         assigned_owner_id: str | None = None
+        # Why this ticket ended up with this owner. Recorded on the timeline
+        # below whenever the answer was not Master Data, because the symptom of a
+        # missing or mistyped mapping — a ticket on a KAM who has nothing to do
+        # with the partner — is indistinguishable from a deliberate assignment
+        # once the ticket exists. "Assignment is not following our master data"
+        # is unanswerable without this.
+        assignment_note: str | None = None
+        # One read, before the branching below: every fallback path needs it and
+        # it decides whether "no owner" is a failure or this desk's deliberate
+        # choice (see the final fallback at the end of this block).
+        policy = await self._unmatched_policy(workspace_id)
 
         if domain and internal_domain and domain == internal_domain:
-            # Sender is on the desk's own domain, so there is no account to infer
-            # from it — someone has to confirm which account this is about.
+            # Sender is on the desk's own domain. Either a colleague wrote in, or
+            # — far more often — somebody forwarded a partner's mail to the desk,
+            # in which case the address in `From:` is the forwarder and the real
+            # requester is named in a header or in the quoted block below it.
             origin = TicketOrigin.INTERNAL.value
+            # Inferred attribution, so a human still confirms it. The value is
+            # that the *owner* is right in the meantime: without this every
+            # forwarded partner request landed on an arbitrary member of the desk
+            # and looked deliberately assigned.
             needs_triage = True
-            assigned_owner_id = await self._random_owner(workspace_id)
+            forwarded = forwarded_sender(email.headers or {}, email.body_text, internal_domain)
+            account = (
+                await self._match_account(
+                    workspace_id, _domain_of(forwarded), forwarded
+                )
+                if forwarded
+                else None
+            )
+            if account is not None:
+                assigned_owner_id = account.assigned_owner_id or await self._fallback_owner(
+                    workspace_id, policy
+                )
+                assignment_note = (
+                    f'Attributed to "{account.name}" from the forwarded message: '
+                    f"{email.from_email} forwarded mail originally from {forwarded}. "
+                    "Confirm this is the right account."
+                )
+                if account.assigned_owner_id is None:
+                    assignment_note += (
+                        f' "{account.name}" has no assigned owner in Master Data, so the '
+                        "owner was picked by fallback."
+                    )
+            else:
+                assigned_owner_id = await self._fallback_owner(workspace_id, policy)
+                assignment_note = (
+                    f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
+                    "so no account could be inferred from it. Set the account by hand to route "
+                    "this ticket to its owner."
+                )
         else:
             account = await self._match_account(workspace_id, domain, address)
             if account is not None:
-                assigned_owner_id = account.assigned_owner_id or await self._random_owner(workspace_id)
+                assigned_owner_id = account.assigned_owner_id
+                if assigned_owner_id is None:
+                    assigned_owner_id = await self._fallback_owner(workspace_id, policy)
+                    assignment_note = (
+                        f'Assigned by fallback: "{account.name}" matched {domain}, but has no '
+                        "assigned owner in Master Data. Set one so its tickets stop being "
+                        "distributed arbitrarily."
+                    )
             else:
                 vendor = await self._match_vendor(workspace_id, domain, address)
                 # vendor-originated or wholly unknown → triage + an arbitrary owner
                 needs_triage = True
-                assigned_owner_id = await self._random_owner(workspace_id)
+                assigned_owner_id = await self._fallback_owner(workspace_id, policy)
+                assignment_note = (
+                    f"Assigned by fallback: no account is mapped to {domain or email.from_email}. "
+                    "Add the domain to the right account in Master Data so future mail from this "
+                    "sender reaches its owner."
+                )
 
-        if assigned_owner_id is None:
+        if assigned_owner_id is None and policy != "unassigned":
+            # Only a genuine dead end reaches here now. With the policy set to
+            # "unassigned" a null owner is the intended outcome, and handing the
+            # ticket to the workspace owner would quietly undo the setting.
             assigned_owner_id = (
                 await self.db.execute(select(Workspace.owner_id).where(Workspace.id == workspace_id))
             ).scalar_one_or_none()
+            assignment_note = (
+                (assignment_note or "Assigned by fallback.")
+                + " The desk department has no active members either, so the ticket went to the "
+                "workspace owner."
+            )
+        elif assigned_owner_id is None:
+            needs_triage = True
+            assignment_note = (
+                (assignment_note or "")
+                + " Left unassigned because this desk is set to leave unroutable tickets "
+                "unassigned. It is flagged for triage so it stays visible."
+            ).strip()
 
         form_id = await self._ensure_form(workspace_id)
 
@@ -751,6 +880,10 @@ class ServiceDeskIntakeService:
             submitter_email=email.from_email,
             submitter_name=email.from_name,
             email_verified=False,
+            # Kept in both places on purpose: `title` is the column readers and
+            # indexes use, `field_values["subject"]` stays because the form
+            # renderer and every existing consumer read the submission blob.
+            title=(email.subject or "").strip()[:500] or None,
             field_values={
                 "subject": email.subject,
                 "body": email.body_text,
@@ -808,6 +941,16 @@ class ServiceDeskIntakeService:
         )
         self.db.add(sd)
 
+        if assignment_note:
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=assignment_note,
+                    is_internal=True,
+                )
+            )
+
         # open the first pending-with segment (the ledger starts here)
         self.db.add(
             TicketPendingSegment(
@@ -839,23 +982,52 @@ class ServiceDeskIntakeService:
             await self.db.flush()
 
         # best-effort enrichment + receipt (never block intake).
-        # AI reading/categorisation is opt-in per workspace (default off), and an
-        # automatic response carries no request to read — classifying one would
-        # only invent a request type and an LOB for a machine's away message.
+        # AI reading/categorisation follows the workspace's AI switch (see
+        # ``ai_classification_enabled``), and an automatic response carries no
+        # request to read — classifying one would only invent a request type and
+        # a product for a machine's away message.
         issues: list[dict] = []
         overflow = False
         if automatic:
             sd.needs_triage = True
         elif classify and await self._ai_enabled(workspace_id):
             issues, overflow = await self._classify(workspace_id, sd, email)
+            if not issues:
+                # The classifier ran and produced nothing usable — a workspace
+                # that deactivated every request type, a response the model
+                # could not be held to, or a call that never happened. The
+                # ticket is in exactly the state the branch below describes, so
+                # it is flagged the same way. Leaving it clear reported a read
+                # that did not happen: the ticket carried the workspace default
+                # request type and no product, and looked confirmed.
+                sd.needs_triage = True
         else:
             # Nothing has read this ticket: the ticket is still created, owned and
-            # clocked, but nobody has set the LOB or confirmed the request type —
-            # it holds the workspace's default. Flag it so the owning KAM
+            # clocked, but nobody has set the product or confirmed the request
+            # type — it holds the workspace's default. Flag it so the owner
             # completes those fields by hand rather than the desk silently
-            # reporting every ticket as a Query with no product against it.
+            # reporting every ticket as its default type with no product on it.
             # A caller that already has those answers from a person clears it.
             sd.needs_triage = True
+
+        # Now that the product is known, ask whether this account/product pairing
+        # names its own owner. Assignment had to happen before classification —
+        # the ticket row comes first — so this is the point at which a partner
+        # split between two people is actually routed to the right one.
+        reroute = await self.product_owner(sd.account_id, sd.product_id)
+        if reroute and reroute != ticket.assignee_id:
+            ticket.assignee_id = reroute
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=(
+                        f"Reassigned on classification: this {taxonomy.term('account')} has a "
+                        f"separate owner for this {taxonomy.term('product')}."
+                    ),
+                    is_internal=True,
+                )
+            )
 
         children: list[Ticket] = []
         if len(issues) > 1 and not overflow:
@@ -1056,6 +1228,129 @@ class ServiceDeskIntakeService:
         await self.db.flush()
         return child
 
+    async def _recent_corrections(self, workspace_id: str, allowed: set[str]) -> str:
+        """Recent classifications this desk overruled, as prompt examples.
+
+        A desk's vocabulary is its own: one workspace files a renewal reminder as
+        a query, another as its own request type, and a general-purpose prompt
+        gets that wrong the same way every time. These are the corrections its
+        own people already made, which is the cheapest training signal available
+        and needs no extra work from anybody.
+
+        Bounded hard, and to subjects only. The examples are prompt text, so an
+        unbounded set would grow the cost of every classification and eventually
+        push the mail being classified out of the window; and a body would carry
+        a requester's details into the prompt for every later ticket, which is a
+        different thing from reading their own mail.
+        """
+        rows = (
+            await self.db.execute(
+                select(Ticket.field_values, ServiceDeskTicket.request_type)
+                .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
+                .where(
+                    ServiceDeskTicket.workspace_id == workspace_id,
+                    ServiceDeskTicket.ai_request_type.is_not(None),
+                    ServiceDeskTicket.ai_request_type != ServiceDeskTicket.request_type,
+                )
+                .order_by(ServiceDeskTicket.updated_at.desc())
+                .limit(_MAX_CORRECTION_EXAMPLES)
+            )
+        ).all()
+        examples = [
+            f"- {subject[:120]} -> {request_type}"
+            for field_values, request_type in rows
+            # A retired request type would teach the model to answer with a slug
+            # the validator then rejects.
+            if request_type in allowed
+            and (subject := " ".join(str((field_values or {}).get("subject") or "").split()))
+        ]
+        if not examples:
+            return ""
+        return (
+            "This desk previously corrected these classifications; follow the same "
+            "judgement:\n" + "\n".join(examples) + "\n\n"
+        )
+
+    async def _products_for(
+        self, workspace_id: str, account_id: str | None
+    ) -> list[tuple[str, str]]:
+        """The products worth offering the classifier, as (name, id).
+
+        An account that has been paired with specific products is asked only
+        about those. It is a materially easier question — two options rather than
+        a workspace catalogue of forty — and it makes a whole class of answer
+        impossible rather than merely unlikely: a partner the desk does not serve
+        for health cannot have a ticket classified as health.
+
+        An account with no pairings, or no account at all, falls back to the
+        whole catalogue. That is every desk until somebody splits a partner, and
+        nothing about their classification changes.
+        """
+        if account_id is not None:
+            paired = (
+                await self.db.execute(
+                    select(ServiceDeskProduct.name, ServiceDeskProduct.id)
+                    .join(
+                        ServiceDeskAccountProduct,
+                        ServiceDeskAccountProduct.product_id == ServiceDeskProduct.id,
+                    )
+                    .where(
+                        ServiceDeskAccountProduct.account_id == account_id,
+                        ServiceDeskProduct.is_active.is_(True),
+                    )
+                    .order_by(ServiceDeskProduct.name)
+                )
+            ).all()
+            if paired:
+                return [(str(name), pid) for name, pid in paired]
+        rows = (
+            await self.db.execute(
+                select(ServiceDeskProduct.name, ServiceDeskProduct.id).where(
+                    ServiceDeskProduct.workspace_id == workspace_id,
+                    ServiceDeskProduct.is_active.is_(True),
+                )
+            )
+        ).all()
+        return [(str(name), pid) for name, pid in rows]
+
+    async def product_owner(
+        self, account_id: str | None, product_id: str | None
+    ) -> str | None:
+        """The owner named for this account/product pairing, if there is one.
+
+        The narrowest answer the desk has to "whose ticket is this". Falls back
+        to nothing — not to the account's owner — because the caller needs to
+        know which of the two answered, in order to say so on the timeline.
+        """
+        if not account_id or not product_id:
+            return None
+        return (
+            await self.db.execute(
+                select(ServiceDeskAccountProduct.assigned_owner_id).where(
+                    ServiceDeskAccountProduct.account_id == account_id,
+                    ServiceDeskAccountProduct.product_id == product_id,
+                )
+            )
+        ).scalars().first()
+
+    async def account_owner(self, account_id: str | None) -> str | None:
+        """The owner named for this account, if there is one.
+
+        The broader answer to "whose ticket is this", used when no
+        account/product pairing names somebody more specific. Kept next to
+        ``product_owner`` so the precedence between the two is readable in one
+        place rather than reconstructed at each call site.
+        """
+        if not account_id:
+            return None
+        return (
+            await self.db.execute(
+                select(ServiceDeskAccount.assigned_owner_id).where(
+                    ServiceDeskAccount.id == account_id
+                )
+            )
+        ).scalars().first()
+
     async def _product_id(self, workspace_id: str, name: str | None) -> str | None:
         if not name:
             return None
@@ -1071,10 +1366,24 @@ class ServiceDeskIntakeService:
 
     # ------------------------------------------------------------- assignment
 
+    @staticmethod
+    def _match_keys(domain: str | None, address: str | None) -> list[str]:
+        """Everything a Master Data row could be keyed on for this sender.
+
+        The whole address, then the sender's domain and each parent domain above
+        it. Matching used to be exact equality on the domain, so a partner
+        writing from ``mail.partner.com`` or ``claims.partner.com`` — a regional
+        office, a marketing platform, a ticketing subdomain — was not recognised
+        as that partner at all, and the ticket went to an arbitrary owner with
+        nothing to say why. See ``domain_candidates`` for what stops this
+        reaching up into a public suffix.
+        """
+        return [key for key in ([address] if address else []) + domain_candidates(domain) if key]
+
     async def _match_account(
         self, workspace_id: str, domain: str | None, address: str | None = None
     ) -> ServiceDeskAccount | None:
-        keys = [k for k in (address, domain) if k]
+        keys = self._match_keys(domain, address)
         if not keys:
             return None
         row = (
@@ -1086,11 +1395,14 @@ class ServiceDeskIntakeService:
                     ServiceDeskAccount.is_active.is_(True),
                     func.lower(ServiceDeskAccountDomain.domain).in_(keys),
                 )
-                # A whole-address record is more specific than a domain record and
-                # must win, otherwise one gmail.com partner would swallow every
-                # plus-suffixed company keyed on the same domain.
+                # Most specific first, in two steps. A whole-address record beats
+                # any domain, otherwise one gmail.com partner would swallow every
+                # plus-suffixed company keyed on the same domain. Then the longest
+                # domain wins, so a desk can map `partner.com` to one owner and
+                # `claims.partner.com` to another and have both hold.
                 .order_by(
                     (func.lower(ServiceDeskAccountDomain.domain) == (address or "")).desc(),
+                    func.length(ServiceDeskAccountDomain.domain).desc(),
                     ServiceDeskAccount.created_at,
                     ServiceDeskAccount.id,
                 )
@@ -1101,7 +1413,7 @@ class ServiceDeskIntakeService:
     async def _match_vendor(
         self, workspace_id: str, domain: str | None, address: str | None = None
     ) -> ServiceDeskVendor | None:
-        keys = [k for k in (address, domain) if k]
+        keys = self._match_keys(domain, address)
         if not keys:
             return None
         row = (
@@ -1115,12 +1427,46 @@ class ServiceDeskIntakeService:
                 )
                 .order_by(
                     (func.lower(ServiceDeskVendorDomain.domain) == (address or "")).desc(),
+                    func.length(ServiceDeskVendorDomain.domain).desc(),
                     ServiceDeskVendor.created_at,
                     ServiceDeskVendor.id,
                 )
             )
         ).scalars().first()
         return row
+
+    async def _unmatched_policy(self, workspace_id: str) -> str:
+        """This desk's answer to "what do we do with a ticket we cannot route"."""
+        from aexy.services.service_desk_config import unmatched_assignment
+
+        ws_settings = (
+            await self.db.execute(
+                select(Workspace.settings).where(Workspace.id == workspace_id)
+            )
+        ).scalar_one_or_none() or {}
+        return unmatched_assignment(ws_settings.get("service_desk") or {})
+
+    async def _fallback_owner(self, workspace_id: str, policy: str) -> str | None:
+        """The owner for a ticket whose account could not be identified.
+
+        Split out from ``_random_owner`` because "pick somebody" is only one of
+        three defensible answers, and it was the one that hid the problem: an
+        arbitrarily-assigned ticket reads as a deliberate assignment, so a
+        missing domain in Master Data showed up as a KAM asking why a partner
+        they do not handle is in their queue.
+        """
+        if policy == "unassigned":
+            return None
+        if policy == "desk_head":
+            from aexy.services.service_desk_service import resolve_desk_department
+
+            dept = await resolve_desk_department(self.db, workspace_id)
+            if dept is not None and dept.head_id:
+                return str(dept.head_id)
+            # No head recorded. A member of the desk still beats nobody, and the
+            # note on the ticket says which answer was used.
+            return await self._random_owner(workspace_id)
+        return await self._random_owner(workspace_id)
 
     async def _random_owner(self, workspace_id: str) -> str | None:
         """Pick a random member of the department that runs this desk.
@@ -1235,18 +1581,17 @@ class ServiceDeskIntakeService:
         try:
             from aexy.llm.gateway import get_llm_gateway
 
-            product_rows = (
-                await self.db.execute(
-                    select(ServiceDeskProduct.name, ServiceDeskProduct.id).where(
-                        ServiceDeskProduct.workspace_id == workspace_id,
-                        ServiceDeskProduct.is_active.is_(True),
-                    )
-                )
-            ).all()
+            product_rows = await self._products_for(workspace_id, sd.account_id)
             product_ids = {str(name).lower(): pid for name, pid in product_rows}
             product_list = (
                 ", ".join(name for name, _ in product_rows) if product_rows else "(none configured)"
             )
+
+            # One product to choose from is not a choice. Setting it here spends
+            # no tokens and cannot be got wrong, and it leaves the model the
+            # question it is actually useful for.
+            if len(product_rows) == 1:
+                sd.product_id = product_rows[0][1]
 
             # The prompt used to say "You classify insurance operations emails"
             # and name the four insurance request types inline, so a software
@@ -1262,6 +1607,7 @@ class ServiceDeskIntakeService:
             # Request" is what the model can actually reason about.
             options = ", ".join(f"{r.slug} ({r.label})" for r in taxonomy.request_types)
             product_term = taxonomy.term("products")
+            corrections = await self._recent_corrections(workspace_id, allowed)
             system = (
                 "You classify incoming service desk emails and detect independently "
                 "actionable issues. Return one issue for a batch of rows requiring the "
@@ -1284,6 +1630,7 @@ class ServiceDeskIntakeService:
             user = (
                 f"Request types: {options}\n"
                 f"{product_term}: {product_list}\n"
+                f"{corrections}"
                 f"Subject: {email.subject}\n\n{(email.body_text or '')[:2000]}\n\n"
                 "Attachment context (metadata and deliberately limited previews):\n"
                 f"{attachment_context}"
@@ -1370,13 +1717,26 @@ class ServiceDeskIntakeService:
 
     @staticmethod
     def _apply_issue(sd: ServiceDeskTicket, issue: dict, product_ids: dict[str, str]) -> None:
-        """Apply only configured classification values to the primary ticket."""
+        """Apply only configured classification values to the primary ticket.
+
+        The model's answer is written twice: once as the ticket's value, which a
+        person may overwrite, and once as ``ai_*``, which nobody does. Keeping
+        both is what makes "did a human agree with this?" answerable at all —
+        with one column, a correction is indistinguishable from a classification
+        that was right first time.
+        """
         sd.request_type = issue["request_type"]
+        sd.ai_request_type = issue["request_type"]
         sd.ai_confidence = issue["confidence"]
         if issue["confidence"] < _LOW_CONFIDENCE:
             sd.needs_triage = True
         if issue.get("product"):
             sd.product_id = product_ids.get(str(issue["product"]).lower())
+        # Recorded even when the product came from a single-product pairing
+        # rather than the model, so "the AI got the product wrong" cannot be
+        # said of a product the AI was never asked about.
+        if issue.get("product"):
+            sd.ai_product_id = sd.product_id
 
     async def acknowledge_ticket(self, ticket_id: str) -> str:
         """Acknowledge a ticket that is already committed.
@@ -1483,6 +1843,22 @@ class ServiceDeskIntakeService:
                     "subject": (ticket.field_values or {}).get("subject") or "Your request",
                     "requester_name": ticket.submitter_name or "there",
                     "additional_tickets": additional,
+                    # Resolved at queue time, not at send time: this runs inside
+                    # the ticket's own transaction, so the token is committed
+                    # with the ticket rather than written from the notification
+                    # flush that happens after the commit.
+                    #
+                    # Only when the copy actually uses it. Minting unconditionally
+                    # would publish a share token for every ticket a desk has ever
+                    # acknowledged, including desks that deliberately removed the
+                    # link from their acknowledgement.
+                    "ticket_url": (
+                        await ensure_requester_url(self.db, ticket)
+                        if await template_references(
+                            self.db, workspace_id, "receipt", "ticket_url"
+                        )
+                        else ""
+                    ),
                 },
             }
         )

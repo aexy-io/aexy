@@ -11,11 +11,31 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Loader2, Plus, Trash2, User } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, RefreshCw, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { googleIntegrationApi, GoogleAccountSummary } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
+
+/**
+ * The stored reason, as a sentence a person can read.
+ *
+ * `last_error` holds whatever the failing path wrote: sometimes a machine code,
+ * sometimes prose. Wrapping both in "Google refused the saved credentials (…)"
+ * produced a sentence inside parentheses inside a sentence, and told the reader
+ * to reconnect immediately next to the button that does it.
+ */
+function disconnectReason(lastError: string): string {
+  const known: Record<string, string> = {
+    refresh_token_revoked: "Google revoked the saved credentials.",
+    invalid_grant: "Google refused the saved credentials.",
+  };
+  const mapped = known[lastError.trim()];
+  if (mapped) return mapped;
+  // Prose from elsewhere: pass it through, ending it once.
+  const text = lastError.trim().replace(/\s*please reconnect[^.]*\.?\s*$/i, "");
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
 
 export function GoogleAccounts({
   workspaceId,
@@ -130,6 +150,19 @@ export function GoogleAccounts({
                 disconnected
               </span>
             )}
+            {!account.is_active && (
+              /* The pill says it stopped; this says why and offers the one thing
+                 that fixes it. Without a reconnect the only control here is the
+                 bin, so the way back was to delete the account and add it again
+                 — on a service desk mailbox that is refused outright. */
+              <button
+                onClick={onConnectAnother}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <RefreshCw className="h-3 w-3" aria-hidden />
+                Reconnect
+              </button>
+            )}
 
             <button
               onClick={() => disconnect(account)}
@@ -144,6 +177,13 @@ export function GoogleAccounts({
                 <Trash2 className="h-4 w-4" />
               )}
             </button>
+
+            {!account.is_active && account.last_error && (
+              <p className="w-full text-[11px] text-muted-foreground">
+                {disconnectReason(account.last_error)} Reconnecting re-authorises this
+                address; nothing else about it changes.
+              </p>
+            )}
           </li>
         ))}
       </ul>

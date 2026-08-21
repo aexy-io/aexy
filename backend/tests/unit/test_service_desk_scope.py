@@ -268,3 +268,156 @@ async def test_the_digest_does_not_mail_around_the_row_scope(db_session, desk):
     }
     assert after[head_dev.email].is_desk_lead is True
     assert {r.display_id for r in after[head_dev.email].rows} == {"SD-1", "SD-2", "SD-3"}
+
+
+# ------------------------------------------------- filters must not widen it
+
+
+@pytest.mark.asyncio
+async def test_naming_another_owner_in_a_filter_does_not_reveal_their_queue(
+    db_session, desk
+):
+    """The filters added for reporting are narrowings, never lookups.
+
+    ``assigned_to`` reads like a way to ask "show me KAM B's tickets", and for a
+    manager it is. For a KAM scoped to their own assignments it has to return
+    nothing rather than KAM B's queue — the scope clause is applied first and
+    separately, and a filter only ever removes rows from what it admitted.
+    """
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+    rows = await svc.list_tickets(
+        desk["ws"],
+        developer_id=desk["kam_a"],
+        filters=TicketFilters(assigned_to=desk["kam_b"]),
+    )
+
+    assert rows == []
+    assert (
+        await svc.count_tickets(
+            desk["ws"],
+            developer_id=desk["kam_a"],
+            filters=TicketFilters(assigned_to=desk["kam_b"]),
+        )
+        == 0
+    )
+
+
+@pytest.mark.asyncio
+async def test_an_export_carries_the_callers_scope_not_the_desks(db_session, desk):
+    """An export that returned more than the screen it came from would be a
+    permissions bug with a download button on it."""
+    import csv
+    import io
+
+    from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+
+    text, _ = await ServiceDeskTicketService(db_session).export_csv(
+        desk["ws"], developer_id=desk["kam_a"]
+    )
+    subjects = {
+        row["Subject"] for row in csv.DictReader(io.StringIO(text.lstrip("﻿")))
+    }
+
+    # kam_a is assigned "a" and "fin"; "b" belongs to the other KAM.
+    assert subjects == {"a", "fin"}
+
+
+@pytest.mark.asyncio
+async def test_a_filter_still_narrows_within_scope(db_session, desk):
+    """The other half of the rule: filters do work, they just cannot widen."""
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    rows = await ServiceDeskService(db_session).list_tickets(
+        desk["ws"],
+        developer_id=desk["kam_a"],
+        filters=TicketFilters(pending_with="finance"),
+    )
+
+    assert {r.ticket_id for r in rows} == {desk["tickets"]["fin"]}
+
+
+@pytest.mark.asyncio
+async def test_a_chart_is_scoped_like_every_other_read(db_session, desk):
+    """A saved report must not become a way to read another KAM's queue.
+
+    Aggregation hides individual rows, which is exactly why it is worth checking:
+    a count of somebody else's tickets is still a fact about their work, and a
+    scheduled report would mail it on a timer.
+    """
+    from aexy.services.service_desk_analytics import ServiceDeskAnalytics
+
+    scoped = await ServiceDeskAnalytics(db_session).aggregate(
+        desk["ws"], "pending_with", "tickets", developer_id=desk["kam_a"]
+    )
+    whole_desk = await ServiceDeskAnalytics(db_session).aggregate(
+        desk["ws"], "pending_with", "tickets"
+    )
+
+    # kam_a is assigned two of the three tickets.
+    assert scoped["total_tickets"] == 2
+    assert whole_desk["total_tickets"] == 3
+
+
+@pytest.mark.asyncio
+async def test_search_narrows_within_the_callers_scope_and_never_past_it(db_session, desk):
+    """Search is a filter, so it obeys the same rule as the rest of them.
+
+    The interesting case is a term that matches a ticket the caller cannot see:
+    it has to return nothing, not that ticket. A text box is the easiest place
+    to accidentally build a way to read another queue by guessing subjects.
+    """
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+
+    # KAM A can see their own "a" and the unassigned-to-them "fin".
+    rows = await svc.list_tickets(
+        desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="a")
+    )
+    assert {r.subject for r in rows} == {"a"}
+
+    # "b" belongs to KAM B. Matching its subject must not surface it.
+    assert (
+        await svc.count_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="b")
+        )
+        == 0
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_finds_a_ticket_by_its_number_however_it_is_typed(db_session, desk):
+    """`SD-3`, `sd 3` and `3` are the same question.
+
+    The prefix is per-workspace and is not stored on the row, so the number is
+    what is matched and the letters are ignored.
+    """
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+    for typed in ("3", "SD-3", "sd 3"):
+        rows = await svc.list_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q=typed)
+        )
+        assert [r.ticket_number for r in rows] == [3], typed
+
+
+@pytest.mark.asyncio
+async def test_a_percent_in_a_search_is_a_character_not_a_wildcard(db_session, desk):
+    """Otherwise searching for "100%" quietly returns the whole desk."""
+    from aexy.schemas.service_desk import TicketFilters
+    from aexy.services.service_desk_service import ServiceDeskService
+
+    svc = ServiceDeskService(db_session)
+    assert (
+        await svc.count_tickets(
+            desk["ws"], developer_id=desk["kam_a"], filters=TicketFilters(q="%")
+        )
+        == 0
+    )

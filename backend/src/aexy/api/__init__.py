@@ -50,6 +50,7 @@ from aexy.api.sprint_analytics import router as sprint_analytics_router
 from aexy.api.retrospectives import router as retrospectives_router
 from aexy.api.planning_poker import router as planning_poker_router
 from aexy.api.project_tasks import router as project_tasks_router
+from aexy.api.task_attachments import router as task_attachments_router
 from aexy.api.workspace_tasks import router as workspace_tasks_router
 from aexy.api.task_templates import router as task_templates_router
 from aexy.api.task_links import router as task_links_router
@@ -148,6 +149,7 @@ from aexy.api.email_marketing import router as email_marketing_router
 # Email Infrastructure (Multi-domain sending, warming, routing)
 from aexy.api.email_infrastructure import router as email_infrastructure_router
 from aexy.api.email_webhooks import router as email_webhooks_router
+from aexy.api.gmail_push import router as gmail_push_router
 # Email Tracking (open/click tracking - public endpoints)
 from aexy.api.email_tracking import router as email_tracking_router
 # Email Preferences (subscription management)
@@ -263,6 +265,10 @@ api_router.include_router(sprint_analytics_router, tags=["sprint-analytics"], de
 api_router.include_router(planning_poker_router, tags=["planning-poker"], dependencies=[Depends(require_app_access_sprint_scoped("sprints"))])
 api_router.include_router(retrospectives_router, tags=["retrospectives"], dependencies=[Depends(require_app_access_sprint_scoped("sprints"))])
 api_router.include_router(project_tasks_router, tags=["project-tasks"])
+# Attachment reads are addressed by attachment id alone, so the route carries
+# no {workspace_id} for a guard to key off — it resolves the owning workspace
+# from the task and checks membership itself.
+api_router.include_router(task_attachments_router, tags=["task-attachments"])
 api_router.include_router(workspace_tasks_router, tags=["workspace-tasks"])
 api_router.include_router(task_templates_router, tags=["task-templates"])
 api_router.include_router(task_links_router, tags=["task-links"])
@@ -376,6 +382,7 @@ api_router.include_router(email_marketing_router, tags=["email-marketing"], depe
 # Email Infrastructure (Multi-domain sending, warming, routing)
 api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"])
 api_router.include_router(email_webhooks_router, tags=["email-webhooks"])
+api_router.include_router(gmail_push_router)
 # Email Tracking (public endpoints for pixel/link tracking)
 api_router.include_router(email_tracking_router, tags=["email-tracking"])
 # Email Preferences (subscription management)

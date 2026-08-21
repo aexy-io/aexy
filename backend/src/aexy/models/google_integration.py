@@ -98,6 +98,14 @@ class GoogleIntegration(Base):
 
     # Gmail sync state
     gmail_history_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # When Gmail's push subscription for this mailbox lapses. Gmail expires a
+    # `users.watch` after seven days and simply stops delivering — no error, no
+    # callback, just silence — so the expiry has to be tracked and renewed
+    # rather than registered once and trusted. NULL means push was never
+    # registered, and this integration is on the polling path.
+    gmail_watch_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     gmail_last_sync_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

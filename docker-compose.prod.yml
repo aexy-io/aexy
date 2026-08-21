@@ -332,6 +332,40 @@ services:
     expose:
       - "3000"
 
+  # Reverse proxy. Optional, and off unless you ask for it:
+  #   docker compose -f docker-compose.prod.yml --profile edge up -d
+  #
+  # It exists for one job the backend can't do for itself — putting object
+  # storage on a hostname a browser can reach. RustFS is `expose`-only, so
+  # without a proxy in front of it nothing outside the compose network can
+  # fetch a presigned URL, and Drive files, compliance documents, chat
+  # downloads and assessment recordings all resolve to a dead host. (Task
+  # attachments are streamed by the backend and don't depend on this.)
+  #
+  # Behind a profile because most deployments already terminate TLS somewhere
+  # else — Cloudflare, a host nginx, a tunnel — and starting a second thing
+  # that wants port 80 would take the site down rather than fix it. Point your
+  # existing edge at NGINX_HTTP_PORT and let this handle /aexy-storage/, or
+  # copy the `location /aexy-storage/` block out of nginx/nginx.conf into
+  # whatever you already run. Either way S3_PUBLIC_ENDPOINT_URL must stay a
+  # bare origin: the block deliberately does not rewrite the path, because
+  # SigV4 signs it.
+  nginx:
+    image: nginx:alpine
+    container_name: aexy-nginx
+    profiles: ["edge"]
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+      - rustfs
+    networks:
+      - aexy-network
+
   # Backup service - runs daily at 2 AM
   backup:
     image: postgres:18-alpine

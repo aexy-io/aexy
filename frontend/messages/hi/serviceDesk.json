@@ -24,7 +24,10 @@
       "export": "CSV एक्सपोर्ट",
       "routesTo": "रूट होता है",
       "external": "बाहरी",
-      "noDepartment": "कोई विभाग नहीं"
+      "noDepartment": "कोई विभाग नहीं",
+      "showing": "{total} में से {from}–{to} दिखा रहे हैं",
+      "previous": "पिछला",
+      "next": "अगला"
     },
     "table": {
       "id": "टिकट",
@@ -37,7 +40,11 @@
       "daysInStage": "स्टेज में कार्यदिवस",
       "overallAge": "कुल उम्र",
       "status": "स्थिति",
-      "triage": "ट्राइएज"
+      "triage": "ट्राइएज",
+      "age": "आयु",
+      "ageMinutes": "{count}m",
+      "ageHours": "{count}h",
+      "ageDays": "{count}d"
     },
     "detail": {
       "back": "डैशबोर्ड पर वापस",
@@ -113,12 +120,33 @@
       "actions": "कार्रवाई",
       "download": "डाउनलोड",
       "downloading": "डाउनलोड हो रहा है…",
-      "attachmentUnavailable": "केवल मूल ईमेल में उपलब्ध"
+      "attachmentUnavailable": "केवल मूल ईमेल में उपलब्ध",
+      "showQuoted": "उद्धृत इतिहास दिखाएँ",
+      "hideQuoted": "उद्धृत इतिहास छिपाएँ",
+      "showImage": "{host} से छवि",
+      "imageFrom": "{host} से छवि"
     },
     "ai": {
       "title": "AI ईमेल वर्गीकरण",
       "description": "AI को आने वाले ईमेल पढ़कर अनुरोध प्रकार और Product सुझाने दें। बंद होने पर, टिकट के मालिक टिकट को मैन्युअल रूप से वर्गीकृत करते हैं।",
-      "enabled": "सक्षम"
+      "toggle": "आने वाले ईमेल का AI से वर्गीकरण करें",
+      "enabled": "सक्षम",
+      "inheritedOn": "इस workspace में AI enabled है, इसलिए यह चालू है। Service desk उसी setting को follow करता है।",
+      "vetoed": "सिर्फ़ service desk के लिए बंद किया गया है। इस workspace में AI बाकी जगह enabled है।",
+      "workspaceOff": "इस पूरे workspace के लिए AI बंद है, इसलिए desk भी email नहीं पढ़ सकता।",
+      "workspaceSettingsLink": "Workspace AI settings",
+      "attachments": {
+        "title": "Attachments पढ़ें",
+        "description": "AI को incoming email की files खोलने दें ताकि request पहचानने में मदद मिले। डिफ़ॉल्ट रूप से बंद — ग्राहक के documents पढ़ना, message पढ़ने से अलग निर्णय है।",
+        "requiresAi": "पहले AI email categorisation चालू करें।"
+      },
+      "accuracy": {
+        "title": "यह कितना सटीक रहा है?",
+        "nothingYet": "अभी तक कुछ classify नहीं हुआ। जब AI कुछ tickets पढ़ लेगा, तब यहाँ दिखेगा कि आपकी team कितनी बार उससे सहमत रही।",
+        "summary": "पिछले {days} दिनों में आपकी team ने {classified} में से {agreed} tickets पर AI का request type वैसे ही रखा ({rate})।",
+        "caveat": "जिस ticket को किसी ने देखा ही नहीं, वह भी सहमति में गिना जाता है — इसलिए इसे अधिकतम संभव आँकड़ा मानें। नीचे का breakdown ज़्यादा काम का है: किसी एक request type का ख़राब प्रदर्शन अक्सर उसके नाम या विवरण के अस्पष्ट होने का संकेत है, AI बंद करने का नहीं।",
+        "row": "{classified} में से {rate}"
+      }
     },
     "autoSplit": {
       "title": "स्वचालित टिकट विभाजन",
@@ -138,7 +166,14 @@
       "account": "खाता",
       "none": "— कोई नहीं —",
       "create": "टिकट बनाएं",
-      "creating": "बनाया जा रहा है…"
+      "creating": "बनाया जा रहा है…",
+      "attachments": "अनुलग्नक",
+      "attachmentsChosen": "{count} फ़ाइल(ें) टिकट से जोड़ी जाएँगी",
+      "taskSection": "काम अभी उठाएँ (वैकल्पिक)",
+      "taskProject": "प्रोजेक्ट",
+      "taskNone": "टास्क न बनाएँ",
+      "taskAssignee": "इन्हें सौंपें",
+      "taskUnassigned": "अभी कोई नहीं"
     },
     "templates": {
       "title": "ईमेल टेम्पलेट",
@@ -190,14 +225,17 @@
       "delete": "हटाएं",
       "empty": "अभी यहाँ कुछ नहीं है।",
       "readOnly": "आपके पास मास्टर डेटा के लिए केवल-पढ़ने की पहुँच है। बदलाव के लिए वर्कस्पेस एडमिन या सर्विस डेस्क मैनेजर से कहें।",
-      "domainsHint": "acme.com, या bob@acme.com",
+      "domainsHint": "acme.com / bob@acme.com",
       "masterDataHint": "तीन टेबल जिनके आधार पर डेस्क आने वाले ईमेल को छाँटता है। भेजने वाले का domain तय करता है कि टिकट किस account का है और किसके पास जाएगा — जो मेल किसी से मेल नहीं खाता, वह triage में जाता है।",
       "accountsHint": "डेस्क जिनके लिए काम करता है। मेल आने पर भेजने वाले का domain यहाँ खोजा जाता है: टिकट उस account को दिया जाता है और नीचे तय किए गए owner को सौंपा जाता है। domain की जगह पूरा ईमेल पता भी दिया जा सकता है, और वह domain entry पर भारी पड़ता है — जब कई accounts एक ही provider (जैसे gmail.com) साझा करते हों तो इसका उपयोग करें।",
       "accountsEmpty": "अभी कोई account नहीं है, इसलिए हर आने वाला ईमेल triage में जाता है और उसे कोई भी owner मिल जाता है। जिन domains से अनुरोध आते हैं उन्हें जोड़ें, फिर टिकट अपने आप सही जगह पहुँचने लगेंगे।",
       "vendorsHint": "बाहरी पक्ष जिन्हें डेस्क काम भेजता है। इन domains से आया मेल नए ग्राहक अनुरोध के बजाय मौजूदा काम पर vendor के उत्तर के रूप में पढ़ा जाता है। फिर भी वह triage में जाता है — vendor, account नहीं होता।",
       "vendorsEmpty": "अभी कोई vendor नहीं है। जो भी ज्ञात account नहीं है, उसका मेल अनजान भेजने वाले के रूप में लिया जाता है।",
       "productsHint": "टिकट किस बारे में हो सकता है। AI categorisation उसे नाम से हूबहू चुनता है और रोज़ का digest उसी के आधार पर समूह बनाता है, इसलिए AI द्वारा सुझाया ऐसा नाम जो यहाँ सूचीबद्ध नहीं है, छोड़ दिया जाता है।",
-      "productsEmpty": "अभी कोई product नहीं है, इसलिए टिकटों पर कोई tag नहीं लगता और digest उनके आधार पर समूह नहीं बना सकता।"
+      "productsEmpty": "अभी कोई product नहीं है, इसलिए टिकटों पर कोई tag नहीं लगता और digest उनके आधार पर समूह नहीं बना सकता।",
+      "assignedOwnerFor": "{name} के लिए assigned owner",
+      "unownedAccountWarning": "कोई assigned owner नहीं — इस account के tickets desk department के किसी भी सदस्य को चले जाते हैं।",
+      "noDomainsWarning": "कोई डोमेन नहीं — प्रेषक मिलान स्वयं इस खाते से टिकट नहीं जोड़ सकता, इसलिए इसका स्वामी तभी उपयोग होता है जब कोई खाता स्वयं चुने।"
     },
     "noDepartment": "आप अभी किसी विभाग में नहीं हैं, इसलिए आपको कोई टिकट नहीं भेजा जा सकता। किसी एडमिन से Organization → Departments में जोड़ने को कहें।",
     "assignedOnly": "आपको वही टिकट दिखते हैं जो आपको सौंपे गए हैं, और अभी कोई खुला टिकट नहीं है। बाकी टिकट उनके अपने मालिक संभाल रहे हैं।",
@@ -246,13 +284,80 @@
     },
     "ignoredSenders": {
       "title": "अनदेखे भेजने वाले",
-      "description": "इन भेजने वालों की मेल से टिकट नहीं बनते। जिस infrastructure मेल को डेस्क ट्रैक नहीं करता — जैसे किसी provider के security alerts — उसका एक पता या पूरा domain जोड़ें। जोड़ने तक कुछ भी अनदेखा नहीं होता: किसी counterparty का no-reply पता अक्सर वही सूचनाएँ भेजता है जो आपको चाहिए। Master Data में मौजूद Account या Vendor यहाँ की entry पर भारी पड़ता है।",
-      "placeholder": "no-reply@accounts.google.com या कोई domain",
+      "description": "इन senders की mail tickets नहीं बनती। एक पूरा address, या पूरा domain जोड़ें — किसी provider के security alerts, या partner का daily automailer। जब तक आप न जोड़ें, कुछ भी ignore नहीं होता: counterparty का no-reply address अक्सर वही notices भेजता है जो आपको चाहिए। पूरा address हमेशा जीतता है। पूरा domain नहीं: Master Data में मौजूद account या vendor फिर भी tickets खोलेगा, ताकि यूँ ही ignore किया गया domain किसी सोच-समझकर जोड़े गए counterparty को चुप न करा दे।",
+      "placeholder": "no-reply@accounts.google.com",
       "add": "जोड़ें",
       "empty": "कुछ भी अनदेखा नहीं — हर भेजने वाला टिकट खोलता है।",
       "invalid": "ईमेल पता, या accounts.google.com जैसा domain दर्ज करें।",
       "duplicate": "पहले से सूची में है।",
       "remove": "{sender} को अनदेखा करना बंद करें"
+    },
+    "intakeFrequency": {
+      "title": "Intake frequency",
+      "description": "Gmail-backed mailboxes में नई mail कितनी बार देखी जाए। यही वह अंतराल है जिसमें email आने के बाद ticket बनता है।",
+      "everyMinutes": "हर {minutes} मिनट",
+      "floorNote": "इससे जाँच केवल और बार-बार होती है। जो account पहले से तेज़ sync कर रहा है, वह अपनी गति पर रहेगा।"
+    },
+    "publicLinks": {
+      "title": "Public ticket links",
+      "description": "अपने workspace के बाहर के लोगों को भेजी जाने वाली acknowledgement और closure emails में ticket के read-only view का link शामिल करें। इस link के लिए account ज़रूरी नहीं — URL रखने वाला कोई भी ticket का subject, requester का नाम और उसके attachments देख सकता है। डिफ़ॉल्ट रूप से बंद।",
+      "scopeNote": "Desk को लिखने वाले सहकर्मियों पर इसका असर नहीं पड़ता: उन्हें हमेशा app में ticket का link मिलता है, जिसके लिए अलग account नहीं चाहिए और कुछ भी public नहीं होता। इसे बंद करने पर नए public links बनना रुक जाते हैं और आगे की emails से हट जाते हैं — पहले भेजा जा चुका link वापस नहीं लिया जा सकता, और जो links आपने ticket से खुद share किए हैं वे वैसे ही रहते हैं।"
+    },
+    "filters": {
+      "from": "से",
+      "to": "तक",
+      "any": "कोई भी",
+      "product": "Product",
+      "state": "स्थिति",
+      "open": "खुले",
+      "closed": "बंद",
+      "needsTriage": "केवल triage वाले",
+      "clear": "Filters हटाएँ",
+      "matching": "{count, plural, =0 {कोई ticket नहीं} one {# ticket} other {# tickets}}",
+      "showing": "{total} में से {from}–{to} दिख रहे हैं",
+      "previous": "पिछला",
+      "next": "अगला",
+      "export": "CSV export करें",
+      "search": "खोजें",
+      "searchHint": "विषय, भेजने वाला या SD-26",
+      "vendor": "Vendor",
+      "owner": "Owner",
+      "mine": "मुझे सौंपे गए",
+      "noMatchTitle": "कोई ticket नहीं मिला",
+      "noMatch": "इन filters से इस desk पर कुछ भी मेल नहीं खाता। पूरी queue देखने के लिए इन्हें हटाएँ।",
+      "more": "और filters"
+    },
+    "accountProducts": {
+      "none": "कोई product mapped नहीं — सभी tickets इस account के owner को जाते हैं",
+      "summary": "Products: {names}",
+      "hint": "इस account की tickets केवल इन्हीं products के विरुद्ध classify होती हैं। जब तक उस product को कोई और न देखता हो, owner को “Account जैसा ही” रहने दें।",
+      "sameAsAccount": "Account owner जैसा ही",
+      "ownerFor": "{name} के लिए {product} का owner"
+    },
+    "digest": {
+      "title": "Open-ticket digest",
+      "description": "Desk के सभी लोगों को यह summary भेजें कि क्या-क्या अभी खुला है। डिफ़ॉल्ट रूप से चालू।",
+      "toggle": "Digest भेजें",
+      "times": "भेजने के समय",
+      "timesHint": "{timezone} के स्थानीय घंटे। कम से कम एक चुनें — digest पूरी तरह बंद करने के लिए ऊपर वाला switch इस्तेमाल करें।",
+      "recipients": "किसे मिलता है",
+      "recipientsHint": "Desk department के हर व्यक्ति को उनकी अपनी open tickets मिलती हैं; desk lead को सभी। किसी का checkbox हटाने पर उन्हें mail जाना बंद हो जाता है, पर काम का routing वैसा ही रहता है।",
+      "extra": "अतिरिक्त recipients",
+      "extraHint": "Desk department के बाहर के addresses। उन्हें पूरे desk की open tickets मिलती हैं — account नाम और subjects सहित — इसलिए केवल उन्हीं को जोड़ें जिन्हें यह सब देखना चाहिए।",
+      "extraPlaceholder": "head-of-ops@example.com",
+      "removeRecipient": "{address} को भेजना बंद करें",
+      "preview": "Preview",
+      "sendNow": "अभी भेजें",
+      "sentCount": "{count, plural, =0 {कुछ नहीं भेजा गया} one {# व्यक्ति को भेजा गया} other {# लोगों को भेजा गया}}",
+      "notARecipient": "आप recipient list में नहीं हैं, इसलिए preview के लिए कुछ नहीं है। ऊपर की settings उन सभी पर लागू हैं जो list में हैं।"
+    },
+    "unmatched": {
+      "title": "बिना मार्ग वाले टिकट",
+      "description": "जब इनटेक यह न बता सके कि टिकट किस खाते का है — आमतौर पर क्योंकि किसी खाते ने प्रेषक का डोमेन नहीं लिया है।",
+      "random": "डेस्क विभाग के किसी भी सदस्य को सौंपें (डिफ़ॉल्ट)",
+      "unassigned": "असौंपा छोड़ें और ट्रायाज के लिए चिह्नित करें",
+      "deskHead": "डेस्क विभाग के प्रमुख को सौंपें",
+      "alwaysLogged": "आप जो भी चुनें, कारण टिकट पर लिखा जाता है ताकि गलत स्वामी को उस मैपिंग तक ट्रेस किया जा सके जिसने उसे बनाया।"
     }
   }
 }

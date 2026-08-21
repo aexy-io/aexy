@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS warming_schedules (
     -- Schedule configuration (JSONB)
     -- [{"day": 1, "volume": 50}, {"day": 7, "volume": 1000}, ...]
     steps JSONB NOT NULL DEFAULT '[]'::jsonb,
-    total_days INTEGER NOT NULL DEFAULT 14,
 
     -- Thresholds for auto-pause
     max_bounce_rate FLOAT NOT NULL DEFAULT 0.05,
@@ -80,9 +79,11 @@ CREATE TABLE IF NOT EXISTS warming_schedules (
     -- Auto-pause behavior
     auto_pause_on_threshold BOOLEAN NOT NULL DEFAULT true,
 
+    -- Auto-adjust volume against observed reputation
+    auto_adjust_volume BOOLEAN NOT NULL DEFAULT true,
+
     -- System vs custom
     is_system BOOLEAN NOT NULL DEFAULT false,
-    is_active BOOLEAN NOT NULL DEFAULT true,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -170,6 +171,7 @@ CREATE TABLE IF NOT EXISTS sending_identities (
 
 CREATE INDEX IF NOT EXISTS ix_sending_identity_workspace ON sending_identities(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_sending_identity_domain ON sending_identities(domain_id);
+ALTER TABLE sending_identities ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 CREATE INDEX IF NOT EXISTS ix_sending_identity_active ON sending_identities(is_active);
 
 -- Add workspace_id if table already exists (for existing deployments)
@@ -195,7 +197,12 @@ CREATE TABLE IF NOT EXISTS dedicated_ips (
     hostname VARCHAR(255),
 
     -- Status
-    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, warming, active, paused
+    --
+    -- A boolean, not a status enum, because `DedicatedIP.is_active` in
+    -- models/email_infrastructure.py is what the app reads and writes, and the
+    -- app creates this table from the model on startup. The lifecycle this once
+    -- spelled as pending/warming/active/paused lives in `warming_status`.
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
     -- Warming
     warming_status VARCHAR(20) NOT NULL DEFAULT 'not_started',
@@ -218,7 +225,28 @@ CREATE TABLE IF NOT EXISTS dedicated_ips (
 
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_workspace ON dedicated_ips(workspace_id);
 CREATE INDEX IF NOT EXISTS ix_dedicated_ip_provider ON dedicated_ips(provider_id);
-CREATE INDEX IF NOT EXISTS ix_dedicated_ip_status ON dedicated_ips(status);
+-- `CREATE TABLE IF NOT EXISTS` above does nothing when the table is already
+-- here, so on a database whose dedicated_ips predates the model's `is_active`
+-- — it carries the older `status` enum instead — the index below has no column
+-- to index, and the whole file is one transaction, so every migration behind it
+-- stops too. Converge the shape first.
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- Carry the legacy column's meaning across rather than defaulting every row to
+-- active. `status` was pending/warming/active/paused; only the middle two were
+-- sending. Defaulting a paused IP to active would resume sending from it, which
+-- is the one outcome here worth being careful about.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'dedicated_ips' AND column_name = 'status'
+    ) THEN
+        EXECUTE 'UPDATE dedicated_ips SET is_active = (status IN (''active'', ''warming''))';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS ix_dedicated_ip_active ON dedicated_ips(is_active);
 
 -- =============================================================================
 -- WARMING PROGRESS
@@ -227,7 +255,7 @@ CREATE INDEX IF NOT EXISTS ix_dedicated_ip_status ON dedicated_ips(status);
 CREATE TABLE IF NOT EXISTS warming_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     domain_id UUID REFERENCES sending_domains(id) ON DELETE CASCADE,
-    ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE,
+    dedicated_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE,
 
     -- Progress tracking
     day_number INTEGER NOT NULL,
@@ -256,15 +284,29 @@ CREATE TABLE IF NOT EXISTS warming_progress (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_warming_progress_domain_day UNIQUE (domain_id, day_number),
-    CONSTRAINT uq_warming_progress_ip_day UNIQUE (ip_id, day_number),
+    CONSTRAINT uq_warming_progress_ip_day UNIQUE (dedicated_ip_id, day_number),
     CONSTRAINT chk_warming_progress_entity CHECK (
-        (domain_id IS NOT NULL AND ip_id IS NULL) OR
-        (domain_id IS NULL AND ip_id IS NOT NULL)
+        (domain_id IS NOT NULL AND dedicated_ip_id IS NULL) OR
+        (domain_id IS NULL AND dedicated_ip_id IS NOT NULL)
     )
 );
 
 CREATE INDEX IF NOT EXISTS ix_warming_progress_domain ON warming_progress(domain_id);
-CREATE INDEX IF NOT EXISTS ix_warming_progress_ip ON warming_progress(ip_id);
+-- Same convergence: a database built by the earlier version of this file calls
+-- this column `ip_id`. Add the model's name, carry the values over, and leave
+-- the old column alone — dropping it is not this migration's decision to make.
+ALTER TABLE warming_progress ADD COLUMN IF NOT EXISTS dedicated_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE CASCADE;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'warming_progress' AND column_name = 'ip_id'
+    ) THEN
+        EXECUTE 'UPDATE warming_progress SET dedicated_ip_id = ip_id WHERE dedicated_ip_id IS NULL AND ip_id IS NOT NULL';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS ix_warming_progress_ip ON warming_progress(dedicated_ip_id);
 CREATE INDEX IF NOT EXISTS ix_warming_progress_date ON warming_progress(date);
 
 -- =============================================================================
@@ -470,25 +512,18 @@ BEGIN
 END $$;
 -- =============================================================================
 
-ALTER TABLE email_campaigns
-ADD COLUMN IF NOT EXISTS sending_pool_id UUID REFERENCES sending_pools(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sending_identity_id UUID REFERENCES sending_identities(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS routing_config JSONB;
-
-CREATE INDEX IF NOT EXISTS ix_email_campaign_pool ON email_campaigns(sending_pool_id);
-CREATE INDEX IF NOT EXISTS ix_email_campaign_identity ON email_campaigns(sending_identity_id);
+-- The same three columns are added inside the IF EXISTS block above. An
+-- unguarded copy here defeated that guard: migrate_email_marketing.sql creates
+-- email_campaigns and sorts after this file, so on a fresh database the table
+-- does not exist yet and this aborted the migration — and every migration
+-- behind it.
 
 -- =============================================================================
 -- ALTER CAMPAIGN RECIPIENTS TABLE (Add sent_via fields)
 -- =============================================================================
 
-ALTER TABLE campaign_recipients
-ADD COLUMN IF NOT EXISTS sent_via_domain_id UUID REFERENCES sending_domains(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_provider_id UUID REFERENCES email_providers(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS sent_via_ip_id UUID REFERENCES dedicated_ips(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_domain ON campaign_recipients(sent_via_domain_id);
-CREATE INDEX IF NOT EXISTS ix_campaign_recipient_provider ON campaign_recipients(sent_via_provider_id);
+-- Guarded above, for the same reason: campaign_recipients also comes from
+-- migrate_email_marketing.sql, which runs after this file.
 
 -- =============================================================================
 -- TRIGGERS FOR UPDATED_AT
@@ -544,7 +579,66 @@ CREATE TRIGGER update_sending_pools_updated_at
 -- INSERT SYSTEM WARMING SCHEDULES
 -- =============================================================================
 
-INSERT INTO warming_schedules (id, workspace_id, name, schedule_type, description, steps, total_days, is_system, is_active)
+ALTER TABLE warming_schedules ADD COLUMN IF NOT EXISTS auto_adjust_volume BOOLEAN NOT NULL DEFAULT true;
+
+-- The seed below is ON CONFLICT DO NOTHING against
+-- `uq_warming_schedule_workspace_name UNIQUE (workspace_id, name)`. System rows
+-- carry `workspace_id IS NULL`, and Postgres treats NULLs as distinct in a
+-- unique constraint — so that clause never fires for them and a second run
+-- inserts a second full set. Collapse any duplicates that already exist, then
+-- add the partial index that makes the conflict clause real.
+
+-- Point anything at the surviving row before removing its twins. Both columns
+-- are guarded: on a database that predates them these UPDATEs would fail, and
+-- one failure here stops every migration behind this file.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'sending_domains' AND column_name = 'warming_schedule_id') THEN
+        UPDATE sending_domains d SET warming_schedule_id = keep.id
+        FROM warming_schedules dup
+        JOIN LATERAL (
+            SELECT id FROM warming_schedules k
+            WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+            ORDER BY k.created_at, k.id LIMIT 1
+        ) keep ON TRUE
+        WHERE d.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'dedicated_ips' AND column_name = 'warming_schedule_id') THEN
+        UPDATE dedicated_ips i SET warming_schedule_id = keep.id
+        FROM warming_schedules dup
+        JOIN LATERAL (
+            SELECT id FROM warming_schedules k
+            WHERE k.workspace_id IS NULL AND k.is_system AND k.name = dup.name
+            ORDER BY k.created_at, k.id LIMIT 1
+        ) keep ON TRUE
+        WHERE i.warming_schedule_id = dup.id AND dup.workspace_id IS NULL AND dup.is_system AND dup.id <> keep.id;
+    END IF;
+END $$;
+
+DELETE FROM warming_schedules dup
+USING (
+    SELECT name, (ARRAY_AGG(id ORDER BY created_at, id))[1] AS keep_id
+    FROM warming_schedules WHERE workspace_id IS NULL AND is_system GROUP BY name
+) k
+WHERE dup.workspace_id IS NULL AND dup.is_system AND dup.name = k.name AND dup.id <> k.keep_id;
+
+-- `AND is_system` is not decoration: the dedupe above only collapses system
+-- rows, so an index over every workspace_id IS NULL row could find a duplicate
+-- it had no mandate to remove — a non-system row sharing a system name — and
+-- fail. The whole file is one implicit transaction, so that failure would roll
+-- back the migration and stop every migration behind it. Constrain exactly what
+-- was deduped.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_warming_schedule_system_name
+    ON warming_schedules(name) WHERE workspace_id IS NULL AND is_system;
+
+INSERT INTO warming_schedules (
+    id, workspace_id, name, schedule_type, description, steps, is_system,
+    max_bounce_rate, max_complaint_rate, min_delivery_rate,
+    auto_pause_on_threshold, auto_adjust_volume
+)
 VALUES
 (
     gen_random_uuid(),
@@ -553,7 +647,10 @@ VALUES
     'conservative',
     'Safe warming schedule for new domains. Gradually increases volume over 21 days.',
     '[{"day": 1, "volume": 50}, {"day": 7, "volume": 1000}, {"day": 14, "volume": 15000}, {"day": 21, "volume": 100000}]'::jsonb,
-    21,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 ),
@@ -564,7 +661,10 @@ VALUES
     'moderate',
     'Balanced warming schedule. Reaches full volume in 14 days.',
     '[{"day": 1, "volume": 100}, {"day": 7, "volume": 7500}, {"day": 14, "volume": 100000}]'::jsonb,
-    14,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 ),
@@ -575,7 +675,10 @@ VALUES
     'aggressive',
     'Fast warming for domains with good reputation history. Use with caution.',
     '[{"day": 1, "volume": 200}, {"day": 4, "volume": 15000}, {"day": 7, "volume": 100000}]'::jsonb,
-    7,
+    true,
+    0.05,
+    0.001,
+    0.90,
     true,
     true
 )
@@ -594,6 +697,36 @@ ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_check_status VARCHAR(5
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS last_error TEXT;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_day INTEGER;
 ALTER TABLE email_providers ADD COLUMN IF NOT EXISTS max_sends_per_second INTEGER;
+
+-- The tables above are created by the ORM on startup when the app boots first,
+-- and by this file when migrations run first. Only the second order leaves the
+-- gaps below, and nothing else ever closes them: `create_all` creates missing
+-- tables, never missing columns. Defaults are the models' own, so a row written
+-- by either path reads the same.
+
+-- dedicated_ips
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS daily_reset_at TIMESTAMPTZ;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS health_status VARCHAR(20) NOT NULL DEFAULT 'excellent';
+-- A list, not an object: `blacklist_status` is default=list on the model.
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS blacklist_status JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE dedicated_ips ADD COLUMN IF NOT EXISTS last_blacklist_check_at TIMESTAMPTZ;
+
+-- warming_progress
+ALTER TABLE warming_progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- domain_health
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS rejects INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_opens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unique_clicks INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE domain_health ADD COLUMN IF NOT EXISTS unsubscribes INTEGER NOT NULL DEFAULT 0;
+
+-- sending_pools
+ALTER TABLE sending_pools ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- provider_event_logs
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS diagnostic_code TEXT;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS event_timestamp TIMESTAMPTZ;
+ALTER TABLE provider_event_logs ADD COLUMN IF NOT EXISTS raw_payload JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- sending_domains: Add missing columns
 ALTER TABLE sending_domains ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100);

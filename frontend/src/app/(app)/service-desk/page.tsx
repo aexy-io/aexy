@@ -7,7 +7,8 @@ import { useTranslations } from "next-intl";
 
 import { useServiceDeskDashboard, useServiceDeskSettings, useServiceDeskTaxonomy } from "@/hooks/useServiceDesk";
 import { useFunctionCatalog } from "@/hooks/useOrganization";
-import { DashboardTicket, StakeholderBucket } from "@/lib/service-desk-api";
+import { DashboardTicket, StakeholderBucket, serviceDeskApi } from "@/lib/service-desk-api";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   SERVICE_DESK_BREACH_COLORS,
   serviceDeskStakeholderColor,
@@ -56,11 +57,20 @@ function toCsv(tickets: DashboardTicket[], terms: Record<string, string>): strin
 export default function ServiceDeskDashboardPage() {
   const t = useTranslations("serviceDesk");
   const router = useRouter();
-  const { data, isLoading } = useServiceDeskDashboard();
+  // One page of the open list. The stakeholder matrix and the open/breaching
+  // counts the server returns are over everything open, so the board above the
+  // table stays whole-desk however this is paged.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
+  const { data, isLoading } = useServiceDeskDashboard({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+  });
   const { data: settings } = useServiceDeskSettings();
   const { stakeholders, stakeholderLabel, requestTypeLabel, isConfigured, isLoading: taxonomyLoading } =
     useServiceDeskTaxonomy();
   const { data: functionCatalog } = useFunctionCatalog();
+  const { currentWorkspace } = useWorkspace();
   const terms = settings?.terminology ?? {};
   // The age columns used to read "0–1 day / 1–2 days / >2 days", which was one
   // customer's SLA written into the UI. Both thresholds are per workspace.
@@ -83,19 +93,30 @@ export default function ServiceDeskDashboardPage() {
   const departmentOf = (slug: string) => {
     const fk = stakeholders.find((s) => s.slug === slug)?.function_key;
     if (!fk) return null;
-    return functionCatalog?.options.find((o) => o.key === fk) ?? null;
+    return functionCatalog?.options?.find((o) => o.key === fk) ?? null;
   };
   const semanticsOf = (slug: string) => stakeholders.find((s) => s.slug === slug)?.semantics;
 
   // See the `justSetUp` note below where the setup screen is rendered.
   const [justSetUp, setJustSetUp] = useState(false);
 
-  const download = () => {
-    if (!data) return;
-    // `charset` spelled out: Excel on Windows reads a bare text/csv as the local
-    // ANSI codepage, which mangles any non-Latin account name in the export.
-    const blob = new Blob([toCsv(data.tickets, terms)], { type: "text/csv;charset=utf-8" });
-    saveBlob(blob, "service-desk-open-tickets.csv");
+  const [exporting, setExporting] = useState(false);
+
+  // Re-fetches unpaged rather than exporting `data.tickets`, which is now one
+  // page. Exporting a page while the button says "export" is the kind of
+  // silent truncation somebody only notices in a board meeting.
+  const download = async () => {
+    if (!currentWorkspace?.id) return;
+    setExporting(true);
+    try {
+      const all = await serviceDeskApi.getDashboard(currentWorkspace.id);
+      // `charset` spelled out: Excel on Windows reads a bare text/csv as the local
+      // ANSI codepage, which mangles any non-Latin account name in the export.
+      const blob = new Blob([toCsv(all.tickets, terms)], { type: "text/csv;charset=utf-8" });
+      saveBlob(blob, "service-desk-open-tickets.csv");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -106,7 +127,7 @@ export default function ServiceDeskDashboardPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         {data && data.tickets.length > 0 && (
-          <button onClick={download} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent">
+          <button onClick={download} disabled={exporting} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">
             <Download className="h-4 w-4" /> {t("dashboard.export")}
           </button>
         )}
@@ -239,6 +260,36 @@ export default function ServiceDeskDashboardPage() {
               </tbody>
             </table>
           </Card>
+
+          {data.total_open > PAGE_SIZE && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {t("dashboard.showing", {
+                  from: page * PAGE_SIZE + 1,
+                  to: Math.min((page + 1) * PAGE_SIZE, data.total_open),
+                  total: data.total_open,
+                })}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  className="rounded-md border border-border px-3 py-1.5 hover:bg-accent disabled:opacity-50"
+                >
+                  {t("dashboard.previous")}
+                </button>
+                <button
+                  type="button"
+                  disabled={(page + 1) * PAGE_SIZE >= data.total_open}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="rounded-md border border-border px-3 py-1.5 hover:bg-accent disabled:opacity-50"
+                >
+                  {t("dashboard.next")}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

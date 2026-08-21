@@ -1,10 +1,16 @@
 """Tests for client-facing object URL resolution.
 
-Uploads are written without a public-read ACL, and the canonical URL that used
-to be persisted in ``task_attachments.file_url`` was not fetchable in
-production: nothing served the configured public path, so every attachment link
-404'd. URLs handed to a browser are now presigned per response, which is what
-``presign_stored_object`` does.
+Uploads are written without a public-read ACL, so the canonical URL persisted
+in ``file_url`` is not fetchable. ``presign_stored_object`` signs one per
+response for the sources that still hand storage URLs to the browser — Drive
+files, compliance documents, chat downloads, assessment recordings.
+
+Task attachments no longer come through here. Presigning only closes half the
+gap: a signed URL still needs storage published on a hostname the browser can
+reach, and on a deployment without that proxy every link 404s exactly as it did
+unsigned. Those reads go through ``/api/v1/task-attachments/{id}`` instead — see
+``test_task_attachment_download.py``. The key-shaped URLs below are kept because
+they are the shape rows written by the old path still carry.
 
 The fallback path matters as much as the happy path: rows written before
 ``storage_key`` existed only carry the key inside ``file_url``, and those must

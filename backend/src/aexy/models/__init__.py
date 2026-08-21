@@ -62,6 +62,7 @@ from aexy.models.organization import (
 from aexy.models.service_desk import (
     ServiceDeskAccount,
     ServiceDeskAccountDomain,
+    ServiceDeskAccountProduct,
     ServiceDeskVendor,
     ServiceDeskVendorDomain,
     ServiceDeskProduct,
@@ -677,6 +678,7 @@ __all__ = [
     "PositionStatus",
     "ServiceDeskAccount",
     "ServiceDeskAccountDomain",
+    "ServiceDeskAccountProduct",
     "ServiceDeskVendor",
     "ServiceDeskVendorDomain",
     "ServiceDeskProduct",

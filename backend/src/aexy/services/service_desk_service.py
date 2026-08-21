@@ -6,6 +6,7 @@ auto-assignment), plus listing service-desk tickets and manual logging.
 """
 
 import logging
+import re
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -25,9 +26,18 @@ from aexy.services.service_desk_clock import (
     DEFAULT_WORK_START,
 )
 from aexy.services.service_desk_config import (
+    DEFAULT_INTAKE_POLL_MINUTES,
+    digest_enabled,
+    unmatched_assignment,
+    domain_is_too_broad,
     DEFAULT_TICKET_PREFIX,
+    MAX_INTAKE_POLL_MINUTES,
+    MIN_INTAKE_POLL_MINUTES,
     display_id,
+    normalise_email_list,
+    normalise_id_list,
     normalise_ignored_senders,
+    normalise_poll_minutes,
     normalise_prefix,
     ticket_prefix,
 )
@@ -37,6 +47,7 @@ from aexy.models.service_desk import (
     ServiceDeskRequestType,
     ServiceDeskStakeholder,
     TicketPendingSegment,
+    ServiceDeskAccountProduct,
     ServiceDeskVendor,
     ServiceDeskVendorDomain,
     ServiceDeskProduct,
@@ -45,7 +56,8 @@ from aexy.models.service_desk import (
     ServiceDeskAccountDomain,
     ServiceDeskTicket,
 )
-from aexy.models.ticketing import Ticket
+from aexy.models.ticketing import Ticket, TicketResponse
+from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace
 from aexy.schemas.service_desk import (
     InboundEmail,
@@ -59,10 +71,13 @@ from aexy.schemas.service_desk import (
     MailboxUpdate,
     ManualTicketCreate,
     AccountCreate,
+    AccountProductInput,
+    AccountProductLink,
     AccountResponse,
     AccountUpdate,
     ServiceDeskTicketResponse,
     TestSLAOverride,
+    TicketFilters,
 )
 
 
@@ -432,7 +447,67 @@ async def resolve_desk_department(db: AsyncSession, workspace_id: str):
 
 
 def _norm_domain(d: str) -> str:
-    return d.strip().lower().lstrip("@")
+    """Clean a domain, refusing one that would claim mail it has nothing to do with.
+
+    Matching walks up a sender's subdomains now, so ``partner.com`` also catches
+    ``mail.partner.com``. That is the point — and it is also why "com" or "co.in"
+    can no longer be saved: with subdomain matching in force, either would hand a
+    single account every sender in a registry, and every ticket after it would be
+    routed to that account's owner.
+
+    Write-time only. A row saved before this existed keeps working; what stops it
+    doing damage is that ``domain_candidates`` will not walk up into a public
+    suffix to reach it.
+    """
+    cleaned = d.strip().lower().lstrip("@").rstrip(".")
+    if domain_is_too_broad(cleaned):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{cleaned!r} is too broad to identify one organisation. Use a full "
+                "domain such as 'partner.com' — subdomains like 'mail.partner.com' "
+                "are matched automatically."
+            ),
+        )
+    return cleaned
+
+
+def _ticket_headline():
+    """The ticket's headline as a SQL expression.
+
+    Prefers the `title` column and falls back to the submission blob, so rows
+    the backfill could not fill (a form with no subject field, a submission that
+    stored it under a key we do not recognise) still sort and match on whatever
+    they do have, exactly as they did before the column existed.
+    """
+    return func.coalesce(
+        Ticket.title, Ticket.field_values["subject"].as_string()
+    )
+
+
+_SORTABLE = {
+    "created": lambda: Ticket.created_at,
+    "ticket": lambda: Ticket.ticket_number,
+    "subject": _ticket_headline,
+    "account": lambda: ServiceDeskAccount.name,
+    "type": lambda: ServiceDeskTicket.request_type,
+    "pending": lambda: ServiceDeskTicket.pending_with,
+    "status": lambda: Ticket.status,
+}
+
+
+def _ticket_order(filters) -> list:
+    """The ORDER BY for a ticket list, from a validated sort key.
+
+    The key is a Literal on ``TicketFilters``, so an unknown one is refused with
+    a 422 before reaching here; the fallback covers a filters object built in
+    Python rather than parsed from a request.
+    """
+    column = _SORTABLE.get(getattr(filters, "sort", "created") or "created")
+    if column is None:
+        return [Ticket.created_at.desc()]
+    expr = column()
+    return [expr.asc() if getattr(filters, "direction", "desc") == "asc" else expr.desc()]
 
 
 class ServiceDeskService:
@@ -443,15 +518,89 @@ class ServiceDeskService:
 
     @staticmethod
     def _account_response(p: ServiceDeskAccount) -> AccountResponse:
+        # `assigned_owner` is a selectin relationship, so naming the owner costs
+        # no extra query per row.
+        owner = p.assigned_owner
         return AccountResponse(
             id=p.id,
             workspace_id=p.workspace_id,
             name=p.name,
             assigned_owner_id=p.assigned_owner_id,
+            assigned_owner_name=owner.name if owner else None,
+            assigned_owner_email=owner.email if owner else None,
             is_active=p.is_active,
             domains=[d.domain for d in p.domains],
+            products=[
+                AccountProductLink(
+                    product_id=link.product_id,
+                    product_name=link.product.name if link.product else None,
+                    assigned_owner_id=link.assigned_owner_id,
+                    assigned_owner_name=(
+                        link.assigned_owner.name or link.assigned_owner.email
+                        if link.assigned_owner
+                        else None
+                    ),
+                )
+                for link in p.products
+            ],
             created_at=p.created_at,
         )
+
+    async def _replace_account_products(
+        self, workspace_id: str, account_id: str, products: list[AccountProductInput]
+    ) -> None:
+        """Set an account's product pairings to exactly what was supplied.
+
+        A replacement rather than add/remove verbs, matching how `domains` is
+        handled: the editor holds the whole set, and a diffing client would have
+        to know what it is diffing against.
+
+        Products are validated against this workspace's own catalogue. Without
+        that, a pairing could name another workspace's product id — the FK would
+        accept it, and this partner's routing would then depend on a row nobody
+        here can see.
+        """
+        await self.db.execute(
+            delete(ServiceDeskAccountProduct).where(
+                ServiceDeskAccountProduct.account_id == account_id
+            )
+        )
+        if not products:
+            return
+        known = set(
+            (
+                await self.db.execute(
+                    select(ServiceDeskProduct.id).where(
+                        ServiceDeskProduct.workspace_id == workspace_id,
+                        ServiceDeskProduct.id.in_([p.product_id for p in products]),
+                    )
+                )
+            ).scalars().all()
+        )
+        seen: set[str] = set()
+        for link in products:
+            if link.product_id not in known:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown product {link.product_id!r} for this workspace",
+                )
+            # The unique index would catch this, but as a 500 from a flush deep
+            # in the request rather than as the answer to what was asked.
+            if link.product_id in seen:
+                raise HTTPException(
+                    status_code=422,
+                    detail="A product may be listed only once against an account",
+                )
+            seen.add(link.product_id)
+            self.db.add(
+                ServiceDeskAccountProduct(
+                    id=str(uuid4()),
+                    workspace_id=workspace_id,
+                    account_id=account_id,
+                    product_id=link.product_id,
+                    assigned_owner_id=link.assigned_owner_id,
+                )
+            )
 
     async def list_accounts(self, workspace_id: str) -> list[AccountResponse]:
         rows = (
@@ -463,6 +612,41 @@ class ServiceDeskService:
         ).scalars().all()
         return [self._account_response(p) for p in rows]
 
+    async def _reject_claimed_domains(
+        self, workspace_id: str, domains: list[str], *, exclude_account_id: str | None = None
+    ) -> None:
+        """Refuse a domain another account already answers for.
+
+        A domain decides which account a ticket belongs to, so two accounts
+        claiming one has no correct answer — the unique constraint is right to
+        refuse it. It was refusing it as a 500 though, and from inside an
+        autoflush, so the message a person saw was a stack trace about a
+        constraint name rather than which entry to change.
+        """
+        wanted = {_norm_domain(d) for d in domains if _norm_domain(d)}
+        if not wanted:
+            return
+        query = (
+            select(ServiceDeskAccountDomain.domain, ServiceDeskAccount.name)
+            .join(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskAccountDomain.account_id)
+            .where(
+                ServiceDeskAccountDomain.workspace_id == workspace_id,
+                ServiceDeskAccountDomain.domain.in_(wanted),
+            )
+        )
+        if exclude_account_id is not None:
+            query = query.where(ServiceDeskAccountDomain.account_id != exclude_account_id)
+        # The domains being written are already pending on this session; flushing
+        # them here is what raised the 500 in the first place.
+        with self.db.no_autoflush:
+            clash = (await self.db.execute(query)).first()
+        if clash is not None:
+            domain, holder = clash
+            raise HTTPException(
+                status_code=409,
+                detail=f"{domain} already belongs to {holder}. Remove it there first, or add this one to that account.",
+            )
+
     async def create_account(self, workspace_id: str, data: AccountCreate) -> AccountResponse:
         account = ServiceDeskAccount(
             id=str(uuid4()),
@@ -471,6 +655,7 @@ class ServiceDeskService:
             assigned_owner_id=data.assigned_owner_id,
             is_active=data.is_active,
         )
+        await self._reject_claimed_domains(workspace_id, data.domains)
         self.db.add(account)
         await self.db.flush()
         for dom in data.domains:
@@ -479,7 +664,17 @@ class ServiceDeskService:
                     id=str(uuid4()), workspace_id=workspace_id, account_id=account.id, domain=_norm_domain(dom)
                 )
             )
-        await self.db.flush()
+        await self._replace_account_products(workspace_id, account.id, data.products)
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            # Two people naming the same domain at once. The check above catches
+            # the ordinary case; this is the one it cannot, and the constraint is
+            # still the thing that decides.
+            raise HTTPException(
+                status_code=409,
+                detail="One of those domains was just claimed by another account. Reload and try again.",
+            ) from None
         await self.db.refresh(account)
         return self._account_response(account)
 
@@ -487,9 +682,13 @@ class ServiceDeskService:
         account = await self._get_account(workspace_id, account_id)
         payload = data.model_dump(exclude_unset=True)
         domains = payload.pop("domains", None)
+        payload.pop("products", None)
         for k, v in payload.items():
             setattr(account, k, v)
+        if data.products is not None:
+            await self._replace_account_products(workspace_id, account_id, data.products)
         if domains is not None:
+            await self._reject_claimed_domains(workspace_id, domains, exclude_account_id=account_id)
             await self.db.execute(
                 delete(ServiceDeskAccountDomain).where(ServiceDeskAccountDomain.account_id == account_id)
             )
@@ -822,8 +1021,24 @@ class ServiceDeskService:
             except ValueError:
                 pass
         desk_department = await resolve_desk_department(self.db, workspace_id)
+        # Reported resolved, not raw: the toggle shows what is actually in force,
+        # and `workspace_ai_enabled` says where that came from so the page can
+        # explain an "on" nobody set on this screen.
+        from aexy.services.service_desk_intake_service import ai_classification_enabled
+        from aexy.services.workspace_ai_settings_service import is_ai_enabled
+
+        workspace_ai_enabled = await is_ai_enabled(self.db, workspace_id)
         return {
-            "ai_classification_enabled": bool(sd.get("ai_classification_enabled", False)),
+            "ai_classification_enabled": await ai_classification_enabled(
+                self.db, workspace_id
+            ),
+            "workspace_ai_enabled": workspace_ai_enabled,
+            "ai_attachment_previews_enabled": bool(
+                sd.get("ai_attachment_previews_enabled", False)
+            ),
+            "public_ticket_links_enabled": bool(
+                sd.get("public_ticket_links_enabled", False)
+            ),
             "auto_split_enabled": bool(sd.get("auto_split_enabled", False)),
             "can_manage": bool(can_manage),
             "scope": scope,
@@ -832,10 +1047,25 @@ class ServiceDeskService:
             "working_hours_start": hours.get("start") or DEFAULT_WORK_START.strftime("%H:%M"),
             "working_hours_end": hours.get("end") or DEFAULT_WORK_END.strftime("%H:%M"),
             "ticket_prefix": normalise_prefix(sd.get("ticket_prefix")) or DEFAULT_TICKET_PREFIX,
+            "unmatched_assignment": unmatched_assignment(sd),
             "timezone": sd.get("timezone") or DEFAULT_TIMEZONE,
             "breach_red_days": float(sd.get("breach_red_days") or BREACH_RED_DAYS),
             "breach_amber_days": float(sd.get("breach_amber_days") or BREACH_AMBER_DAYS),
+            "digest_enabled": digest_enabled(sd),
             "digest_hours": list(sd.get("digest_hours") or DEFAULT_DIGEST_HOURS),
+            "digest_excluded_recipients": normalise_id_list(
+                sd.get("digest_excluded_recipients")
+            ),
+            "digest_extra_recipients": normalise_email_list(
+                sd.get("digest_extra_recipients")
+            ),
+            # How often Gmail-backed mailboxes are polled for new mail. Resolved,
+            # so the page shows the interval actually in force rather than a
+            # blank for every desk that never chose one.
+            "intake_poll_minutes": (
+                normalise_poll_minutes(sd.get("intake_poll_minutes"))
+                or DEFAULT_INTAKE_POLL_MINUTES
+            ),
             "industry_template": sd.get("industry_template"),
             # Senders Ops has marked as noise — infrastructure mail like a
             # provider's security alerts. Empty by default: nothing is ignored
@@ -868,6 +1098,7 @@ class ServiceDeskService:
         workspace_id: str,
         ai_classification_enabled: bool | None = None,
         auto_split_enabled: bool | None = None,
+        unmatched_assignment_value: str | None = None,
         working_hours_start: str | None = None,
         working_hours_end: str | None = None,
         test_sla: TestSLAOverride | None = None,
@@ -878,10 +1109,19 @@ class ServiceDeskService:
         breach_red_days: float | None = None,
         breach_amber_days: float | None = None,
         digest_hours: list[int] | None = None,
+        intake_poll_minutes: int | None = None,
+        digest_enabled_value: bool | None = None,
+        digest_excluded_recipients: list[str] | None = None,
+        digest_extra_recipients: list[str] | None = None,
         terminology: dict[str, str] | None = None,
         desk_name: str | None = None,
         desk_department_id: str | None = None,
         ignored_senders: list[str] | None = None,
+        # Appended rather than placed next to the switch it belongs with: this
+        # signature is long and callers pass positionally, so inserting a
+        # parameter in the middle silently shifts every argument after it.
+        ai_attachment_previews_enabled: bool | None = None,
+        public_ticket_links_enabled: bool | None = None,
     ) -> dict:
         """Patch semantics: only the fields supplied are touched.
 
@@ -895,7 +1135,25 @@ class ServiceDeskService:
         sd = dict(settings.get("service_desk") or {})
 
         if ai_classification_enabled is not None:
-            sd["ai_classification_enabled"] = bool(ai_classification_enabled)
+            if ai_classification_enabled:
+                # "On" means *stop vetoing*, not "pin this on": the desk then
+                # follows the workspace switch, which is the only place AI is
+                # governed. Storing True here would recreate the second source of
+                # truth this replaced.
+                sd.pop("ai_classification_enabled", None)
+            else:
+                sd["ai_classification_enabled"] = False
+
+        if ai_attachment_previews_enabled is not None:
+            sd["ai_attachment_previews_enabled"] = bool(ai_attachment_previews_enabled)
+
+        if public_ticket_links_enabled is not None:
+            # Switching it off stops new tokens being minted and takes the link
+            # out of the copy. It cannot retract a URL already emailed, and does
+            # not revoke links an operator created by hand from the share dialog
+            # — those are somebody's deliberate act, and the dialog is where they
+            # are withdrawn.
+            sd["public_ticket_links_enabled"] = bool(public_ticket_links_enabled)
 
         if ignored_senders is not None:
             # Audited: adding an entry stops mail becoming tickets, and the only
@@ -941,6 +1199,20 @@ class ServiceDeskService:
                 developer_id or "unknown",
             )
 
+        if unmatched_assignment_value is not None:
+            # Logged: this decides where every unroutable ticket lands, and the
+            # symptom of a surprising choice is a queue that looks wrong to
+            # whoever is standing in front of it.
+            logger.info(
+                "Service desk for workspace %s now routes unmatched tickets as %r "
+                "(was %r), set by %s",
+                workspace_id,
+                unmatched_assignment_value,
+                unmatched_assignment(sd),
+                developer_id or "unknown",
+            )
+            sd["unmatched_assignment"] = unmatched_assignment_value
+
         if ticket_prefix is not None:
             normalised = normalise_prefix(ticket_prefix)
             if normalised is None:
@@ -985,6 +1257,36 @@ class ServiceDeskService:
                 )
             sd["breach_red_days"] = red
             sd["breach_amber_days"] = amber
+
+        if digest_enabled_value is not None:
+            sd["digest_enabled"] = bool(digest_enabled_value)
+
+        if digest_excluded_recipients is not None:
+            sd["digest_excluded_recipients"] = normalise_id_list(digest_excluded_recipients)
+
+        if digest_extra_recipients is not None:
+            # Audited: adding an address sends this workspace's whole open-ticket
+            # list, with account names and subjects, to somebody outside the
+            # department. "Who added this recipient" is the question asked
+            # afterwards.
+            cleaned_extra = normalise_email_list(digest_extra_recipients)
+            sd["digest_extra_recipients"] = cleaned_extra
+            logger.info(
+                "Service desk digest extra recipients for workspace %s set to %s by %s",
+                workspace_id, cleaned_extra, developer_id or "unknown",
+            )
+
+        if intake_poll_minutes is not None:
+            minutes = normalise_poll_minutes(intake_poll_minutes)
+            if minutes is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"intake_poll_minutes must be between {MIN_INTAKE_POLL_MINUTES} "
+                        f"and {MAX_INTAKE_POLL_MINUTES} minutes"
+                    ),
+                )
+            sd["intake_poll_minutes"] = minutes
 
         if digest_hours is not None:
             # Sorted so the digest activity can compare against the current local
@@ -1456,40 +1758,175 @@ class ServiceDeskService:
 
     # ----------------------------------------------------------- tickets
 
+    async def scoped_ticket_query(
+        self,
+        workspace_id: str,
+        developer_id: str | None,
+        assigned_to: str | None,
+        filters: TicketFilters | None,
+        selection,
+    ):
+        """The one place a desk ticket query is narrowed.
+
+        Public because the analytics service needs the identical clause, and a
+        second module reaching for a leading-underscore method would have made
+        this boundary a lie rather than a rule — the risk being that a chart
+        eventually gets narrowed differently from the list it sits above.
+
+        Scope first, filters second, and they are different things: the scope
+        clause says which rows this caller may see at all, and a filter says
+        which of those they asked for. Sharing this builder between the list, the
+        count and the export is what makes a CSV agree with the screen it came
+        from — and means a filter can never be added to one of the three and
+        forgotten in the others.
+        """
+        query = (
+            selection
+            .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
+            .outerjoin(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskTicket.account_id)
+            .outerjoin(ServiceDeskProduct, ServiceDeskProduct.id == ServiceDeskTicket.product_id)
+            .outerjoin(ServiceDeskVendor, ServiceDeskVendor.id == ServiceDeskTicket.vendor_id)
+            .outerjoin(Developer, Developer.id == Ticket.assignee_id)
+            .where(ServiceDeskTicket.workspace_id == workspace_id)
+        )
+        if developer_id is not None:
+            clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
+            if clause is not None:
+                query = query.where(clause)
+        # `assigned_to` narrows to one owner's queue. It is applied on top of the
+        # scope clause, never instead of it: "assigned to me" must not become a
+        # way to see a ticket the desk's own visibility rules would deny — an
+        # assignment made before somebody was moved off an account would
+        # otherwise keep showing them that account's ticket.
+        if assigned_to is not None:
+            query = query.where(Ticket.assignee_id == assigned_to)
+        if filters is None:
+            return query
+
+        if filters.created_from is not None:
+            query = query.where(Ticket.created_at >= filters.created_from)
+        if filters.created_to is not None:
+            query = query.where(Ticket.created_at <= filters.created_to)
+        if filters.account_id is not None:
+            query = query.where(ServiceDeskTicket.account_id == filters.account_id)
+        if filters.product_id is not None:
+            query = query.where(ServiceDeskTicket.product_id == filters.product_id)
+        if filters.vendor_id is not None:
+            query = query.where(ServiceDeskTicket.vendor_id == filters.vendor_id)
+        if filters.request_type is not None:
+            query = query.where(ServiceDeskTicket.request_type == filters.request_type)
+        if filters.pending_with is not None:
+            query = query.where(ServiceDeskTicket.pending_with == filters.pending_with)
+        if filters.origin is not None:
+            query = query.where(ServiceDeskTicket.origin == filters.origin)
+        if filters.status is not None:
+            query = query.where(Ticket.status == filters.status)
+        if filters.assigned_to is not None:
+            query = query.where(Ticket.assignee_id == filters.assigned_to)
+        if filters.q:
+            # LIKE metacharacters are escaped rather than rejected: somebody
+            # searching for a subject containing "100%" means the character.
+            term = filters.q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            if term:
+                like = f"%{term}%"
+                matches = [
+                    _ticket_headline().ilike(like, escape="\\"),
+                    Ticket.submitter_email.ilike(like, escape="\\"),
+                    Ticket.submitter_name.ilike(like, escape="\\"),
+                ]
+                # "SD-26", "sd 26" and "26" should all find ticket 26. The prefix
+                # is per-workspace and not stored on the row, so match the number
+                # and let the letters be whatever this desk calls itself.
+                digits = re.sub(r"\D", "", filters.q)
+                if digits:
+                    matches.append(Ticket.ticket_number == int(digits))
+                query = query.where(or_(*matches))
+        if filters.needs_triage is not None:
+            query = query.where(ServiceDeskTicket.needs_triage.is_(filters.needs_triage))
+        if filters.is_open is not None:
+            # Which slug is terminal is the workspace's own answer, so a caller
+            # asking for "open" never has to know it. A desk that has retired its
+            # closed bucket has nothing to exclude, and every ticket is open.
+            taxonomy = await load_taxonomy(self.db, workspace_id, seed=False)
+            closed = taxonomy.closed_slug
+            if closed is not None:
+                query = query.where(
+                    ServiceDeskTicket.pending_with != closed
+                    if filters.is_open
+                    else ServiceDeskTicket.pending_with == closed
+                )
+            elif not filters.is_open:
+                # Asked for closed tickets on a desk with no closed stage. An
+                # unfiltered list would answer "all of them", which is the
+                # opposite of the truth.
+                query = query.where(false())
+        return query
+
+    async def count_tickets(
+        self,
+        workspace_id: str,
+        developer_id: str | None = None,
+        assigned_to: str | None = None,
+        filters: TicketFilters | None = None,
+    ) -> int:
+        """How many tickets match, for a screen that pages through them.
+
+        Its own call rather than a field on the list, because the list is a
+        bounded page and the count is the whole set — and because the existing
+        list response is a bare array that several callers already destructure.
+        """
+        query = await self.scoped_ticket_query(
+            workspace_id,
+            developer_id,
+            assigned_to,
+            filters,
+            select(func.count()).select_from(ServiceDeskTicket),
+        )
+        return int((await self.db.execute(query)).scalar() or 0)
+
     async def list_tickets(
         self,
         workspace_id: str,
         developer_id: str | None = None,
         assigned_to: str | None = None,
         limit: int | None = None,
+        offset: int | None = None,
+        filters: TicketFilters | None = None,
     ) -> list[ServiceDeskTicketResponse]:
-        """Tickets on this desk, in the caller's scope.
-
-        `assigned_to` narrows to one owner's queue. It is applied on top of the
-        scope clause, never instead of it: "assigned to me" must not become a way
-        to see a ticket the desk's own visibility rules would deny — an
-        assignment made before somebody was moved off an account would otherwise
-        keep showing them that account's ticket.
-        """
+        """Tickets on this desk, in the caller's scope."""
         query = (
-            select(ServiceDeskTicket, Ticket, ServiceDeskAccount)
-            .join(Ticket, Ticket.id == ServiceDeskTicket.ticket_id)
-            .outerjoin(ServiceDeskAccount, ServiceDeskAccount.id == ServiceDeskTicket.account_id)
-            .where(ServiceDeskTicket.workspace_id == workspace_id)
-            .order_by(Ticket.created_at.desc())
+            await self.scoped_ticket_query(
+                workspace_id,
+                developer_id,
+                assigned_to,
+                filters,
+                select(
+                    ServiceDeskTicket,
+                    Ticket,
+                    ServiceDeskAccount.name,
+                    ServiceDeskProduct.name,
+                    ServiceDeskVendor.name,
+                    Developer.name,
+                    Developer.email,
+                ),
+            )
+        # A fixed set of columns, looked up rather than interpolated — the sort
+        # key arrives from a query string.
+        ).order_by(
+            *_ticket_order(filters),
+            # Ordered by id as well, so a page boundary is stable: two tickets
+            # sharing a sort value would otherwise be free to swap places
+            # between page 1 and page 2, showing one twice and the other never.
+            ServiceDeskTicket.id.desc(),
         )
-        if developer_id is not None:
-            clause = await resolve_scope_clause(self.db, workspace_id, developer_id)
-            if clause is not None:
-                query = query.where(clause)
-        if assigned_to is not None:
-            query = query.where(Ticket.assignee_id == assigned_to)
         if limit is not None:
             query = query.limit(limit)
+        if offset is not None:
+            query = query.offset(offset)
         rows = (await self.db.execute(query)).all()
         prefix = await ticket_prefix(workspace_id=workspace_id, db=self.db)
         out: list[ServiceDeskTicketResponse] = []
-        for sd, ticket, account in rows:
+        for sd, ticket, account_name, product_name, vendor_name, owner_name, owner_email in rows:
             out.append(
                 ServiceDeskTicketResponse(
                     id=sd.id,
@@ -1497,15 +1934,21 @@ class ServiceDeskService:
                     workspace_id=sd.workspace_id,
                     ticket_number=ticket.ticket_number,
                     display_id=display_id(prefix, ticket.ticket_number),
-                    subject=(ticket.field_values or {}).get("subject"),
+                    subject=ticket.title or (ticket.field_values or {}).get("subject"),
                     requester_email=ticket.submitter_email,
                     requester_name=ticket.submitter_name,
                     status=ticket.status,
                     product_id=sd.product_id,
+                    product_name=product_name,
                     account_id=sd.account_id,
-                    account_name=account.name if account else None,
+                    account_name=account_name,
                     vendor_id=sd.vendor_id,
+                    vendor_name=vendor_name,
                     assigned_owner_id=ticket.assignee_id,
+                    # Falls back to the address: a developer row synced from
+                    # GitHub may have no name, and a blank owner column in an
+                    # export reads as unassigned.
+                    assigned_owner_name=owner_name or owner_email,
                     request_type=sd.request_type,
                     pending_with=sd.pending_with,
                     origin=sd.origin,
@@ -1587,6 +2030,56 @@ class ServiceDeskService:
         # they just picked left every logged call flagged forever.
         if data.request_type is not None:
             sd.needs_triage = False
+
+        # Routing for a manual ticket.
+        #
+        # Intake decided the owner before any of the fields above were applied,
+        # and for a manual ticket the sender it had to work from is the literal
+        # `manual@local` — which matches no account, so it fell through to an
+        # arbitrary member of the desk. The operator has since told us exactly
+        # whose ticket this is by picking the account (and possibly the product),
+        # so that answer has to win. Without this, logging a call and choosing
+        # the partner still landed the ticket on a random KAM, and every one had
+        # to be moved by hand.
+        #
+        # Most specific answer first: the account/product pairing, then the
+        # account's own owner. Nothing here overrides an assignee the caller set
+        # deliberately, because the manual endpoint does not accept one.
+        assignment_note: str | None = None
+        product_owner_id = await intake.product_owner(sd.account_id, sd.product_id)
+        account_owner_id = await intake.account_owner(sd.account_id)
+
+        if product_owner_id:
+            ticket.assignee_id = product_owner_id
+        elif account_owner_id:
+            ticket.assignee_id = account_owner_id
+        elif sd.account_id:
+            # An account was named and it owns nobody. Say so on the ticket:
+            # the assignee is still the arbitrary one intake picked, and that is
+            # indistinguishable from a deliberate assignment otherwise.
+            account_name = (
+                await self.db.execute(
+                    select(ServiceDeskAccount.name).where(
+                        ServiceDeskAccount.id == sd.account_id
+                    )
+                )
+            ).scalar_one_or_none()
+            assignment_note = (
+                f'Assigned by fallback: "{account_name}" has no assigned owner in Master '
+                "Data, so this ticket kept the owner picked when it was logged. Set one so "
+                "its tickets stop being distributed arbitrarily."
+            )
+
+        if assignment_note:
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=assignment_note,
+                    is_internal=True,
+                )
+            )
+
         await self.db.flush()
 
         # Commit before the acknowledgement goes out, so a rollback can't leave
@@ -1594,6 +2087,7 @@ class ServiceDeskService:
         # send itself is the caller's to schedule (``acknowledge_ticket``) — it is
         # an SMTP round trip and the operator does not have to watch it finish.
         await self.db.commit()
+
         return ticket.id
 
     async def _require_own(self, model, workspace_id: str, row_id: str, label: str) -> None:

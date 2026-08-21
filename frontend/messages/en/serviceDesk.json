@@ -24,7 +24,10 @@
       "export": "Export CSV",
       "routesTo": "Routes to",
       "external": "External",
-      "noDepartment": "No department"
+      "noDepartment": "No department",
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
     },
     "table": {
       "id": "Ticket",
@@ -37,7 +40,11 @@
       "daysInStage": "Working days in stage",
       "overallAge": "Overall age",
       "status": "Status",
-      "triage": "Triage"
+      "triage": "Triage",
+      "age": "Age",
+      "ageMinutes": "{count}m",
+      "ageHours": "{count}h",
+      "ageDays": "{count}d"
     },
     "detail": {
       "back": "Back to dashboard",
@@ -113,12 +120,33 @@
       "actions": "Actions",
       "download": "Download",
       "downloading": "Downloading…",
-      "attachmentUnavailable": "Only in the original email"
+      "attachmentUnavailable": "Only in the original email",
+      "showQuoted": "Show quoted history",
+      "hideQuoted": "Hide quoted history",
+      "showImage": "Image from {host}",
+      "imageFrom": "Image from {host}"
     },
     "ai": {
       "title": "AI email categorisation",
       "description": "Let AI read incoming emails and suggest the Request Type and Product. When off, ticket owners classify tickets manually.",
-      "enabled": "Enabled"
+      "toggle": "Categorise incoming email with AI",
+      "enabled": "Enabled",
+      "inheritedOn": "On because this workspace has AI enabled. The service desk follows that setting.",
+      "vetoed": "Turned off for the service desk only. This workspace has AI enabled elsewhere.",
+      "workspaceOff": "AI is switched off for this whole workspace, so the desk cannot read email either.",
+      "workspaceSettingsLink": "Workspace AI settings",
+      "attachments": {
+        "title": "Read attachments",
+        "description": "Let AI open the files on an incoming email to help identify the request. Off by default — reading a customer's documents is a separate decision from reading the message.",
+        "requiresAi": "Turn on AI email categorisation first."
+      },
+      "accuracy": {
+        "title": "How accurate has it been?",
+        "nothingYet": "Nothing classified yet. Once AI has read some tickets, this shows how often your team agreed with it.",
+        "summary": "Your team kept the AI's request type on {agreed} of {classified} tickets ({rate}) in the last {days} days.",
+        "caveat": "A ticket nobody reviewed counts as agreement, so treat this as a best case. The breakdown below is more useful: one request type doing badly usually means its name or description needs to be clearer, not that AI should be switched off.",
+        "row": "{rate} of {classified}"
+      }
     },
     "autoSplit": {
       "title": "Automatic ticket split",
@@ -138,7 +166,14 @@
       "account": "Account",
       "none": "— None —",
       "create": "Create ticket",
-      "creating": "Creating…"
+      "creating": "Creating…",
+      "attachments": "Attachments",
+      "attachmentsChosen": "{count} file(s) will be attached to the ticket",
+      "taskSection": "Raise the work now (optional)",
+      "taskProject": "Project",
+      "taskNone": "Don't create a task",
+      "taskAssignee": "Assign to",
+      "taskUnassigned": "Nobody yet"
     },
     "templates": {
       "title": "Email templates",
@@ -190,14 +225,17 @@
       "delete": "Delete",
       "empty": "Nothing here yet.",
       "readOnly": "You have read-only access to Master Data. Ask a workspace admin or service desk manager to make changes.",
-      "domainsHint": "acme.com, or bob@acme.com",
+      "domainsHint": "acme.com / bob@acme.com",
       "masterDataHint": "The three tables the desk sorts incoming email against. The sender's domain decides which account a ticket belongs to and who it lands on — mail that matches nothing goes to triage.",
       "accountsHint": "Who the desk works for. When mail arrives, its sender domain is looked up here: the ticket is attributed to that account and assigned to the owner set below. A whole email address can be used instead of a domain, and beats a domain entry — use one when several accounts share a provider like gmail.com.",
       "accountsEmpty": "No accounts yet, so every incoming email lands in triage and is given an arbitrary owner. Add the domains you receive requests from and tickets start routing themselves.",
       "vendorsHint": "Outside parties the desk sends work to. Mail from these domains is read as a vendor replying about existing work rather than a customer raising something new. It still goes to triage — a vendor is not an account.",
       "vendorsEmpty": "No vendors yet. Mail from anyone who is not a known account is treated as an unknown sender.",
       "productsHint": "What a ticket can be about. AI categorisation picks one by exact name and the daily digest groups by it, so a name the AI suggests that is not listed here is dropped.",
-      "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it."
+      "productsEmpty": "No products yet, so tickets are not tagged with one and the digest cannot group by it.",
+      "assignedOwnerFor": "Assigned owner for {name}",
+      "unownedAccountWarning": "No assigned owner — tickets from this account go to an arbitrary member of the desk department.",
+      "noDomainsWarning": "No domains — sender matching can never attach a ticket to this account on its own, so its owner is only used when someone sets the account by hand."
     },
     "noDepartment": "You're not in a department yet, so no tickets can be routed to you. Ask an admin to add you from Organization → Departments.",
     "assignedOnly": "You see the tickets assigned to you, and none are open right now. Other tickets on the desk are handled by their own owners.",
@@ -246,13 +284,80 @@
     },
     "ignoredSenders": {
       "title": "Ignored senders",
-      "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for infrastructure mail the desk does not track — a provider's security alerts, for instance. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. An account or vendor in Master Data always wins over an entry here.",
-      "placeholder": "no-reply@accounts.google.com or a domain",
+      "description": "Mail from these senders is not turned into tickets. Add one address, or a whole domain, for mail the desk does not track — a provider's security alerts, or a partner's daily automailer. Nothing is ignored until you add it: a counterparty's own no-reply address often carries the notices you do want. A whole address always wins. A whole domain does not: an account or vendor in Master Data still opens tickets, so ignoring a domain in passing cannot silence a counterparty you configured deliberately.",
+      "placeholder": "no-reply@accounts.google.com",
       "add": "Add",
       "empty": "Nothing ignored — every sender opens a ticket.",
       "invalid": "Enter an email address, or a domain like accounts.google.com.",
       "duplicate": "Already on the list.",
       "remove": "Stop ignoring {sender}"
+    },
+    "intakeFrequency": {
+      "title": "Intake frequency",
+      "description": "How often Gmail-backed mailboxes are checked for new mail. This is the wait between an email arriving and a ticket existing.",
+      "everyMinutes": "Every {minutes} min",
+      "floorNote": "This only makes checks more frequent. An account already syncing faster keeps its own pace."
+    },
+    "publicLinks": {
+      "title": "Public ticket links",
+      "description": "Include a link to a read-only view of the ticket in the acknowledgement and closure emails sent to people outside your workspace. The link needs no account — anyone holding the URL can see the ticket's subject, the requester's name and its attachments. Off by default.",
+      "scopeNote": "Colleagues who write to the desk are unaffected: they always get a link to the ticket in the app, which needs no account of its own and publishes nothing. Turning this off stops new public links being created and removes them from future emails — it cannot recall a link already sent, and it leaves links you shared by hand from a ticket alone."
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "any": "Any",
+      "product": "Product",
+      "state": "State",
+      "open": "Open",
+      "closed": "Closed",
+      "needsTriage": "Needs triage only",
+      "clear": "Clear filters",
+      "matching": "{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}",
+      "showing": "Showing {from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "export": "Export CSV",
+      "search": "Search",
+      "searchHint": "Subject, sender or SD-26",
+      "vendor": "Vendor",
+      "owner": "Owner",
+      "mine": "Assigned to me",
+      "noMatchTitle": "No tickets match",
+      "noMatch": "Nothing on this desk matches these filters. Clear them to see the whole queue.",
+      "more": "More filters"
+    },
+    "accountProducts": {
+      "none": "No products mapped — all tickets go to this account's owner",
+      "summary": "Products: {names}",
+      "hint": "Tickets from this account are classified against these products only. Leave an owner as “Same as account” unless someone different handles that product.",
+      "sameAsAccount": "Same as account owner",
+      "ownerFor": "Owner of {product} for {name}"
+    },
+    "digest": {
+      "title": "Open-ticket digest",
+      "description": "Email everyone on the desk a summary of what is still open. On by default.",
+      "toggle": "Send the digest",
+      "times": "Send times",
+      "timesHint": "Local hours in {timezone}. Pick at least one — to stop the digest entirely, use the switch above.",
+      "recipients": "Who receives it",
+      "recipientsHint": "Everyone in the desk department gets their own open tickets; the desk lead gets all of them. Uncheck someone to stop mailing them without changing how work is routed to them.",
+      "extra": "Additional recipients",
+      "extraHint": "Addresses outside the desk department. They receive the whole desk's open tickets — including account names and subjects — so add only people who should see all of it.",
+      "extraPlaceholder": "head-of-ops@example.com",
+      "removeRecipient": "Stop sending to {address}",
+      "preview": "Preview",
+      "sendNow": "Send now",
+      "sentCount": "{count, plural, =0 {Nothing sent} one {Sent to # person} other {Sent to # people}}",
+      "notARecipient": "You are not on the recipient list, so there is nothing to preview. The settings above still apply to everyone who is."
+    },
+    "unmatched": {
+      "title": "Unroutable tickets",
+      "description": "What to do when intake cannot tell which account a ticket belongs to — usually because no account claims the sender's domain.",
+      "random": "Assign to any member of the desk department (default)",
+      "unassigned": "Leave unassigned and flag for triage",
+      "deskHead": "Assign to the desk department's head",
+      "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
     }
   }
 }

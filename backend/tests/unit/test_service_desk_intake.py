@@ -218,8 +218,11 @@ async def test_partner_domain_match_assigns_mapped_kam(db_session: AsyncSession)
     sd = await _sd_for(db_session, ticket.id)
     assert sd.account_id == account.id
     assert sd.pending_with == "kam"
-    # This workspace has not opted in to AI, so nothing set the LOB or confirmed
-    # the request type — the ticket is owned, but a KAM still has to finish it.
+    # The classifier produced no candidates (see the autouse stub), so nothing
+    # set the LOB or confirmed the request type — the ticket is owned, but a KAM
+    # still has to finish it. The desk follows the workspace AI switch now, so
+    # "no candidates" and "AI switched off" have to land in the same state; a
+    # ticket nobody read must never look confirmed.
     assert sd.needs_triage is True
     # first ledger segment opened
     seg = (
@@ -741,9 +744,16 @@ async def test_automatic_response_does_not_reopen_a_closed_ticket(
     await db_session.refresh(sd)
 
     assert sd.pending_with == "closed"
-    # Still filed as correspondence, so the exchange is not lost.
+    # Still filed as correspondence, so the exchange is not lost. Internal notes
+    # are excluded deliberately: intake also writes them (why an owner was
+    # picked, why the AI merged a thread), and they are not the exchange.
     responses = (
-        await db_session.execute(select(TicketResponse).where(TicketResponse.ticket_id == first.id))
+        await db_session.execute(
+            select(TicketResponse).where(
+                TicketResponse.ticket_id == first.id,
+                TicketResponse.is_internal.is_(False),
+            )
+        )
     ).scalars().all()
     assert len(responses) == 1
 
@@ -892,7 +902,10 @@ async def test_reply_typed_in_gmail_from_the_desk_is_filed_as_outgoing(
     assert len(await _tickets_of(db_session, ws)) == 1
     responses = (
         await db_session.execute(
-            select(TicketResponse).where(TicketResponse.ticket_id == ticket.id)
+            select(TicketResponse).where(
+                TicketResponse.ticket_id == ticket.id,
+                TicketResponse.is_internal.is_(False),
+            )
         )
     ).scalars().all()
     assert [r.author_email for r in responses] == [mb.address]
@@ -1249,7 +1262,12 @@ async def test_threading_appends_reply(db_session: AsyncSession):
     tickets = (await db_session.execute(select(Ticket).where(Ticket.workspace_id == ws.id))).scalars().all()
     assert len(tickets) == 1  # no new ticket
     responses = (
-        await db_session.execute(select(TicketResponse).where(TicketResponse.ticket_id == first.id))
+        await db_session.execute(
+            select(TicketResponse).where(
+                TicketResponse.ticket_id == first.id,
+                TicketResponse.is_internal.is_(False),
+            )
+        )
     ).scalars().all()
     assert len(responses) == 1 and responses[0].content == "A reply"
 
@@ -1333,3 +1351,87 @@ async def test_whole_address_key_beats_domain_key(db_session: AsyncSession):
     sd = await _sd_for(db_session, ticket.id)
     assert sd.account_id == catch_all.id
     assert ticket.assignee_id == kams[0]
+
+
+# ------------------------------------------------------- why this owner
+
+
+async def _assignment_notes(db: AsyncSession, ticket_id: str) -> list[str]:
+    rows = (
+        await db.execute(
+            select(TicketResponse).where(
+                TicketResponse.ticket_id == ticket_id,
+                TicketResponse.is_internal.is_(True),
+            )
+        )
+    ).scalars().all()
+    return [r.content for r in rows if r.content.startswith("Assigned by fallback")]
+
+
+@pytest.mark.asyncio
+async def test_a_mapped_account_leaves_no_fallback_note(db_session: AsyncSession):
+    """Master Data answered, so there is nothing to explain."""
+    ws = await _workspace(db_session, "why-mapped")
+    mb = await _mailbox(db_session, ws)
+    kam = Developer(email="neha-why@example.com", name="Neha")
+    db_session.add(kam)
+    await db_session.flush()
+    account = ServiceDeskAccount(workspace_id=ws.id, name="ABC Finance", assigned_owner_id=kam.id)
+    db_session.add(account)
+    await db_session.flush()
+    db_session.add(
+        ServiceDeskAccountDomain(workspace_id=ws.id, account_id=account.id, domain="abcfinance.com")
+    )
+    await db_session.commit()
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(from_email="rahul@abcfinance.com", message_id="why-1"), mb, "service_desk_webhook"
+    )
+    await db_session.commit()
+
+    assert ticket.assignee_id == kam.id
+    assert await _assignment_notes(db_session, ticket.id) == []
+
+
+@pytest.mark.asyncio
+async def test_an_unmapped_domain_says_so_on_the_ticket(db_session: AsyncSession):
+    """The reported symptom — a ticket on a KAM with no relation to the sender —
+    is indistinguishable from a deliberate assignment once the ticket exists."""
+    ws = await _workspace(db_session, "why-unmapped")
+    mb = await _mailbox(db_session, ws)
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(from_email="someone@unknownpartner.com", message_id="why-2"),
+        mb,
+        "service_desk_webhook",
+    )
+    await db_session.commit()
+
+    notes = await _assignment_notes(db_session, ticket.id)
+    assert len(notes) == 1
+    assert "unknownpartner.com" in notes[0]
+    assert "Master Data" in notes[0]
+
+
+@pytest.mark.asyncio
+async def test_a_matched_account_with_no_owner_names_the_account(db_session: AsyncSession):
+    """The mapping exists but is half-made. Say which account, so it is fixable."""
+    ws = await _workspace(db_session, "why-ownerless")
+    mb = await _mailbox(db_session, ws)
+    account = ServiceDeskAccount(workspace_id=ws.id, name="Ownerless Partner")
+    db_session.add(account)
+    await db_session.flush()
+    db_session.add(
+        ServiceDeskAccountDomain(workspace_id=ws.id, account_id=account.id, domain="ownerless.com")
+    )
+    await db_session.commit()
+
+    ticket = await ServiceDeskIntakeService(db_session).ingest(
+        _email(from_email="ops@ownerless.com", message_id="why-3"), mb, "service_desk_webhook"
+    )
+    await db_session.commit()
+
+    notes = await _assignment_notes(db_session, ticket.id)
+    assert len(notes) == 1
+    assert "Ownerless Partner" in notes[0]
+    assert "no assigned owner" in notes[0]

@@ -157,7 +157,7 @@ Separate FastAPI service that handles email domain management, SPF/DKIM/DMARC ve
 |--------|---------|
 | Docker | Containerization |
 | Docker Compose | Local development + single-host prod (`docker-compose.prod.yml`) |
-| nginx | TLS termination, `/storage/` → RustFS proxy |
+| nginx | TLS termination, `/aexy-storage/` → RustFS proxy (optional, `edge` profile) |
 
 ### Default ports
 
@@ -209,7 +209,7 @@ GEMINI_API_KEY=...
 # Object storage (S3 / RustFS)
 RUSTFS_ROOT_USER=...
 RUSTFS_ROOT_PASSWORD=...
-S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io/storage
+S3_PUBLIC_ENDPOINT_URL=https://server.aexy.io   # bare origin — a path suffix breaks signatures
 
 # OAuth providers
 GITHUB_CLIENT_ID=...

@@ -3613,7 +3613,7 @@
       "capability": "mcp.docs",
       "app": "docs",
       "privileged": false,
-      "operation_count": 72,
+      "operation_count": 77,
       "operations": [
         {
           "operation_id": "add_all_workspace_members_api_v1_workspaces__workspace_id__spaces__space_id__members_add_all_post",
@@ -3736,6 +3736,14 @@
           "mutating": true
         },
         {
+          "operation_id": "dismiss_document_impact_api_v1_workspaces__workspace_id__doc_impact__repository_id___pull_request_number__documents__document_id__dismiss_post",
+          "action": "dismiss_document_impact",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/doc-impact/{repository_id}/{pull_request_number}/documents/{document_id}/dismiss",
+          "summary": "Dismiss Document Impact",
+          "mutating": true
+        },
+        {
           "operation_id": "duplicate_document_api_v1_workspaces__workspace_id__documents__document_id__duplicate_post",
           "action": "duplicate_document",
           "method": "POST",
@@ -3824,6 +3832,14 @@
           "mutating": false
         },
         {
+          "operation_id": "get_doc_impact_settings_api_v1_workspaces__workspace_id__doc_impact_settings_get",
+          "action": "get_doc_impact_settings",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/doc-impact/settings",
+          "summary": "Get Doc Impact Settings",
+          "mutating": false
+        },
+        {
           "operation_id": "get_document_api_v1_workspaces__workspace_id__documents__document_id__get",
           "action": "get_document",
           "method": "GET",
@@ -3837,6 +3853,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/knowledge-graph/graph/document/{document_id}",
           "summary": "Get document connections",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_document_impact_api_v1_workspaces__workspace_id__doc_impact__repository_id___pull_request_number__get",
+          "action": "get_document_impact",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/doc-impact/{repository_id}/{pull_request_number}",
+          "summary": "Get Document Impact",
           "mutating": false
         },
         {
@@ -4152,11 +4176,27 @@
           "mutating": true
         },
         {
+          "operation_id": "undismiss_document_impact_api_v1_workspaces__workspace_id__doc_impact__repository_id___pull_request_number__documents__document_id__dismiss_delete",
+          "action": "undismiss_document_impact",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/doc-impact/{repository_id}/{pull_request_number}/documents/{document_id}/dismiss",
+          "summary": "Undismiss Document Impact",
+          "mutating": true
+        },
+        {
           "operation_id": "update_collaborator_api_v1_workspaces__workspace_id__documents__document_id__collaborators__developer_id__patch",
           "action": "update_collaborator",
           "method": "PATCH",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/collaborators/{developer_id}",
           "summary": "Update Collaborator",
+          "mutating": true
+        },
+        {
+          "operation_id": "update_doc_impact_settings_api_v1_workspaces__workspace_id__doc_impact_settings_put",
+          "action": "update_doc_impact_settings",
+          "method": "PUT",
+          "path": "/api/v1/workspaces/{workspace_id}/doc-impact/settings",
+          "summary": "Update Doc Impact Settings",
           "mutating": true
         },
         {
@@ -12093,7 +12133,7 @@
       "capability": "mcp.service_desk",
       "app": "service_desk",
       "privileged": false,
-      "operation_count": 55,
+      "operation_count": 62,
       "operations": [
         {
           "operation_id": "acknowledge_escalation_api_v1_workspaces__workspace_id__tickets__ticket_id__escalations__escalation_id__acknowledge_post",
@@ -12102,6 +12142,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/tickets/{ticket_id}/escalations/{escalation_id}/acknowledge",
           "summary": "Acknowledge Escalation",
           "mutating": true
+        },
+        {
+          "operation_id": "ai_accuracy_api_v1_workspaces__workspace_id__service_desk_ai_accuracy_get",
+          "action": "ai_accuracy",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/ai-accuracy",
+          "summary": "Ai Accuracy",
+          "mutating": false
         },
         {
           "operation_id": "apply_industry_template_api_v1_workspaces__workspace_id__service_desk_industry_templates_apply_post",
@@ -12126,6 +12174,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/convert-to-task",
           "summary": "Convert To Task",
           "mutating": true
+        },
+        {
+          "operation_id": "count_tickets_api_v1_workspaces__workspace_id__service_desk_tickets_count_get",
+          "action": "count_tickets",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/count",
+          "summary": "Count Tickets",
+          "mutating": false
         },
         {
           "operation_id": "create_account_api_v1_workspaces__workspace_id__service_desk_accounts_post",
@@ -12280,6 +12336,22 @@
           "mutating": true
         },
         {
+          "operation_id": "export_tickets_api_v1_workspaces__workspace_id__service_desk_tickets_export_csv_get",
+          "action": "export_tickets",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/export.csv",
+          "summary": "Export Tickets",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_analytics_api_v1_workspaces__workspace_id__service_desk_analytics_get",
+          "action": "get_analytics",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/analytics",
+          "summary": "Get Analytics",
+          "mutating": false
+        },
+        {
           "operation_id": "get_dashboard_api_v1_workspaces__workspace_id__service_desk_dashboard_get",
           "action": "get_dashboard",
           "method": "GET",
@@ -12301,6 +12373,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/alert-integrations/{integration_id}",
           "summary": "Get Integration",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_report_options_api_v1_workspaces__workspace_id__service_desk_report_options_get",
+          "action": "get_report_options",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/report-options",
+          "summary": "Get Report Options",
           "mutating": false
         },
         {
@@ -12424,6 +12504,14 @@
           "mutating": false
         },
         {
+          "operation_id": "preview_digest_api_v1_workspaces__workspace_id__service_desk_digest_preview_get",
+          "action": "preview_digest",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/digest/preview",
+          "summary": "Preview Digest",
+          "mutating": false
+        },
+        {
           "operation_id": "receive_alert_api_v1_webhooks_alerts__inbound_token__post",
           "action": "receive_alert",
           "method": "POST",
@@ -12437,6 +12525,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/alert-integrations/{integration_id}/rotate-secret",
           "summary": "Rotate Secret",
+          "mutating": true
+        },
+        {
+          "operation_id": "send_digest_now_api_v1_workspaces__workspace_id__service_desk_digest_send_now_post",
+          "action": "send_digest_now",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/digest/send-now",
+          "summary": "Send Digest Now",
           "mutating": true
         },
         {
@@ -15406,7 +15502,7 @@
   "excluded": {
     "public": 56,
     "review_gate": 5,
-    "system": 3
+    "system": 4
   },
   "unmapped_tags": [],
   "unmapped_operation_count": 0

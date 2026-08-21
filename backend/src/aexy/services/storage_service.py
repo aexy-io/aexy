@@ -5,8 +5,10 @@ that works with any S3-compatible backend (RustFS, MinIO, R2, AWS S3).
 """
 
 import logging
+import re
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 from uuid import uuid4
 
 import boto3
@@ -469,6 +471,54 @@ class StorageService:
             if slash >= 0:
                 return url[slash + 1:] or None
         return None
+
+
+def content_disposition(filename: str | None, disposition: str = "inline") -> str:
+    """Build a ``Content-Disposition`` value that survives any filename.
+
+    Header values are encoded latin-1, so interpolating a name straight into
+    one raises ``UnicodeEncodeError`` the moment it contains Devanagari, an em
+    dash, or an emoji — and because that raises while the response is being
+    built, it surfaces as a 500 with no CORS headers, which a browser reports
+    as a CORS failure rather than a server error.
+
+    Both forms are emitted: the plain one for clients that ignore RFC 5987, and
+    the encoded one so the real name survives. In the plain form quotes are
+    dropped and anything outside printable ASCII becomes an underscore — a
+    substitution rather than a deletion, so the extension survives for clients
+    that pick an application from it. A blank name still falls back to
+    "attachment", because an empty plain form reads as "no name given" and
+    those clients answer with the last URL segment, which here is a bare id.
+    """
+    name = filename or "attachment"
+    ascii_fallback = re.sub(r"[^\x20-\x7e]", "_", name).replace('"', "").strip()
+    return (
+        f'{disposition}; filename="{ascii_fallback or "attachment"}"; '
+        f"filename*=UTF-8''{quote(name)}"
+    )
+
+
+def parse_byte_range(header: str | None) -> tuple[int, int | None] | None:
+    """Parse a single-range ``Range: bytes=start-end`` header.
+
+    Returns None when the header is absent or uses a form we do not serve
+    (suffix ranges, multi-range), which callers treat as "send the whole
+    object" — a full 200 is always a valid answer to a Range request.
+    """
+    if not header or not header.startswith("bytes="):
+        return None
+    spec = header[len("bytes="):].split(",")[0].strip()
+    start_s, sep, end_s = spec.partition("-")
+    if not sep or start_s == "":
+        return None
+    try:
+        start = int(start_s)
+        end = int(end_s) if end_s else None
+    except ValueError:
+        return None
+    if start < 0 or (end is not None and end < start):
+        return None
+    return (start, end)
 
 
 # Singleton instance

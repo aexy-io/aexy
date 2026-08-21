@@ -248,6 +248,17 @@ async def test_child_failure_rolls_back_every_attempted_child(
     monkeypatch.setattr(
         ServiceDeskIntakeService, "create_child_ticket", fail_after_second_child
     )
+    # What the ticket already carried before the split. Intake writes internal
+    # notes of its own (why this owner, why the AI merged a thread), so "the
+    # rollback left nothing behind" has to mean "nothing new", not "nothing".
+    before = {
+        response_id
+        for response_id in (
+            await db_session.execute(
+                select(TicketResponse.id).where(TicketResponse.ticket_id == ticket_id)
+            )
+        ).scalars().all()
+    }
     response = await client.post(
         f"{_base(workspace.id)}/tickets/{ticket_id}/split",
         headers=split_context["headers"],
@@ -264,11 +275,12 @@ async def test_child_failure_rolls_back_every_attempted_child(
     primary = await db_session.get(Ticket, ticket_id)
     await db_session.refresh(primary)
     assert "split_done_indexes" not in primary.field_values
-    audits = list(
-        (
+    audits = {
+        response_id
+        for response_id in (
             await db_session.execute(
-                select(TicketResponse).where(TicketResponse.ticket_id == ticket_id)
+                select(TicketResponse.id).where(TicketResponse.ticket_id == ticket_id)
             )
         ).scalars().all()
-    )
-    assert audits == []
+    }
+    assert audits == before
