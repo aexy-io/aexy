@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.1] - 2026-08-21
+
+### Changed: a ticket is one email thread
+
+The request and the correspondence were two cards. The request *is* the first
+email and each reply is another, so splitting them meant reading one
+conversation across two boxes with different shapes — and the request, which
+carries the quoted history and the attachments, did not look like a message at
+all. One card now, oldest first, same entry shape throughout. The message that
+opened the ticket keeps a "Request" badge, and its attachments sit inside it,
+where they arrived.
+
+Nothing is hidden by the merge: `body` is the original inbound email and
+`correspondence` is the replies in both directions, so the desk's own outbound
+messages are still on the thread.
+
+### Fixed: quoted history in the request body
+
+The folding shipped on the correspondence entries only. The request body — the
+first thing on every ticket, and the one most likely to arrive forwarded twice —
+still rendered its markers raw.
+
+It would not have folded that body anyway. The splitter required everything
+after the boundary to be quote, attribution or blank, and real mail ends with
+the sender's own signature *after* the quoted block, so no boundary was ever
+accepted. The rule is now the first attribution line, or the start of a run of
+two or more quote-marked lines; the trailing signature folds with the history,
+as mail clients do. A body quoted from its first line still stays whole, and a
+lone `>` in prose is still ignored.
+
+Quote depth is indentation rather than markers. Peeling one level per step left
+`>` on the oldest lines of a deep thread — the same characters, fewer of them —
+so the quoted block recurses and no marker survives at any level. Wrapped
+attribution lines ("On <date>, <name> <addr>" / "wrote:") fold too; matching only
+the single-line form meant the same email rendered two ways depending on where
+it happened to wrap.
+
+### Added: links and images in email bodies
+
+Inbound mail is stored as text, and that conversion leaves artefacts: a
+signature logo becomes `[image: https://host/logo.png] <https://host/logo.png>`
+and every hyperlink appears twice as `url <url>`, repeated down the whole
+thread. Links are links now, duplicated pairs collapse to one, and an image
+placeholder becomes a chip naming its host.
+
+The email's own HTML is deliberately not used — dropping a partner's markup into
+the page would be a script-injection hole on a body anyone outside the workspace
+can send, and sanitising third-party HTML well is not a thing to take on for a
+signature logo. Images are not fetched until asked for either: a one-pixel image
+in a signature is how "has this been read" gets measured, and a full-size photo
+would take over the card.
+
 ## [0.25.0] - 2026-08-21
 
 Service Desk, from the ops head's and the tech team's reports.
