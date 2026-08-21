@@ -25,7 +25,14 @@ default when an admin changes it later.
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -54,6 +61,16 @@ class WorkspaceAIModelOverride(Base):
         # save idempotent when two tabs are open on the same row.
         UniqueConstraint(
             "workspace_id", "scope", "key", name="uq_ai_model_override_target"
+        ),
+        # Declared here as well as in the migration, so a database built by
+        # `create_all` — every test run, and any dev machine that started the app
+        # before migrating — has the same shape as one built by the migration.
+        # It lived in the SQL only, which meant this table existed with no such
+        # constraint anywhere the app had created it first. Found by running the
+        # migration for real against a database where that had happened.
+        CheckConstraint(
+            "scope IN ('category', 'feature')",
+            name="ck_ai_model_override_scope",
         ),
     )
 
