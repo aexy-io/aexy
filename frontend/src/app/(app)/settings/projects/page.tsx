@@ -110,9 +110,12 @@ function BoardRouting({
 
   const REASONS: Record<string, string> = {
     override: "set directly on this board",
-    department: project.department_name
-      ? `via ${project.department_name}`
-      : "via its department",
+    // "Engineering via Engineering" is noise: a bucket is very often named after
+    // the department that owns it, and repeating the name says nothing.
+    department:
+      project.department_name && project.department_name !== resolved?.label
+        ? `via ${project.department_name}`
+        : "",
     no_department: "This board has no department, so tickets stay where they are.",
     department_has_no_function: `"${project.department_name}" has no function on the org chart, so nothing routes here.`,
     no_bucket_for_function: `No pending-with bucket is owned by "${project.department_name}" yet.`,
