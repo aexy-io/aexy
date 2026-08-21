@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.1] - 2026-08-21
+
+Files & Storage, from one upload that arrived three times.
+
+### Fixed: one upload became three files, with three AI summaries
+
+Dropping a single file into Files & Storage created three rows, each analysed
+separately, so the same document ended up with three different AI summaries
+sitting side by side. The upload panel said "1 of 1 uploaded" the whole time,
+because there genuinely was only one queue item — the duplication happened
+below it.
+
+The queue drains in a loop bounded by how many uploads may run at once, and it
+read the queue through a ref. Marking an item as started goes through React
+state, which does not apply until the next render, so every remaining pass of
+that loop found the *same* item still reporting itself as pending and sent it
+again. Three concurrent slots meant three POSTs for one file; a five-file batch
+sent twenty-one.
+
+What has been dispatched is now tracked directly instead of being inferred from
+a queue snapshot that cannot have caught up yet. Existing duplicates are not
+touched — they are real rows, and they can now be deleted from the page.
+
+### Fixed: a Word document rendered dark
+
+A .docx preview showed light text on a dark page. The editor canvas asked the
+operating system what colour mode to use and no caller had ever told it
+otherwise.
+
+Dark mode inverts the page but not the ink. A document's black body text,
+coloured headings and table rules were all chosen by its author against white
+paper, so keeping them over a dark canvas is neither what the author wrote nor
+what the file prints as. Documents now render on paper regardless of the app's
+theme, which is what Word Online, Google Docs and Preview all do — they theme
+the chrome around the page, not the page. This covers the document editor as
+well as the Drive preview. PDF previews get the same treatment. Images and
+video keep a neutral mat that does follow the theme, which is conventional for
+media.
+
+Separately, every AI badge and status pill had picked a text colour that only
+works on a dark background, so "Ready", "Failed" and the tag chips were washed
+out to near-invisible in light mode.
+
+### Added: storage says how much room is left
+
+The sidebar reported a percentage and a byte count. It now draws a meter that
+goes amber and then red as the quota fills, and states the space remaining —
+the number that actually decides whether the next upload will fit.
+
+### Added: retrying one failed upload, and deleting a file
+
+A failed upload was a dead end. The only control was "Clear", which threw away
+the whole batch including the files that had succeeded, and the failure itself
+could not be retried without picking the file again. Individual items can now be
+retried or dismissed, and batch progress is weighted by bytes rather than by
+file count, so one large file among small ones no longer jumps from nothing to
+finished.
+
+Files could not be deleted from this page at all, which is why clearing up
+duplicated uploads meant going elsewhere. Cards now carry a delete action behind
+a confirmation.
+
+Empty folders, searches with no matches and the loading state each used to be a
+single grey line of text. They are now sized like the content they stand in for
+and say what to do next.
+
 ## [0.27.0] - 2026-08-21
 
 ### Added: a board knows which queue its work is pending with
