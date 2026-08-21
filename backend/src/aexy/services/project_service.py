@@ -4,13 +4,22 @@ import re
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from aexy.models.project import Project, ProjectMember, ProjectTeam
 from aexy.models.workspace import WorkspaceMember
 from aexy.models.developer import Developer
+from aexy.models.organization import Department
+from aexy.models.service_desk import ServiceDeskStakeholder
 from aexy.models.team import Team, TeamMember, TeamMemberRole
+
+#: "Not mentioned in this request", as distinct from "set this to nothing".
+#: The other update fields use None for both, which is fine while none of
+#: them are nullable — these two are, and clearing a board's department has
+#: to be expressible.
+_UNSET = object()
 
 
 def generate_slug(name: str) -> str:
@@ -36,6 +45,7 @@ class ProjectService:
         icon: str = "FolderGit2",
         settings: dict | None = None,
         created_by_id: str | None = None,
+        department_id: str | None = None,
     ) -> Project:
         """Create a new project with an associated team for sprint planning."""
         # Generate slug
@@ -65,6 +75,23 @@ class ProjectService:
         self.db.add(project)
 
         # Create a corresponding team for sprint planning (using same ID for easy correlation)
+        # Asked for at creation, because a board created without a department is
+        # a board the Service Desk cannot hand anything to — and nobody comes
+        # back to settings to fix a field they never saw.
+        if department_id:
+            owner = (
+                await self.db.execute(
+                    select(Department.id).where(
+                        Department.id == department_id,
+                        Department.workspace_id == workspace_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if owner is None:
+                raise HTTPException(
+                    status_code=404, detail="Department not found in this workspace"
+                )
+
         team = Team(
             id=project_id,  # Use same ID as project for easy correlation
             workspace_id=workspace_id,
@@ -72,6 +99,7 @@ class ProjectService:
             slug=slug,
             type="internal",
             auto_sync_enabled=False,
+            department_id=department_id or None,
             settings={},
             is_active=True,
         )
@@ -167,11 +195,22 @@ class ProjectService:
         icon: str | None = None,
         settings: dict | None = None,
         status: str | None = None,
+        department_id: str | None | object = _UNSET,
+        desk_stakeholder_slug: str | None | object = _UNSET,
     ) -> Project | None:
         """Update a project."""
         project = await self.get_project(project_id)
         if not project:
             return None
+
+        # Both routing fields live on the board (`Team`), not the project. The
+        # two rows deliberately share an id (see `create_project`), and the
+        # board is what a task's `team_id` points at — so putting a second
+        # department field on `Project` would give the same board two answers.
+        if department_id is not _UNSET or desk_stakeholder_slug is not _UNSET:
+            await self._update_board_routing(
+                project, department_id=department_id, desk_stakeholder_slug=desk_stakeholder_slug
+            )
 
         if name is not None:
             project.name = name
@@ -206,6 +245,76 @@ class ProjectService:
             project.status = status
 
         return project
+
+    async def _update_board_routing(
+        self,
+        project: Project,
+        *,
+        department_id: str | None | object = _UNSET,
+        desk_stakeholder_slug: str | None | object = _UNSET,
+    ) -> None:
+        """Set which department owns this board, and any Service Desk override.
+
+        Validated against the project's own workspace: both values arrive from a
+        request body, and an unchecked id here would let a caller roll a board up
+        to another workspace's department — which then decides who can see the
+        tickets that board handles.
+        """
+        team = (
+            await self.db.execute(select(Team).where(Team.id == project.id))
+        ).scalar_one_or_none()
+        if team is None:
+            # A project whose board was never created (or was hard-deleted) has
+            # nothing to route. Silence here would look like the save worked.
+            raise HTTPException(
+                status_code=409,
+                detail="This project has no board, so it cannot be routed to a department",
+            )
+
+        if department_id is not _UNSET:
+            if department_id:
+                exists = (
+                    await self.db.execute(
+                        select(Department.id).where(
+                            Department.id == department_id,
+                            Department.workspace_id == project.workspace_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if exists is None:
+                    raise HTTPException(
+                        status_code=404, detail="Department not found in this workspace"
+                    )
+            team.department_id = department_id or None
+
+        if desk_stakeholder_slug is not _UNSET:
+            if desk_stakeholder_slug:
+                bucket = (
+                    await self.db.execute(
+                        select(ServiceDeskStakeholder.semantics).where(
+                            ServiceDeskStakeholder.workspace_id == project.workspace_id,
+                            ServiceDeskStakeholder.slug == desk_stakeholder_slug,
+                            ServiceDeskStakeholder.is_active.is_(True),
+                        )
+                    )
+                ).scalar_one_or_none()
+                if bucket is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="No active pending-with bucket with that slug in this workspace",
+                    )
+                # A board is somewhere work is *done*, so it can only ever be an
+                # internal party. Pointing one at "Partner" would move tickets
+                # out of the desk's own queue the moment work started on them.
+                if bucket != "internal":
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            "A board can only route to an internal bucket — an "
+                            "external one means a counterparty owes the action."
+                        ),
+                    )
+            team.desk_stakeholder_slug = desk_stakeholder_slug or None
 
     async def delete_project(self, project_id: str) -> bool:
         """Soft delete a project and its associated team."""

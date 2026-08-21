@@ -256,8 +256,29 @@ export interface DashboardTicket {
   status: string | null;
 }
 
+/** The same open tickets rolled up to the department that owes the action.
+ *
+ *  A bucket board answers "which queue is this in"; this answers "who is
+ *  behind", which is the question asked once two departments own three buckets
+ *  between them. Rolled up server-side so the two views cannot disagree.
+ *
+ *  `department_id` is null for external and terminal buckets — nobody internal
+ *  owes the action — and for a function no department has claimed yet, where
+ *  `function_key` still names it. */
+export interface DepartmentBucket {
+  department_id: string | null;
+  department_name: string | null;
+  function_key: string | null;
+  pending_with: string[];
+  green: number;
+  amber: number;
+  red: number;
+  total: number;
+}
+
 export interface ServiceDeskDashboard {
   stakeholders: StakeholderBucket[];
+  departments: DepartmentBucket[];
   tickets: DashboardTicket[];
   total_open: number;
   breaching: number;
@@ -547,7 +568,7 @@ export const serviceDeskApi = {
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.post(`${base(ws)}/tickets/${id}/email`, data)).data,
   convertToTask: async (
-    ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string; assignee_id?: string },
+    ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string; assignee_id?: string; pending_with?: string },
   ): Promise<{ task_id: string; task_title: string; linked: boolean }> =>
     (await api.post(`${base(ws)}/tickets/${ticketId}/convert-to-task`, data)).data,
 
@@ -575,11 +596,11 @@ export const serviceDeskApi = {
     (await api.get(`${base(ws)}/stakeholders`)).data,
   createStakeholder: async (
     ws: string,
-    data: { slug: string; label: string; semantics?: StakeholderSemantics; function_key?: string | null; position?: number },
+    data: { slug: string; label: string; semantics?: StakeholderSemantics; function_key?: string | null; links_to?: Stakeholder["links_to"]; position?: number },
   ): Promise<Stakeholder> => (await api.post(`${base(ws)}/stakeholders`, data)).data,
   updateStakeholder: async (
     ws: string, id: string,
-    data: Partial<{ label: string; semantics: StakeholderSemantics; function_key: string | null; position: number; is_active: boolean }>,
+    data: Partial<{ label: string; semantics: StakeholderSemantics; function_key: string | null; links_to: Stakeholder["links_to"]; position: number; is_active: boolean }>,
   ): Promise<Stakeholder> => (await api.patch(`${base(ws)}/stakeholders/${id}`, data)).data,
   deleteStakeholder: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/stakeholders/${id}`); },
 

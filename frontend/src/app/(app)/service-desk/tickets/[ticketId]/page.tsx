@@ -82,7 +82,8 @@ export default function ServiceDeskTicketDetailPage() {
   const { currentWorkspace } = useWorkspace();
   const { projects } = useProjects(currentWorkspace?.id ?? null);
   const { data: settings } = useServiceDeskSettings();
-  const { stakeholders, requestTypes, stakeholderLabel, requestTypeLabel } = useServiceDeskTaxonomy();
+  const { stakeholders, assignableStakeholders, requestTypes, stakeholderLabel, requestTypeLabel } =
+    useServiceDeskTaxonomy();
   const terms = settings?.terminology ?? {};
   const { data: products } = useProducts();
   const { data: accounts } = useAccounts();
@@ -91,6 +92,16 @@ export default function ServiceDeskTicketDetailPage() {
   const [target, setTarget] = useState<PendingWith | "">("");
   const [note, setNote] = useState("");
   const [projectId, setProjectId] = useState("");
+  // Who the converted task lands on. The Log-ticket dialog has always asked,
+  // and this one didn't — so the same action produced an assigned task from one
+  // screen and an unowned one from the other, and the unowned ones sat in the
+  // backlog until somebody noticed them.
+  const [taskAssigneeId, setTaskAssigneeId] = useState("");
+  // Where the ticket goes once the work sits on a board. Pre-filled from what the
+  // board routes to and overridable — an automatic move nobody saw is how tickets
+  // end up somewhere their owner cannot account for. `null` means untouched by
+  // the operator, so the board's own answer still applies.
+  const [convertPendingWith, setConvertPendingWith] = useState<string | null>(null);
   const [selectedIssueIndexes, setSelectedIssueIndexes] = useState<number[]>([]);
   // Only the fields the KAM has actually touched. Anything absent keeps whatever
   // the ticket already holds, so a background refetch never fights the form.
@@ -129,6 +140,13 @@ export default function ServiceDeskTicketDetailPage() {
   const mailSubjectSent = ticket.display_id
     ? subjectWithTicketId(mailSubject.trim(), ticket.display_id)
     : mailSubject.trim();
+
+  // What the chosen board resolves to, straight off the project list — the
+  // server already computes it there, so the dialog needs no extra request.
+  const convertBoard = projects.find((p: { id: string }) => p.id === projectId);
+  const boardBucket = convertBoard?.desk_stakeholder_slug ?? "";
+  const boardRoutes = Boolean(projectId) && !boardBucket;
+  const pendingWithChoice = convertPendingWith ?? boardBucket;
 
   const currentSh = stakeholders.find((x) => x.slug === ticket.pending_with);
   const pc = serviceDeskStakeholderColor(ticket.pending_with, {
@@ -519,7 +537,7 @@ export default function ServiceDeskTicketDetailPage() {
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 >
                   <option value="">—</option>
-                  {stakeholders
+                  {assignableStakeholders
                     .filter((o) => o.slug !== ticket.pending_with)
                     .map((o) => (
                       <option key={o.slug} value={o.slug}>{o.label}</option>
@@ -541,6 +559,7 @@ export default function ServiceDeskTicketDetailPage() {
                   <>
                     <select
                       value={projectId}
+                      data-testid="convert-project"
                       onChange={(e) => setProjectId(e.target.value)}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                     >
@@ -549,10 +568,59 @@ export default function ServiceDeskTicketDetailPage() {
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                    <select
+                      value={taskAssigneeId}
+                      data-testid="convert-assignee"
+                      disabled={!projectId}
+                      onChange={(e) => setTaskAssigneeId(e.target.value)}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <option value="">{t("manual.taskUnassigned")}</option>
+                      {(members ?? [])
+                        .filter((m) => m.status === "active")
+                        .map((m) => (
+                          <option key={m.developer_id} value={m.developer_id}>
+                            {m.developer_name || m.developer_email || m.developer_id}
+                          </option>
+                        ))}
+                    </select>
+                    <select
+                      value={pendingWithChoice}
+                      data-testid="convert-pending-with"
+                      disabled={!projectId}
+                      onChange={(e) => setConvertPendingWith(e.target.value)}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <option value="">{t("detail.convertPendingWithNone")}</option>
+                      {assignableStakeholders
+                        .filter((o) => o.semantics === "internal")
+                        .map((o) => (
+                          <option key={o.slug} value={o.slug}>
+                            {t("detail.convertPendingWith")}: {o.label}
+                          </option>
+                        ))}
+                    </select>
+                    {/* Said here rather than discovered afterwards: a board with no
+                        department resolves to nothing, and a routing feature that
+                        quietly does nothing is the complaint this answers. */}
+                    {boardRoutes && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        {t("detail.convertNoRouting")}
+                      </p>
+                    )}
                     <Button
                       className="w-full"
                       disabled={!projectId || convertToTask.isPending}
-                      onClick={() => convertToTask.mutate({ id: ticketId, data: { project_id: projectId } })}
+                      onClick={() =>
+                        convertToTask.mutate({
+                          id: ticketId,
+                          data: {
+                            project_id: projectId,
+                            assignee_id: taskAssigneeId || undefined,
+                            pending_with: pendingWithChoice || undefined,
+                          },
+                        })
+                      }
                     >
                       {convertToTask.isPending ? t("detail.converting") : t("detail.convert")}
                     </Button>

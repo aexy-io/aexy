@@ -289,6 +289,10 @@ export default function ServiceDeskTicketsPage() {
     task_project_id: "", task_assignee_id: "",
   };
   const [form, setForm] = useState(EMPTY_FORM);
+  // What the board the operator picked hands the ticket to. Read off the project
+  // list, which the server already annotates, so the dialog costs no extra call.
+  const taskBoardBucket =
+    (projects ?? []).find((p) => p.id === form.task_project_id)?.desk_stakeholder_slug ?? "";
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const [files, setFiles] = useState<File[]>([]);
   const [logging, setLogging] = useState(false);
@@ -349,6 +353,13 @@ export default function ServiceDeskTicketsPage() {
           // The ticket's subject is the task's title; the operator has already
           // typed it once.
           title: form.subject.trim(),
+          // Where the work now sits. Taken from the board the operator just
+          // picked, and shown next to that picker before they submit — not a
+          // separate control, because this dialog is filled in while a caller is
+          // still on the phone.
+          pending_with:
+            (projects ?? []).find((p) => p.id === form.task_project_id)
+              ?.desk_stakeholder_slug ?? undefined,
         });
       }
     } catch (err) {
@@ -777,6 +788,15 @@ export default function ServiceDeskTicketsPage() {
                       <option key={pr.id} value={pr.id}>{pr.name}</option>
                     ))}
                   </select>
+                  {/* Stated before submitting, because the ticket moving queue is
+                      not something the operator asked for on this screen. */}
+                  {form.task_project_id && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {taskBoardBucket
+                        ? `${t("detail.convertPendingWith")}: ${stakeholderLabel(taskBoardBucket)}`
+                        : t("detail.convertNoRouting")}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">{t("manual.taskAssignee")}</label>

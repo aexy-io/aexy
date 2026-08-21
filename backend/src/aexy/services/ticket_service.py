@@ -605,6 +605,31 @@ class TicketService:
         )
         await self.db.flush()
 
+        # And park it in the terminal bucket. Without this the ticket read as
+        # Resolved while still sitting in the queue of whoever the work was
+        # pending with, so it stayed on their board and the breach clock kept
+        # running against them after the work was finished.
+        #
+        # Best-effort: a ticket that is resolved but still in an open bucket is a
+        # visible, fixable state; refusing to resolve because the ledger write
+        # failed is not.
+        try:
+            from aexy.services.service_desk_ticket_service import (
+                ServiceDeskTicketService,
+            )
+
+            await ServiceDeskTicketService(self.db).stop_clock_for_resolution(
+                str(updated.workspace_id),
+                str(updated.id),
+                reason=f'the linked task "{task_title}" was completed',
+                actor_id=actor_id,
+            )
+        except Exception:
+            logger.exception(
+                "Ticket %s resolved but its pending-with clock was not stopped",
+                updated.id,
+            )
+
         await self._notify_ticket_resolved(updated, task_id=task_id, task_title=task_title)
         return updated
 

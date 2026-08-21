@@ -10,6 +10,12 @@ from aexy.api.developers import get_current_developer
 from aexy.models.developer import Developer
 from aexy.models.roadmap_voting import RoadmapRequest
 from aexy.models.project import Project
+from aexy.services.desk_board_routing import (
+    REASON_NO_BOARD,
+    BoardRouting,
+    resolve_board_routing,
+    resolve_board_routings,
+)
 from aexy.schemas.project import (
     ProjectCreate,
     ProjectUpdate,
@@ -43,6 +49,22 @@ from aexy.services.activity_logger import log_activity
 router = APIRouter(prefix="/workspaces/{workspace_id}/projects", tags=["Projects"])
 
 
+async def _with_routing(
+    db: AsyncSession, workspace_id: str, project: Project
+) -> ProjectResponse:
+    """A project plus the department and Service Desk bucket its board resolves to.
+
+    Read here rather than joined into the query because the fields live on the
+    board (`Team`) that shares this project's id, and the resolution itself is
+    two more hops past that. Kept in one helper so create, read and update
+    cannot drift into reporting different routing for the same board.
+    """
+    routing = await resolve_board_routing(db, workspace_id, str(project.id))
+    return ProjectResponse.model_validate(project).model_copy(
+        update=routing.as_response_fields()
+    )
+
+
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(
     workspace_id: str,
@@ -66,6 +88,7 @@ async def create_project(
         icon=data.icon,
         settings=data.settings,
         created_by_id=str(current_user.id),
+        department_id=data.department_id,
     )
     await log_activity(
         db,
@@ -78,7 +101,7 @@ async def create_project(
     )
     await db.commit()
     await db.refresh(project)
-    return project
+    return await _with_routing(db, workspace_id, project)
 
 
 @router.get("", response_model=ProjectsListWrapper)
@@ -100,9 +123,17 @@ async def list_projects(
         workspace_id, include_archived=include_archived
     )
 
+    # One batched resolution for the whole page rather than per row: the settings
+    # list renders the resolved bucket on every board.
+    routings = await resolve_board_routings(
+        db, workspace_id, [str(p.id) for p in projects]
+    )
+    fallback = BoardRouting(board_id="", stakeholder_slug=None, reason=REASON_NO_BOARD)
+
     return ProjectsListWrapper(
         projects=[
             ProjectListResponse(
+                **routings.get(str(p.id), fallback).as_response_fields(),
                 id=p.id,
                 workspace_id=p.workspace_id,
                 name=p.name,
@@ -140,7 +171,7 @@ async def get_project(
     project = await project_service.get_project(project_id)
     if not project or project.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return await _with_routing(db, workspace_id, project)
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
@@ -178,7 +209,7 @@ async def update_project(
     )
     await db.commit()
     await db.refresh(project)
-    return project
+    return await _with_routing(db, workspace_id, project)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -655,3 +655,116 @@ async def test_a_generic_desk_claims_neither_table(db_session: AsyncSession):
 
     assert external_slug_for(taxonomy, "vendor") is None
     assert external_slug_for(taxonomy, "account") is None
+
+
+# ------------------------------------------- an internal bucket needs a function
+
+@pytest.mark.asyncio
+async def test_internal_stakeholder_cannot_be_saved_without_a_function(
+    db_session: AsyncSession,
+):
+    """The templates enforced this on seeded rows; the API did not.
+
+    An internal bucket's `function_key` is its entire wiring — which department
+    owes the action, who inherits visibility, and (now) which board resolves to
+    it. A bucket saved without one looks complete in the settings list and then
+    matches nothing, so it had to stop being creatable before the editor shipped.
+    """
+    ws = await _ws(db_session, "needs-function")
+    svc = ServiceDeskService(db_session)
+
+    with pytest.raises(HTTPException) as exc:
+        await svc.create_stakeholder(
+            ws.id, StakeholderCreate(slug="tech", label="Tech", semantics="internal")
+        )
+    assert exc.value.status_code == 422
+    assert "department" in exc.value.detail.lower()
+
+    # An unrecognised function is refused too, rather than stored to fail later.
+    with pytest.raises(HTTPException) as exc:
+        await svc.create_stakeholder(
+            ws.id,
+            StakeholderCreate(
+                slug="tech", label="Tech", semantics="internal", function_key="Tech Team"
+            ),
+        )
+    assert exc.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_stakeholder_function_is_canonicalised_on_the_way_in(
+    db_session: AsyncSession,
+):
+    """Both ends of the join have to agree or nothing routes.
+
+    A live workspace holds the retired `ops_kam` in `departments.function_key`.
+    A bucket saved under one spelling while the department carries the other
+    joins to nothing, and the symptom is indistinguishable from routing being
+    switched off.
+    """
+    ws = await _ws(db_session, "canonical-function")
+    svc = ServiceDeskService(db_session)
+
+    row = await svc.create_stakeholder(
+        ws.id,
+        StakeholderCreate(
+            slug="ops", label="Operations", semantics="internal", function_key="ops_kam"
+        ),
+    )
+    assert row.function_key == canonical_function_key("operations")
+
+
+@pytest.mark.asyncio
+async def test_external_and_terminal_buckets_hold_no_function(db_session: AsyncSession):
+    """Nobody internal owes the action on a ticket pending with a counterparty.
+
+    The key is *cleared* rather than left alone, so a bucket flipped from
+    internal to external stops naming a department the visibility rules would
+    otherwise keep honouring.
+    """
+    ws = await _ws(db_session, "external-function")
+    svc = ServiceDeskService(db_session)
+
+    external = await svc.create_stakeholder(
+        ws.id,
+        StakeholderCreate(
+            slug="broker", label="Broker", semantics="external", function_key="operations"
+        ),
+    )
+    assert external.function_key is None
+
+    internal = await svc.create_stakeholder(
+        ws.id,
+        StakeholderCreate(
+            slug="tech", label="Tech", semantics="internal", function_key="engineering"
+        ),
+    )
+    assert internal.function_key == "engineering"
+
+    flipped = await svc.update_stakeholder(
+        ws.id, internal.id, StakeholderUpdate(semantics="external")
+    )
+    assert flipped.function_key is None
+
+
+@pytest.mark.asyncio
+async def test_clearing_the_function_of_an_internal_bucket_is_refused(
+    db_session: AsyncSession,
+):
+    ws = await _ws(db_session, "keep-function")
+    svc = ServiceDeskService(db_session)
+    row = await svc.create_stakeholder(
+        ws.id,
+        StakeholderCreate(
+            slug="tech", label="Tech", semantics="internal", function_key="engineering"
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await svc.update_stakeholder(ws.id, row.id, StakeholderUpdate(function_key=None))
+    assert exc.value.status_code == 422
+
+    # A label-only edit does not have to restate the function.
+    renamed = await svc.update_stakeholder(ws.id, row.id, StakeholderUpdate(label="Technology"))
+    assert renamed.label == "Technology"
+    assert renamed.function_key == "engineering"

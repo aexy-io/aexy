@@ -27,7 +27,13 @@
       "noDepartment": "No department",
       "showing": "Showing {from}–{to} of {total}",
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "byStakeholder": "By bucket",
+      "byDepartment": "By department",
+      "department": "Department",
+      "buckets": "Buckets",
+      "externalRow": "External parties",
+      "unclaimedDepartment": "{function} — no department claims this yet"
     },
     "table": {
       "id": "Ticket",
@@ -123,8 +129,13 @@
       "attachmentUnavailable": "Only in the original email",
       "showQuoted": "Show quoted history",
       "hideQuoted": "Hide quoted history",
+      "showMore": "Show full message",
+      "showLess": "Show less",
       "showImage": "Image from {host}",
-      "imageFrom": "Image from {host}"
+      "imageFrom": "Image from {host}",
+      "convertPendingWith": "Then pending with",
+      "convertPendingWithNone": "Leave where it is",
+      "convertNoRouting": "This board has no Service Desk queue, so the ticket stays where it is."
     },
     "ai": {
       "title": "AI email categorisation",
@@ -358,6 +369,32 @@
       "unassigned": "Leave unassigned and flag for triage",
       "deskHead": "Assign to the desk department's head",
       "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
+    },
+    "stakeholders": {
+      "title": "Pending-With Buckets",
+      "description": "The parties a ticket can be waiting on, and which department owns each one.",
+      "hint": "A ticket is always pending with somebody. Internal buckets name the department that owes the next action — that is what decides who can see the ticket, and which bucket a board hands work to. External buckets are counterparties, so no department owns them.",
+      "retireHint": "Unticking Active hides a bucket from the pickers while keeping its history readable. Deleting is refused while any ticket or closed stage still names it, because those records would then point at a bucket nothing can resolve.",
+      "empty": "This desk has no buckets yet, so a ticket arriving now has nowhere to sit.",
+      "noDepartments": "No department has a function assigned yet, so an internal bucket has nothing to be owned by.",
+      "noDepartmentsLink": "Set one on the org chart",
+      "label": "Label",
+      "labelPlaceholder": "Tech",
+      "slug": "Slug",
+      "semantics": "Kind",
+      "internal": "Internal — a department owes the action",
+      "external": "External — a counterparty owes it",
+      "department": "Owned by",
+      "pickDepartment": "Pick a department",
+      "terminal": "Terminal — stops the clock",
+      "active": "Active",
+      "linksTo": "Speaks for",
+      "linksToNone": "No master-data records",
+      "linksToAccount": "Accounts",
+      "linksToVendor": "Vendors",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "delete": "Delete bucket"
     }
   }
 }

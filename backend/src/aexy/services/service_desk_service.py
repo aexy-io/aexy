@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.organization import Department, DepartmentMember
-from aexy.services.org_functions import canonical_function_key
+from aexy.services.org_functions import canonical_function_key, canonical_or_grandfathered
 from aexy.services.service_desk_clock import (
     BREACH_AMBER_DAYS,
     BREACH_RED_DAYS,
@@ -1540,13 +1540,14 @@ class ServiceDeskService:
                     ),
                 )
         await self._require_unclaimed_link(workspace_id, data.links_to)
+        function_key = self._stakeholder_function(data.semantics, data.function_key)
         row = ServiceDeskStakeholder(
             id=str(uuid4()),
             workspace_id=workspace_id,
             slug=data.slug,
             label=data.label,
             semantics=data.semantics,
-            function_key=data.function_key,
+            function_key=function_key,
             links_to=data.links_to,
             position=data.position,
             is_active=data.is_active,
@@ -1559,6 +1560,47 @@ class ServiceDeskService:
                 status_code=409, detail=f"A stakeholder with slug {data.slug!r} already exists"
             ) from None
         return row
+
+    @staticmethod
+    def _stakeholder_function(
+        semantics: str, raw: str | None, current: str | None = None
+    ) -> str | None:
+        """The function key to store, refusing an internal bucket without one.
+
+        An internal bucket's ``function_key`` is the whole of its wiring: it says
+        which department owes the action, which decides who can see the ticket
+        and — since boards resolve their stakeholder through it — whether
+        converting a ticket to a task routes anywhere at all. A bucket saved
+        without one looks finished in the settings list and then quietly matches
+        nothing, which is the failure mode this desk has already been bitten by
+        once.
+
+        The industry templates have always enforced this on seeded rows
+        (``service_desk_industry_templates`` rejects internal specs with no
+        function). Nothing enforced it on rows created through the API, so the
+        editor added in this release could have produced exactly that row.
+
+        External and terminal buckets legitimately have no function — nobody
+        internal owes the action — so the key is cleared rather than kept, or a
+        bucket flipped from internal to external would leave a stale department
+        behind for the visibility rules to keep honouring.
+        """
+        if semantics != "internal":
+            return None
+        try:
+            key = canonical_or_grandfathered(raw, current)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if key is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "An internal stakeholder needs the department that owns it. "
+                    "Without one it cannot be routed to and nobody inherits "
+                    "visibility of its tickets."
+                ),
+            )
+        return key
 
     async def update_stakeholder(self, workspace_id: str, stakeholder_id: str, data):
         row = await self._get_stakeholder(workspace_id, stakeholder_id)
@@ -1580,6 +1622,18 @@ class ServiceDeskService:
             )
         if "links_to" in payload:
             await self._require_unclaimed_link(workspace_id, payload["links_to"], exclude_id=row.id)
+
+        # Recomputed whenever either half of the pair moves, and written even when
+        # the request never mentioned `function_key` — flipping a bucket to
+        # external has to clear the department it used to name, and a PATCH that
+        # only changes `semantics` would otherwise leave it behind.
+        if "semantics" in payload or "function_key" in payload:
+            payload["function_key"] = self._stakeholder_function(
+                payload.get("semantics", row.semantics),
+                payload["function_key"] if "function_key" in payload else row.function_key,
+                current=row.function_key,
+            )
+
         for k, v in payload.items():
             setattr(row, k, v)
         await self.db.flush()

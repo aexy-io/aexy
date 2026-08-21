@@ -14272,6 +14272,15 @@ export interface Project {
   team_count: number;
   created_at: string;
   updated_at: string;
+  /** The department that owns this project's board, and what the Service Desk
+   *  resolves that to. Computed server-side from the board (which shares this
+   *  project's id) — see `desk_board_routing` on the backend. */
+  department_id?: string | null;
+  department_name?: string | null;
+  desk_stakeholder_slug?: string | null;
+  /** Why the bucket above was chosen, or why there isn't one. Returned even on
+   *  success, so a blank can be explained rather than rendered as nothing. */
+  desk_routing_reason?: string | null;
 }
 
 export interface ProjectCreate {
@@ -14281,6 +14290,7 @@ export interface ProjectCreate {
   icon?: string;
   settings?: Record<string, unknown>;
   status?: ProjectStatus;
+  department_id?: string | null;
 }
 
 export interface ProjectUpdate {
@@ -14290,6 +14300,9 @@ export interface ProjectUpdate {
   icon?: string;
   settings?: Record<string, unknown>;
   status?: ProjectStatus;
+  /** Omit to leave alone; send null to clear. The server tells them apart. */
+  department_id?: string | null;
+  desk_stakeholder_slug?: string | null;
 }
 
 export interface ProjectMember {
