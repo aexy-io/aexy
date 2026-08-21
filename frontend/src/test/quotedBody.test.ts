@@ -67,4 +67,87 @@ describe("splitQuotedBody", () => {
   it("survives an empty body", () => {
     expect(splitQuotedBody("")).toEqual({ fresh: "", quoted: "" });
   });
+
+  it("folds a real forwarded partner request, signature and all", () => {
+    // The shape that exposed the original heuristic: three levels of quoting,
+    // and the sender's OWN signature after the quoted block. Requiring a clean
+    // tail meant this folded nothing and rendered every marker raw.
+    const body = [
+      "Hi Team,",
+      "",
+      "Greetings of the day!",
+      "",
+      "As requested by the insurer, please find attached the *revised synopsis*.",
+      "",
+      "Kindly get the revised synopsis signed along with the MPH.",
+      "",
+      "On Tue, 11 Aug 2026 at 14:20, aakanksha mishra <a.m@example.test> wrote:",
+      "",
+      "> Hi Team,",
+      ">",
+      "> As per the insurer's confirmation, the addendum has been implemented.",
+      ">",
+      "> On Mon, 13 Jul 2026 at 13:36, Pyramid Info <info@example.test> wrote:",
+      ">",
+      ">> Hi Maam",
+      ">>",
+      ">> I am writing to request a revision of the minimum Sum Assured.",
+      ">>",
+      ">> Thank you,",
+      ">",
+      "> --",
+      "> Thanks and Regards,",
+      "",
+      "",
+      "--",
+      "Thanks and Regards,",
+      "",
+      "[image: https://example.test] <https://example.test>",
+    ].join("\n");
+
+    const { fresh, quoted } = splitQuotedBody(body);
+    expect(fresh).toContain("Kindly get the revised synopsis signed");
+    expect(fresh).not.toContain(">");
+    // The whole history, both levels, plus the trailing signature.
+    expect(quoted).toContain("addendum has been implemented");
+    expect(quoted).toContain("minimum Sum Assured");
+    expect(quoted).toContain("Thanks and Regards");
+  });
+
+  it("folds a bare quote run with no attribution line", () => {
+    const { fresh, quoted } = splitQuotedBody(
+      ["Sorted, thanks.", "", "> Is this done?", "> Please confirm."].join("\n"),
+    );
+    expect(fresh).toBe("Sorted, thanks.");
+    expect(quoted).toContain("Is this done?");
+  });
+
+  it("ignores a From: that is prose rather than a header", () => {
+    const body = [
+      "From: the customer's perspective this is already resolved.",
+      "",
+      "Closing it off.",
+    ].join("\n");
+    expect(splitQuotedBody(body)).toEqual({ fresh: body, quoted: "" });
+  });
+
+  it("folds an attribution line that wrapped onto two lines", () => {
+    // Real mail wraps it constantly. Left unhandled, the single-line form
+    // folded and the wrapped one dangled above the fold — same email, two
+    // different renderings.
+    const { fresh, quoted } = splitQuotedBody(
+      [
+        "Please action this.",
+        "",
+        "On Tue, 11 Aug 2026 at 14:20, aakanksha mishra <a.m@example.test>",
+        "wrote:",
+        "",
+        "> the original ask",
+        "> second line",
+      ].join("\n"),
+    );
+    expect(fresh).toBe("Please action this.");
+    expect(quoted).toContain("On Tue, 11 Aug 2026");
+    expect(quoted).toContain("the original ask");
+  });
 });
