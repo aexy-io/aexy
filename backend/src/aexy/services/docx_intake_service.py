@@ -628,8 +628,16 @@ class DocxIntakeService:
             )
 
         # The first single-line field carries the title; the first multi-line one
-        # carries the body. Chosen by shape rather than by name, because a form's
-        # labels are the workspace's to write and could be in any language.
+        # carries the body. Chosen by shape rather than by label, because a
+        # form's labels are the workspace's to write and could be in any
+        # language.
+        #
+        # Addressed by `field_key`, which is the stable machine name for a field
+        # and what every other writer of `field_values` uses — the public form,
+        # the alert ingester, the service desk. This keyed by `field.id` at
+        # first, which put a UUID in the blob that corresponds to no field on the
+        # form: the renderer, which looks up by key, would not have shown the
+        # text at all.
         title_field = next(
             (f for f in fields if f.field_type in ("text", "short_text")), fields[0]
         )
@@ -640,13 +648,13 @@ class DocxIntakeService:
         service = TicketService(self.db)
         created: list[dict[str, Any]] = []
         for candidate in candidates:
-            values: dict[str, Any] = {str(title_field.id): candidate.title}
+            values: dict[str, Any] = {title_field.field_key: candidate.title}
             if body_field is not None:
-                values[str(body_field.id)] = _body(candidate, document)
+                values[body_field.field_key] = _body(candidate, document)
             else:
                 # No long field: append the body to the title rather than drop
                 # it, since losing the context silently is the worse outcome.
-                values[str(title_field.id)] = (
+                values[title_field.field_key] = (
                     f"{candidate.title} — {_body(candidate, document)}"
                 )
 
@@ -655,14 +663,16 @@ class DocxIntakeService:
                 workspace_id=workspace_id,
                 submission=PublicTicketSubmission(field_values=values),
             )
-            # `create_ticket` fills `Ticket.title` by looking for a
-            # "title"/"subject"/"summary" key in `field_values` — and this path
-            # keys everything by the form field's UUID, so it finds nothing and
-            # the ticket headlines its form name instead. That is the exact bug
-            # main fixed by adding the column; set it here rather than
-            # reintroduce it through this door.
-            if not ticket.title:
-                ticket.title = candidate.title
+            # Set outright, not as a fallback. `create_ticket` derives a title by
+            # guessing at a "title"/"subject"/"summary" key in the blob, which is
+            # the best it can do for a submission that arrived from outside — but
+            # here the title is known: it is what the intake decided this issue
+            # is called, and the same string it just put in the headline field.
+            #
+            # As a fallback it also went wrong on a single-field form, where the
+            # body is appended to the title field: the derived heading became the
+            # title AND the whole body, up to 500 characters of it.
+            ticket.title = candidate.title
             created.append(
                 {
                     "id": str(ticket.id),

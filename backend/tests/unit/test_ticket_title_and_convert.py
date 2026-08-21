@@ -261,3 +261,221 @@ async def test_the_task_title_comes_from_the_ticket_title(
         d.ws.id, ticket.id, d.team.id, None, None, "medium"
     )
     assert result["task_title"] == "Needs engineering"
+
+
+# ---------------------------------------------------------------------------
+# The two remaining creation paths: a public form submission, and the docx
+# intake. `headline_from_field_values` is covered above; these cover the callers
+# that have to end up with a title through it — or, in the intake's case, in
+# spite of it.
+# ---------------------------------------------------------------------------
+
+
+async def _form(db_session: AsyncSession, slug: str):
+    """A workspace with one ticket form on it."""
+    from uuid import uuid4
+
+    from aexy.models.developer import Developer
+    from aexy.models.ticketing import TicketForm
+    from aexy.models.workspace import Workspace
+
+    owner = Developer(id=str(uuid4()), name="Owner", email=f"{slug}@example.com")
+    db_session.add(owner)
+    await db_session.flush()
+    workspace = Workspace(
+        id=str(uuid4()), name=slug, slug=slug, owner_id=owner.id
+    )
+    db_session.add(workspace)
+    await db_session.flush()
+    form = TicketForm(
+        id=str(uuid4()),
+        workspace_id=workspace.id,
+        name="Bug Reports",
+        slug=f"{slug}-bugs",
+    )
+    db_session.add(form)
+    await db_session.flush()
+    return workspace, form
+
+
+@pytest.mark.asyncio
+async def test_a_form_submission_gets_a_title(db_session: AsyncSession) -> None:
+    """The public form path — the one the column was added for.
+
+    Covered here because `create_ticket` is what every public submission goes
+    through, and nothing asserted its title: the email and call paths above are
+    different callers.
+    """
+    from aexy.schemas.ticketing import PublicTicketSubmission
+    from aexy.services.ticket_service import TicketService
+
+    workspace, form = await _form(db_session, "tt-form")
+
+    ticket = await TicketService(db_session).create_ticket(
+        form_id=form.id,
+        workspace_id=workspace.id,
+        submission=PublicTicketSubmission(
+            field_values={"subject": "  Cannot log in  ", "detail": "500 on retry"}
+        ),
+    )
+
+    assert ticket.title == "Cannot log in"
+    # And the blob is untouched, because the form renderer reads it from there.
+    assert ticket.field_values["subject"] == "  Cannot log in  "
+
+
+@pytest.mark.asyncio
+async def test_a_submission_with_no_headline_key_has_no_title(
+    db_session: AsyncSession,
+) -> None:
+    # A form with no subject-ish field. The column is nullable and readers fall
+    # back, so absent is the correct outcome — not an empty string, and not the
+    # form's name.
+    from aexy.schemas.ticketing import PublicTicketSubmission
+    from aexy.services.ticket_service import TicketService
+
+    workspace, form = await _form(db_session, "tt-nohead")
+
+    ticket = await TicketService(db_session).create_ticket(
+        form_id=form.id,
+        workspace_id=workspace.id,
+        submission=PublicTicketSubmission(field_values={"how_urgent": "very"}),
+    )
+
+    assert ticket.title is None
+
+
+@pytest.mark.asyncio
+async def test_an_intake_ticket_gets_a_title_despite_uuid_keys(
+    db_session: AsyncSession,
+) -> None:
+    """The docx intake path, and the regression that made this test necessary.
+
+    The intake reads the form's own fields and writes `field_values` keyed by
+    each field's UUID — deliberately, because a form's labels are the
+    workspace's to choose and could be in any language. So
+    `headline_from_field_values` finds nothing, and without setting the title
+    explicitly every ticket created from a document would headline its form name:
+    exactly the bug the column was added to fix, walked back in through a door
+    that did not exist when the fix was written.
+    """
+    from uuid import uuid4
+
+    from aexy.models.ticketing import TicketFormField
+    from aexy.services.docx_intake_service import (
+        Candidate,
+        CreateOptions,
+        DocxIntakeService,
+    )
+
+    workspace, form = await _form(db_session, "tt-intake")
+    # Two fields, which is the realistic shape: the intake puts the title in the
+    # first single-line field and the body in the first multi-line one. Neither
+    # key is title/subject/summary, so this is also the case where
+    # `headline_from_field_values` can find nothing.
+    db_session.add_all(
+        [
+            TicketFormField(
+                id=str(uuid4()),
+                form_id=form.id,
+                name="What happened",
+                field_key="what_happened",
+                field_type="text",
+                position=0,
+            ),
+            TicketFormField(
+                id=str(uuid4()),
+                form_id=form.id,
+                name="Detail",
+                field_key="detail",
+                field_type="textarea",
+                position=1,
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    class _Doc:
+        id = str(uuid4())
+        title = "Client review"
+        workspace_id = workspace.id
+        content_format = "docx"
+
+    created = await DocxIntakeService(db_session)._create_tickets(
+        workspace.id,
+        _Doc(),  # type: ignore[arg-type]
+        [Candidate(title="Extend the notice period", source="comments")],
+        CreateOptions(form_id=form.id),
+        created_by_id=None,
+    )
+
+    from aexy.models.ticketing import Ticket
+
+    ticket = await db_session.get(Ticket, created[0]["id"])
+    assert ticket is not None
+    # The point: a title, not None, and not the form's name.
+    assert ticket.title == "Extend the notice period"
+    assert ticket.title != form.name
+    # And it is addressed by the form's own `field_key`, which is what the
+    # renderer reads. Keying this by `field.id` instead — as it did at first —
+    # put a UUID in the blob matching no field on the form, so the text would
+    # not have been displayed at all.
+    assert ticket.field_values["what_happened"] == "Extend the notice period"
+    # The body goes to the long field, and carries a way back to the document.
+    assert "Client review" in ticket.field_values["detail"]
+
+
+@pytest.mark.asyncio
+async def test_the_intakes_own_title_wins_over_a_derived_one(
+    db_session: AsyncSession,
+) -> None:
+    """Even when `create_ticket` derives something, the intake's title stands.
+
+    Deriving means guessing at a key in the submission blob, which is the best
+    available answer for a ticket that arrived from outside. Here the title is
+    known — it is what the intake decided the issue is called.
+
+    And on a single-field form the derived answer is actively wrong: the body is
+    appended to the headline field, so the guess returns the title *and* the
+    whole body as one heading.
+    """
+    from uuid import uuid4
+
+    from aexy.models.ticketing import Ticket, TicketFormField
+    from aexy.services.docx_intake_service import (
+        Candidate,
+        CreateOptions,
+        DocxIntakeService,
+    )
+
+    workspace, form = await _form(db_session, "tt-derived")
+    field = TicketFormField(
+        id=str(uuid4()),
+        form_id=form.id,
+        name="Title",
+        # The case where both mechanisms can fire: `create_ticket` derives a
+        # title from this key, and the intake must not write over it.
+        field_key="title",
+        field_type="text",
+        position=0,
+    )
+    db_session.add(field)
+    await db_session.flush()
+
+    class _Doc:
+        id = str(uuid4())
+        title = "Client review"
+        workspace_id = workspace.id
+        content_format = "docx"
+
+    created = await DocxIntakeService(db_session)._create_tickets(
+        workspace.id,
+        _Doc(),  # type: ignore[arg-type]
+        [Candidate(title="Extend the notice period", source="comments")],
+        CreateOptions(form_id=form.id),
+        created_by_id=None,
+    )
+
+    ticket = await db_session.get(Ticket, created[0]["id"])
+    assert ticket is not None
+    assert ticket.title == "Extend the notice period"
