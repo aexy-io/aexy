@@ -352,6 +352,9 @@ export interface ServiceDeskSettings {
    *  different, high-confidence requests. Off by default — everything else
    *  stays a single ticket flagged for triage. */
   auto_split_enabled: boolean;
+  /** What intake does with a ticket whose account it cannot identify.
+   *  "random" is the historical default. */
+  unmatched_assignment: "random" | "unassigned" | "desk_head";
   /** Whether the current user holds can_manage_service_desk. The server enforces
    *  this regardless; the UI uses it to avoid offering actions that would 403. */
   can_manage: boolean;
@@ -423,6 +426,7 @@ export interface ServiceDeskSettingsPatch {
   ai_attachment_previews_enabled?: boolean;
   public_ticket_links_enabled?: boolean;
   auto_split_enabled?: boolean;
+  unmatched_assignment?: "random" | "unassigned" | "desk_head";
   working_hours_start?: string;
   working_hours_end?: string;
   ticket_prefix?: string;

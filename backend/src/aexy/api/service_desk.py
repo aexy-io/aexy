@@ -109,6 +109,7 @@ async def update_settings(workspace_id: str, data: ServiceDeskSettingsUpdate, db
         ai_attachment_previews_enabled=data.ai_attachment_previews_enabled,
         public_ticket_links_enabled=data.public_ticket_links_enabled,
         auto_split_enabled=data.auto_split_enabled,
+        unmatched_assignment_value=data.unmatched_assignment,
         working_hours_start=data.working_hours_start,
         working_hours_end=data.working_hours_end,
         ticket_prefix=data.ticket_prefix,

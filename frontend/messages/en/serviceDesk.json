@@ -336,5 +336,16 @@
       "sentCount": "{count, plural, =0 {Nothing sent} one {Sent to # person} other {Sent to # people}}",
       "notARecipient": "You are not on the recipient list, so there is nothing to preview. The settings above still apply to everyone who is."
     }
+  },
+  "settings": {
+    "noDomainsWarning": "No domains — sender matching can never attach a ticket to this account on its own, so its owner is only used when someone sets the account by hand."
+  },
+  "unmatched": {
+    "title": "Unroutable tickets",
+    "description": "What to do when intake cannot tell which account a ticket belongs to — usually because no account claims the sender's domain.",
+    "random": "Assign to any member of the desk department (default)",
+    "unassigned": "Leave unassigned and flag for triage",
+    "deskHead": "Assign to the desk department's head",
+    "alwaysLogged": "Whichever you choose, the reason is written on the ticket so a wrong owner can be traced back to the mapping that caused it."
   }
 }

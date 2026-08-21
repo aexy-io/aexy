@@ -782,6 +782,10 @@ class ServiceDeskIntakeService:
         # once the ticket exists. "Assignment is not following our master data"
         # is unanswerable without this.
         assignment_note: str | None = None
+        # One read, before the branching below: every fallback path needs it and
+        # it decides whether "no owner" is a failure or this desk's deliberate
+        # choice (see the final fallback at the end of this block).
+        policy = await self._unmatched_policy(workspace_id)
 
         if domain and internal_domain and domain == internal_domain:
             # Sender is on the desk's own domain. Either a colleague wrote in, or
@@ -803,8 +807,8 @@ class ServiceDeskIntakeService:
                 else None
             )
             if account is not None:
-                assigned_owner_id = account.assigned_owner_id or await self._random_owner(
-                    workspace_id
+                assigned_owner_id = account.assigned_owner_id or await self._fallback_owner(
+                    workspace_id, policy
                 )
                 assignment_note = (
                     f'Attributed to "{account.name}" from the forwarded message: '
@@ -817,7 +821,7 @@ class ServiceDeskIntakeService:
                         "owner was picked by fallback."
                     )
             else:
-                assigned_owner_id = await self._random_owner(workspace_id)
+                assigned_owner_id = await self._fallback_owner(workspace_id, policy)
                 assignment_note = (
                     f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
                     "so no account could be inferred from it. Set the account by hand to route "
@@ -828,7 +832,7 @@ class ServiceDeskIntakeService:
             if account is not None:
                 assigned_owner_id = account.assigned_owner_id
                 if assigned_owner_id is None:
-                    assigned_owner_id = await self._random_owner(workspace_id)
+                    assigned_owner_id = await self._fallback_owner(workspace_id, policy)
                     assignment_note = (
                         f'Assigned by fallback: "{account.name}" matched {domain}, but has no '
                         "assigned owner in Master Data. Set one so its tickets stop being "
@@ -838,14 +842,17 @@ class ServiceDeskIntakeService:
                 vendor = await self._match_vendor(workspace_id, domain, address)
                 # vendor-originated or wholly unknown → triage + an arbitrary owner
                 needs_triage = True
-                assigned_owner_id = await self._random_owner(workspace_id)
+                assigned_owner_id = await self._fallback_owner(workspace_id, policy)
                 assignment_note = (
                     f"Assigned by fallback: no account is mapped to {domain or email.from_email}. "
                     "Add the domain to the right account in Master Data so future mail from this "
                     "sender reaches its owner."
                 )
 
-        if assigned_owner_id is None:
+        if assigned_owner_id is None and policy != "unassigned":
+            # Only a genuine dead end reaches here now. With the policy set to
+            # "unassigned" a null owner is the intended outcome, and handing the
+            # ticket to the workspace owner would quietly undo the setting.
             assigned_owner_id = (
                 await self.db.execute(select(Workspace.owner_id).where(Workspace.id == workspace_id))
             ).scalar_one_or_none()
@@ -854,6 +861,13 @@ class ServiceDeskIntakeService:
                 + " The desk department has no active members either, so the ticket went to the "
                 "workspace owner."
             )
+        elif assigned_owner_id is None:
+            needs_triage = True
+            assignment_note = (
+                (assignment_note or "")
+                + " Left unassigned because this desk is set to leave unroutable tickets "
+                "unassigned. It is flagged for triage so it stays visible."
+            ).strip()
 
         form_id = await self._ensure_form(workspace_id)
 
@@ -1314,6 +1328,24 @@ class ServiceDeskIntakeService:
             )
         ).scalars().first()
 
+    async def account_owner(self, account_id: str | None) -> str | None:
+        """The owner named for this account, if there is one.
+
+        The broader answer to "whose ticket is this", used when no
+        account/product pairing names somebody more specific. Kept next to
+        ``product_owner`` so the precedence between the two is readable in one
+        place rather than reconstructed at each call site.
+        """
+        if not account_id:
+            return None
+        return (
+            await self.db.execute(
+                select(ServiceDeskAccount.assigned_owner_id).where(
+                    ServiceDeskAccount.id == account_id
+                )
+            )
+        ).scalars().first()
+
     async def _product_id(self, workspace_id: str, name: str | None) -> str | None:
         if not name:
             return None
@@ -1397,6 +1429,39 @@ class ServiceDeskIntakeService:
             )
         ).scalars().first()
         return row
+
+    async def _unmatched_policy(self, workspace_id: str) -> str:
+        """This desk's answer to "what do we do with a ticket we cannot route"."""
+        from aexy.services.service_desk_config import unmatched_assignment
+
+        ws_settings = (
+            await self.db.execute(
+                select(Workspace.settings).where(Workspace.id == workspace_id)
+            )
+        ).scalar_one_or_none() or {}
+        return unmatched_assignment(ws_settings.get("service_desk") or {})
+
+    async def _fallback_owner(self, workspace_id: str, policy: str) -> str | None:
+        """The owner for a ticket whose account could not be identified.
+
+        Split out from ``_random_owner`` because "pick somebody" is only one of
+        three defensible answers, and it was the one that hid the problem: an
+        arbitrarily-assigned ticket reads as a deliberate assignment, so a
+        missing domain in Master Data showed up as a KAM asking why a partner
+        they do not handle is in their queue.
+        """
+        if policy == "unassigned":
+            return None
+        if policy == "desk_head":
+            from aexy.services.service_desk_service import resolve_desk_department
+
+            dept = await resolve_desk_department(self.db, workspace_id)
+            if dept is not None and dept.head_id:
+                return str(dept.head_id)
+            # No head recorded. A member of the desk still beats nobody, and the
+            # note on the ticket says which answer was used.
+            return await self._random_owner(workspace_id)
+        return await self._random_owner(workspace_id)
 
     async def _random_owner(self, workspace_id: str) -> str | None:
         """Pick a random member of the department that runs this desk.

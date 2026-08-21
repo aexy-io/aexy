@@ -793,6 +793,15 @@ class ServiceDeskSettings(BaseModel):
     # clearly different, high-confidence requests. Off by default: everything
     # else stays a single ticket flagged for triage, which is the safe outcome.
     auto_split_enabled: bool = False
+    # What intake does when it cannot tell which account a ticket belongs to.
+    #
+    # "random" is the historical behaviour and stays the default so no existing
+    # desk changes on upgrade — but it is the reason "assignment is not following
+    # our master data" was so hard to see: a randomly-assigned ticket looks
+    # exactly like a deliberately-assigned one. "unassigned" leaves it visibly
+    # waiting; "desk_head" sends every unmatched ticket to one accountable
+    # person. The reason is written to the ticket either way.
+    unmatched_assignment: Literal["random", "unassigned", "desk_head"] = "random"
     # Whether the CALLER may edit master data / settings / templates, i.e. holds
     # can_manage_service_desk. Returned here so the Master Data page can hide
     # controls it would only get a 403 from; the server-side gate is still the
@@ -879,6 +888,7 @@ class ServiceDeskSettingsUpdate(BaseModel):
     ai_attachment_previews_enabled: bool | None = None
     public_ticket_links_enabled: bool | None = None
     auto_split_enabled: bool | None = None
+    unmatched_assignment: Literal["random", "unassigned", "desk_head"] | None = None
     working_hours_start: str | None = Field(None, pattern=_HHMM)
     working_hours_end: str | None = Field(None, pattern=_HHMM)
     # Everything below was a module constant baked to one customer's operation:

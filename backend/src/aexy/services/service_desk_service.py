@@ -28,6 +28,7 @@ from aexy.services.service_desk_clock import (
 from aexy.services.service_desk_config import (
     DEFAULT_INTAKE_POLL_MINUTES,
     digest_enabled,
+    unmatched_assignment,
     domain_is_too_broad,
     DEFAULT_TICKET_PREFIX,
     MAX_INTAKE_POLL_MINUTES,
@@ -55,7 +56,7 @@ from aexy.models.service_desk import (
     ServiceDeskAccountDomain,
     ServiceDeskTicket,
 )
-from aexy.models.ticketing import Ticket
+from aexy.models.ticketing import Ticket, TicketResponse
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace
 from aexy.schemas.service_desk import (
@@ -1033,6 +1034,7 @@ class ServiceDeskService:
             "working_hours_start": hours.get("start") or DEFAULT_WORK_START.strftime("%H:%M"),
             "working_hours_end": hours.get("end") or DEFAULT_WORK_END.strftime("%H:%M"),
             "ticket_prefix": normalise_prefix(sd.get("ticket_prefix")) or DEFAULT_TICKET_PREFIX,
+            "unmatched_assignment": unmatched_assignment(sd),
             "timezone": sd.get("timezone") or DEFAULT_TIMEZONE,
             "breach_red_days": float(sd.get("breach_red_days") or BREACH_RED_DAYS),
             "breach_amber_days": float(sd.get("breach_amber_days") or BREACH_AMBER_DAYS),
@@ -1083,6 +1085,7 @@ class ServiceDeskService:
         workspace_id: str,
         ai_classification_enabled: bool | None = None,
         auto_split_enabled: bool | None = None,
+        unmatched_assignment_value: str | None = None,
         working_hours_start: str | None = None,
         working_hours_end: str | None = None,
         test_sla: TestSLAOverride | None = None,
@@ -1182,6 +1185,20 @@ class ServiceDeskService:
                 workspace_id, before[0], before[1], hours["start"], hours["end"],
                 developer_id or "unknown",
             )
+
+        if unmatched_assignment_value is not None:
+            # Logged: this decides where every unroutable ticket lands, and the
+            # symptom of a surprising choice is a queue that looks wrong to
+            # whoever is standing in front of it.
+            logger.info(
+                "Service desk for workspace %s now routes unmatched tickets as %r "
+                "(was %r), set by %s",
+                workspace_id,
+                unmatched_assignment_value,
+                unmatched_assignment(sd),
+                developer_id or "unknown",
+            )
+            sd["unmatched_assignment"] = unmatched_assignment_value
 
         if ticket_prefix is not None:
             normalised = normalise_prefix(ticket_prefix)
@@ -2001,13 +2018,54 @@ class ServiceDeskService:
         if data.request_type is not None:
             sd.needs_triage = False
 
-        # An operator who picked both an account and a product has answered the
-        # routing question more precisely than intake could, so honour the
-        # pairing's own owner if there is one. Without this, logging a call for a
-        # partner split between two people always reached the account's owner.
+        # Routing for a manual ticket.
+        #
+        # Intake decided the owner before any of the fields above were applied,
+        # and for a manual ticket the sender it had to work from is the literal
+        # `manual@local` — which matches no account, so it fell through to an
+        # arbitrary member of the desk. The operator has since told us exactly
+        # whose ticket this is by picking the account (and possibly the product),
+        # so that answer has to win. Without this, logging a call and choosing
+        # the partner still landed the ticket on a random KAM, and every one had
+        # to be moved by hand.
+        #
+        # Most specific answer first: the account/product pairing, then the
+        # account's own owner. Nothing here overrides an assignee the caller set
+        # deliberately, because the manual endpoint does not accept one.
+        assignment_note: str | None = None
         product_owner_id = await intake.product_owner(sd.account_id, sd.product_id)
+        account_owner_id = await intake.account_owner(sd.account_id)
+
         if product_owner_id:
             ticket.assignee_id = product_owner_id
+        elif account_owner_id:
+            ticket.assignee_id = account_owner_id
+        elif sd.account_id:
+            # An account was named and it owns nobody. Say so on the ticket:
+            # the assignee is still the arbitrary one intake picked, and that is
+            # indistinguishable from a deliberate assignment otherwise.
+            account_name = (
+                await self.db.execute(
+                    select(ServiceDeskAccount.name).where(
+                        ServiceDeskAccount.id == sd.account_id
+                    )
+                )
+            ).scalar_one_or_none()
+            assignment_note = (
+                f'Assigned by fallback: "{account_name}" has no assigned owner in Master '
+                "Data, so this ticket kept the owner picked when it was logged. Set one so "
+                "its tickets stop being distributed arbitrarily."
+            )
+
+        if assignment_note:
+            self.db.add(
+                TicketResponse(
+                    id=str(uuid4()),
+                    ticket_id=ticket.id,
+                    content=assignment_note,
+                    is_internal=True,
+                )
+            )
         await self.db.flush()
 
         # Commit before the acknowledgement goes out, so a rollback can't leave
