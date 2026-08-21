@@ -1017,6 +1017,7 @@ class ReviewService:
             )
 
             result = await self.llm_gateway.analyze(
+                feature="code.review_summary",
                 analysis_type="review_summary",
                 context=prompt,
                 data={},

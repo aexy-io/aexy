@@ -27,6 +27,17 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  turbopack: {
+    resolveAlias: {
+      // `harfbuzzjs`, pulled in by the docx editor's engine for Word-accurate
+      // text shaping, has a Node-only branch that does
+      // `await import("module")`. The branch is guarded by a runtime
+      // environment check that is false in a browser, but Turbopack resolves
+      // the import anyway and fails the client build on it. Scoped to the
+      // `browser` condition so server code still gets the real builtin.
+      module: { browser: "./stubs/node-module-browser.js" },
+    },
+  },
   async rewrites() {
     return [
       // Clean booking URLs: /book/* -> /public/book/*

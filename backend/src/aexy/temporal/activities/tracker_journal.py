@@ -167,6 +167,7 @@ async def generate_tracker_journal(input: GenerateTrackerJournalInput) -> dict:
                     tokens_estimate=2000,
                     developer_id=developer_id,
                     db=db,
+                    feature="insights.tracker_journal",
                 )
             except Exception:  # noqa: BLE001 — skip this dev, don't fail the sweep
                 activity.logger.warning(

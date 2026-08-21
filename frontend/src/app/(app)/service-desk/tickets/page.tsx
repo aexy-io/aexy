@@ -19,7 +19,7 @@ import { serviceDeskApi, TicketQuery } from "@/lib/service-desk-api";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjects } from "@/hooks/useProjects";
 import { ticketsApi } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, saveBlob } from "@/lib/utils";
 import {
   serviceDeskStakeholderColor,
   TICKET_STATUS_COLORS,
@@ -312,12 +312,7 @@ export default function ServiceDeskTicketsPage() {
     setExporting(true);
     try {
       const blob = await serviceDeskApi.exportTicketsCsv(currentWorkspace.id, filters);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `service-desk-tickets-${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      saveBlob(blob, `service-desk-tickets-${new Date().toISOString().slice(0, 10)}.csv`);
     } finally {
       setExporting(false);
     }

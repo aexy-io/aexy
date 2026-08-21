@@ -1,0 +1,162 @@
+"""Request and response shapes for AI editing of Word documents."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class DocxAiSettingsResponse(BaseModel):
+    """A workspace's decision about AI editing, plus what the reader may do.
+
+    A workspace that has never opened the settings page and one configured to
+    the defaults answer identically, so no client has to know which it got.
+
+    ``can_manage`` is computed here rather than derived in the browser from a
+    role: hiding a control was never access control, and the page needs to be
+    able to render itself read-only for a member who may look but not change.
+    """
+
+    mode: str
+    comment_trigger: bool
+    comment_trigger_handle: str
+    allow_ai_comments: bool
+    ai_author_label: str
+    max_ops: int
+    notify_owner: bool
+
+    can_manage: bool
+
+    #: What a draft would actually run on, resolved from /settings/ai/models.
+    #: Read-only here — shown so an admin on this page can see the answer without
+    #: leaving it, and told where to change it.
+    effective_provider: str | None = None
+    effective_model: str | None = None
+
+
+class DocxAiSettingsUpdate(BaseModel):
+    """Every field optional: a PATCH, so toggling one control cannot silently
+    reset the others to whatever the client last read."""
+
+    mode: str | None = Field(default=None, pattern="^(on|off)$")
+    comment_trigger: bool | None = None
+    comment_trigger_handle: str | None = None
+    allow_ai_comments: bool | None = None
+    ai_author_label: str | None = None
+    max_ops: int | None = None
+    notify_owner: bool | None = None
+
+
+class DocxAiEditRequest(BaseModel):
+    """Ask for an edit to one Word document.
+
+    Mirrors ``DraftRequest`` in the service, which is deliberately independent of
+    which door the ask came in through — this is the HTTP one.
+    """
+
+    #: Free text from a person. Optional, because "address the comments" is a
+    #: complete ask on its own.
+    instruction: str | None = Field(default=None, max_length=4000)
+
+    #: The passage the person had selected, when they asked from a selection.
+    selection_text: str | None = Field(default=None, max_length=20000)
+
+    scope: str = Field(default="document", pattern="^(document|selection|section)$")
+
+    #: Read the document's own comment threads and answer them.
+    address_comments: bool = False
+
+    #: Answer only these comments. Word's `w:id` values, valid for this save
+    #: only — Word reuses an id once the comment holding it is deleted.
+    comment_ids: list[str] = Field(default_factory=list, max_length=50)
+
+    #: Run in the background instead of waiting. For a long document the
+    #: synchronous call would outlive the request; the caller gets a
+    #: notification when the draft lands.
+    background: bool = False
+
+
+class DocxAiEditResponse(BaseModel):
+    """What came back, or what was queued."""
+
+    #: The proposal to review. Null when the work was queued instead of run.
+    proposal_id: str | None = None
+    summary: str | None = None
+    change_count: int | None = None
+
+    #: True when this was queued. The draft arrives as a notification, and the
+    #: review queue is where it lands.
+    queued: bool = False
+
+    #: Where to go and look at it.
+    review_url: str | None = None
+
+
+# ── document → issues intake ──
+
+
+class IntakeCandidate(BaseModel):
+    """One proposed issue, and where in the document it came from."""
+
+    title: str
+    detail: str = ""
+    #: ``comments`` | ``markers`` | ``model``. Shown, not just recorded: a person
+    #: deciding whether to keep a row needs to know whether a reviewer wrote it,
+    #: an author tagged it, or a model inferred it.
+    source: str
+    kind: str = "action"
+    origin: str = ""
+    comment_id: str | None = None
+    paragraph_index: int | None = None
+
+    #: The three parts of a user story, when the document stated them. Sent back
+    #: on create so a document written in story form needs no persona asked for.
+    as_a: str | None = None
+    i_want: str | None = None
+    so_that: str | None = None
+
+
+class IntakePreviewRequest(BaseModel):
+    """Where to read from. Chosen per run, never a workspace default.
+
+    The same document read for "unresolved comments → tickets" and for
+    "requirements → sprint tasks" is two different asks.
+    """
+
+    sources: list[str] = Field(min_length=1, max_length=3)
+
+
+class IntakePreviewResponse(BaseModel):
+    candidates: list[IntakeCandidate] = Field(default_factory=list)
+    #: What each target still needs before it can be created, so the picker can
+    #: ask for it rather than failing on submit.
+    needs_sprint: bool = True
+    needs_form: bool = True
+
+
+class IntakeCreateRequest(BaseModel):
+    """What was kept, and where it goes."""
+
+    target: str = Field(pattern="^(sprint_task|bug|user_story|ticket)$")
+    #: The candidates the person left selected — sent back rather than re-derived,
+    #: so a second model run cannot quietly produce a different list than the one
+    #: they approved.
+    candidates: list[IntakeCandidate] = Field(min_length=1, max_length=100)
+
+    sprint_id: str | None = None
+    form_id: str | None = None
+    #: `user_story` only: who the stories are for, when the document did not say.
+    #: Not required when every candidate carries its own parsed `as_a`.
+    default_persona: str | None = Field(default=None, max_length=255)
+    labels: list[str] = Field(default_factory=list)
+    assignee_id: str | None = None
+
+
+class IntakeCreatedIssue(BaseModel):
+    id: str
+    title: str
+    key: str | None = None
+
+
+class IntakeCreateResponse(BaseModel):
+    created: list[IntakeCreatedIssue] = Field(default_factory=list)
+    target: str

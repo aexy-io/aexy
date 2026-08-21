@@ -1,8 +1,17 @@
-"""Workspace AI-analysis settings.
+"""Whether AI analysis runs for a workspace.
 
-The setting lives under `Workspace.settings["ai_analysis"]` (JSONB), so this
-module is just a typed accessor + default policy. Phase 2 ships two knobs;
-sampling and per-workspace token budget come later.
+Lives under `Workspace.settings["ai_analysis"]` (JSONB), so this module is a
+typed accessor plus a default policy.
+
+There was a `model_tier: "haiku" | "sonnet"` setting here, with an admin dropdown
+behind it, and **no reader anywhere**: the gateway resolved its model from
+`WorkspaceAISettings` and had no idea this existed. It was removed rather than
+wired up — making it live would have silently downgraded every workspace showing
+the default `haiku` while actually running the platform's model, and no
+configuration can depend on a control that never had an effect.
+
+Model choice is at `/settings/ai/models` now, per AI feature, resolved in
+`llm/resolution.py` alongside the kill switch and the workspace credential.
 """
 
 from __future__ import annotations
@@ -17,40 +26,39 @@ from aexy.models.repository import WorkspaceRepository
 from aexy.models.workspace import Workspace
 
 Mode = Literal["off", "on"]
-ModelTier = Literal["haiku", "sonnet"]
 
-# Default policy when a workspace has never been touched. AI is on, cheap
-# model — turning it off is an opt-out, not opt-in, since the only side-effect
-# of "on" is reads (no payloads leave when the artifact is gated by Layer-0
-# or by a missing LLM gateway).
+# Default policy when a workspace has never been touched. AI is on — turning it
+# off is an opt-out, not opt-in, since the only side-effect of "on" is reads (no
+# payloads leave when the artifact is gated by Layer-0 or by a missing LLM
+# gateway).
 DEFAULT_MODE: Mode = "on"
-DEFAULT_MODEL_TIER: ModelTier = "haiku"
 
 
 @dataclass(frozen=True)
 class AISettings:
     mode: Mode
-    model_tier: ModelTier
 
     @property
     def enabled(self) -> bool:
         return self.mode == "on"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"mode": self.mode, "model_tier": self.model_tier}
+        return {"mode": self.mode}
 
 
 def _coerce(raw: Any) -> AISettings:
-    """Parse a workspace's settings.ai_analysis block, falling back to defaults."""
+    """Parse a workspace's settings.ai_analysis block, falling back to defaults.
+
+    A `model_tier` key left behind by an older client is ignored rather than
+    migrated away: it never did anything, so there is nothing to preserve, and
+    deleting rows to tidy a blob is not worth a migration.
+    """
     if not isinstance(raw, dict):
-        return AISettings(mode=DEFAULT_MODE, model_tier=DEFAULT_MODEL_TIER)
+        return AISettings(mode=DEFAULT_MODE)
     mode = raw.get("mode")
     if mode not in ("off", "on"):
         mode = DEFAULT_MODE
-    tier = raw.get("model_tier")
-    if tier not in ("haiku", "sonnet"):
-        tier = DEFAULT_MODEL_TIER
-    return AISettings(mode=mode, model_tier=tier)
+    return AISettings(mode=mode)
 
 
 def settings_for_workspace(workspace: Workspace) -> AISettings:

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.26.0] - 2026-08-21
+## [0.27.0] - 2026-08-21
 
 ### Added: a board knows which queue its work is pending with
 
@@ -115,6 +115,107 @@ behaviour every existing board keeps. Refuses to run if `teams.department_id` is
 absent, so a database missing the organization migration fails there rather than
 at the first conversion.
 
+## [0.26.0] - 2026-08-21
+
+Which model does this run on? There were four answers, and one of them did nothing.
+
+### Added: one place to configure AI models
+
+`/settings/ai/models` lists every AI feature in the product — fifty of them,
+grouped the way you would look for them — and for each one: the model it will
+actually use, and where that answer came from. Set a model for a whole group, or
+for one feature inside it.
+
+**Nothing on the page is decorative, because the thing it replaced was.** There
+was a haiku/sonnet dropdown under code insights, admin-only, that no code had
+ever read: you could change it, save it, and change nothing. It is deleted rather
+than wired up — making it live would have silently downgraded every workspace
+showing the default while it was actually running something else.
+
+**A model belongs to a provider, so a stored choice can go stale.** Pick a Claude
+model, then move the workspace to Gemini, and that choice cannot apply. The row
+says so — "not being used", with the reason — instead of showing a setting that
+looks live. The alternative is a 404 from somebody else's API, hours later, inside
+a background job.
+
+### Fixed: AI settings did not apply to agents or to Ask
+
+The workspace AI switch and bring-your-own-key were enforced in one place, and
+two of the three paths that call a model did not go through it. An organisation
+that switched AI off still had its agents running, and Ask answering, on the
+platform's credential. Agents were also pinned to a model Anthropic had retired.
+
+All three paths now resolve through the same function, so the switch means what it
+says.
+
+### Added: Word documents, and asking the AI to edit them
+
+A `.docx` is a first-class document — the same tree, permissions, comments,
+version history and review queue as any other page — rather than an attachment.
+Editing is structure-aware, and pagination matches Word, because a page count
+that drifts puts every anchored comment on the wrong page.
+
+Three ways to ask for an edit, and the third is the one that does not start here:
+a reviewer opens the file in Word, types `@aexy` in a comment asking for a change,
+and sends it back. They hear about the answer, because they are the one who asked
+— not the document's owner, who did not.
+
+**Every AI edit arrives as a redline to accept or reject**, never as a saved
+change. The panel lists what is in a proposal before you replay it, since "12
+changes waiting" is a count rather than something you can review, and it says
+which changes will not appear as markup so you are not left hunting for them.
+
+### Added: turning a Word document into issues
+
+A requirements document, a client's review with twenty comments in the margin, a
+QA report where every finding is a defect. Read it for work items — open comments,
+TODO lines, or whatever the AI finds — and create sprint tasks, bugs, stories or
+tickets from the ones you keep.
+
+Two steps, always. It proposes; you remove what does not belong; then it creates.
+These become work a team is measured against, and a model that mistook a heading
+for a deliverable should not be able to put a phantom task in somebody's sprint.
+
+### Fixed: five AI features had never once run
+
+Each had a call that passed an argument the gateway has never accepted, raised on
+every invocation, and had the error swallowed by a surrounding catch. Commit
+analysis, attrition risk, burnout risk, performance trajectory and team health
+were all switched on, all reported as working, and all doing nothing.
+
+The calls are fixed. They ship **off**, named in `AI_ENABLE_DORMANT_FEATURES`,
+because repairing a call is not the same decision as starting to pay for five
+analyses nobody has seen run — and the models page says which are off and why. A
+feature that is not running should say so; that is the whole lesson of the
+dropdown above.
+
+### Fixed: two issues could be given the same key
+
+Bug, story and ticket keys were `count(*) + 1` read in one statement and written
+in another, so two people creating at once got the same number. Tickets failed
+loudly — a 500 on a public form. Bugs and stories had no uniqueness constraint at
+all, so you simply ended up with two things called BUG-004 and every reference to
+"BUG-004" ambiguous from then on.
+
+Keys are now allocated atomically, the constraints exist, and deleting BUG-003 no
+longer causes the next bug to be called BUG-003.
+
+### Fixed
+
+- **A workspace using its own Gemini key read answers the platform's Claude
+  wrote.** The analysis cache was keyed on the prompt alone, with no record of
+  which model produced the result.
+- **Uploaded files were read by the AI regardless of the workspace's settings** —
+  the highest-volume AI path in the product, bypassing the switch, the
+  credential, the rate limit and the usage record.
+- **Three report metrics crashed instead of rendering.** Team health, bus factor
+  and attrition risk built a service without an argument it required.
+- **An AI redline was signed by whoever opened the review**, so the document
+  claimed a reviewer had written changes they were in the middle of judging. The
+  name the workspace configures for the AI was stored, validated, shown in the
+  API — and never read.
+- **Two notification toggles could not be switched on by anything.** The events
+  existed and nothing emitted them.
 ## [0.25.1] - 2026-08-21
 
 ### Changed: a ticket is one email thread

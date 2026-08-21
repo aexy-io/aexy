@@ -68,6 +68,16 @@ class Workspace(Base):
     # Monotonic per-workspace counter used to assign SprintTask.task_key.
     # Always read+incremented atomically in one UPDATE ... RETURNING.
     next_task_key: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    # Same mechanism as `next_task_key`, for the three other things that carry a
+    # per-workspace human key. Each was `count(*) + 1` or `max(*) + 1` read in
+    # one statement and written in another — two concurrent creates read the same
+    # number and both used it. Bugs and stories had no unique constraint either,
+    # so the duplicate was silent; a ticket at least failed, as a 500.
+    #
+    # Holds the value to assign NEXT, exactly like `next_task_key`.
+    next_bug_key: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    next_story_key: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    next_ticket_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     # LLM usage counters — month-to-date totals. Reset lazily on first
     # usage of the new month via the LimitsService. The provider

@@ -9,11 +9,18 @@
 import { api } from "@/lib/api";
 
 export type AISettingsMode = "off" | "on";
-export type AIModelTier = "haiku" | "sonnet";
 
+/**
+ * Whether AI analysis runs for this workspace. That is all this settles.
+ *
+ * There was a `model_tier: "haiku" | "sonnet"` field here with a dropdown behind
+ * it, and nothing on the backend ever read it — the gateway resolved its model
+ * from `WorkspaceAISettings` and did not know this existed. Model choice is at
+ * `/settings/ai/models` now, per feature, where each row reports what it will
+ * actually resolve to.
+ */
 export interface AISettings {
   mode: AISettingsMode;
-  model_tier: AIModelTier;
 }
 
 /** Free-form LLM analysis payload — schema mirrors backend AnalysisResult.

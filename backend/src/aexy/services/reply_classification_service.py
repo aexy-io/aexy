@@ -168,6 +168,7 @@ class ReplyClassificationService:
                     user_prompt=user_prompt,
                     tokens_estimate=500,
                     workspace_id=workspace_id,
+                    feature="crm.reply_classification",
                 )
 
                 # Parse JSON from response

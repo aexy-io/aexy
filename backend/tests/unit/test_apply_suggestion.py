@@ -46,7 +46,9 @@ def test_an_empty_suggestion_is_rejected_before_the_model_call():
 @pytest.mark.asyncio
 async def test_applying_queues_a_proposal_and_leaves_the_document_alone():
     document = SimpleNamespace(
-        id="doc-1", content={"type": "doc", "content": [{"type": "paragraph"}]}
+        id="doc-1",
+        content_format="tiptap",
+        content={"type": "doc", "content": [{"type": "paragraph"}]}
     )
     original = dict(document.content)
 

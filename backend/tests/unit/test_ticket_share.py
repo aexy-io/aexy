@@ -375,7 +375,24 @@ async def test_auto_share_on_default_form(db_session):
     from aexy.models.ticketing import TicketForm
     from aexy.schemas.ticketing import PublicTicketSubmission
 
-    workspace_id = str(uuid4())
+    # A real workspace row, because `create_ticket` allocates the ticket number
+    # from a counter on it. It used to be `max(ticket_number) + 1`, which happily
+    # numbered into a workspace that did not exist — the FK would have caught it
+    # on a real database, but not under SQLite, so this test passed on a ticket
+    # that could never have been created in production.
+    from aexy.models.developer import Developer
+    from aexy.models.workspace import Workspace
+
+    owner = Developer(id=str(uuid4()), name="Owner", email="owner@example.com")
+    db_session.add(owner)
+    await db_session.flush()
+    workspace = Workspace(
+        id=str(uuid4()), name="Acme", slug="acme", owner_id=owner.id
+    )
+    db_session.add(workspace)
+    await db_session.flush()
+    workspace_id = workspace.id
+
     form = TicketForm(
         id=str(uuid4()),
         workspace_id=workspace_id,

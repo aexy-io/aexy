@@ -457,6 +457,7 @@ async def process_agent_chat_mention(input: dict[str, Any]) -> dict[str, Any]:
             tokens_estimate=2000,
             workspace_id=workspace_id,
             developer_id=sender_id,
+            feature="agents.chat_mention",
         )
 
         if not response_text or not response_text.strip():

@@ -32,6 +32,11 @@ const SOURCE_META: Record<
   code_change_sync: { label: "Code changed", icon: GitPullRequest },
   suggest_improvements: { label: "Suggested improvement", icon: Wrench },
   manual_ai_edit: { label: "AI edit", icon: Wrench },
+  // Word documents are reviewed as a tracked-changes redline in the editor
+  // rather than as a content diff here, so this banner never renders one — but
+  // the map is exhaustive over the source union, and leaving a hole would be a
+  // runtime `undefined.label` the first time one did arrive.
+  agent_docx_edit: { label: "AI edit (Word)", icon: Wrench },
 };
 
 /**

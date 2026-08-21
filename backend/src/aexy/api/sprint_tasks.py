@@ -1364,12 +1364,14 @@ async def export_sprint_tasks(
         ExportFormat.JSON: "application/json",
         ExportFormat.PDF: "application/pdf",
         ExportFormat.XLSX: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ExportFormat.DOCX: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
     extensions = {
         ExportFormat.CSV: "csv",
         ExportFormat.JSON: "json",
         ExportFormat.PDF: "pdf",
         ExportFormat.XLSX: "xlsx",
+        ExportFormat.DOCX: "docx",
     }
 
     filename = f"{sprint.name.replace(' ', '_')}_tasks.{extensions[format]}"

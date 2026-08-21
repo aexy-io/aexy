@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select, func
+from sqlalchemy import case, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -128,6 +128,60 @@ class SprintService:
 
         stmt = stmt.order_by(Sprint.start_date.desc())
 
+        if limit:
+            stmt = stmt.limit(limit)
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    #: The statuses a sprint can still take new work in. A `completed` sprint is
+    #: a historical record — adding a task to it would falsify a velocity figure
+    #: somebody has already reported — and `review`/`retrospective` are a sprint
+    #: being closed out, which is the wrong place for work that has just arrived.
+    OPEN_TO_NEW_WORK = ("planning", "active")
+
+    async def list_workspace_sprints(
+        self,
+        workspace_id: str,
+        statuses: tuple[str, ...] | None = OPEN_TO_NEW_WORK,
+        limit: int | None = 100,
+    ) -> list[Sprint]:
+        """Every sprint in a workspace, across teams.
+
+        `list_team_sprints` needs a team, which is right for a sprint board but
+        wrong for anything that starts somewhere else — a document being turned
+        into tasks has a workspace and no team, and asking the person to pick a
+        team first is asking them a question about our schema rather than about
+        their work.
+
+        Defaults to sprints that are open to new work, because a picker offering
+        a completed sprint is offering a mistake. Pass `statuses=None` for all of
+        them.
+
+        The team is eager-loaded: a picker has to show which team each sprint
+        belongs to — two teams routinely have a "Sprint 24" — and doing it lazily
+        would be a query per row.
+        """
+        stmt = (
+            select(Sprint)
+            .where(Sprint.workspace_id == workspace_id)
+            .options(selectinload(Sprint.team))
+        )
+        if statuses:
+            stmt = stmt.where(Sprint.status.in_(statuses))
+
+        # Active before planning, newest first inside each: the sprint somebody
+        # means is nearly always the one running now.
+        #
+        # Spelled out rather than `status.desc()`, which sorts alphabetically and
+        # therefore puts "planning" ahead of "active" — the exact opposite of the
+        # intent, and invisible until something asserts the order.
+        running_first = case(
+            (Sprint.status == "active", 0),
+            (Sprint.status == "planning", 1),
+            else_=2,
+        )
+        stmt = stmt.order_by(running_first, Sprint.start_date.desc())
         if limit:
             stmt = stmt.limit(limit)
 

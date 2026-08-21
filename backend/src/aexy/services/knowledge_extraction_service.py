@@ -166,8 +166,16 @@ class KnowledgeExtractionService:
             logger.error(f"Document {document_id} not found")
             return []
 
-        # Extract plain text content
+        # Extract plain text content.
+        #
+        # A Word document has no TipTap tree to walk — its body is a file, and
+        # `content` is `{}`. Its extracted Markdown is already sitting in
+        # `content_text`, so falling back to that makes knowledge extraction work
+        # for Word documents rather than silently deciding every one of them has
+        # "insufficient content".
         content_text = self._extract_text_from_tiptap(document.content)
+        if not content_text.strip():
+            content_text = document.content_text or ""
         if not content_text or len(content_text.strip()) < 50:
             logger.info(f"Document {document_id} has insufficient content for extraction")
             return []
@@ -196,6 +204,7 @@ class KnowledgeExtractionService:
                 db=self.db,
                 developer_id=developer_id,
                 workspace_id=self.workspace_id,
+                feature="docs.knowledge_extraction",
             )
 
             # Parse the result
@@ -297,6 +306,7 @@ class KnowledgeExtractionService:
                 db=self.db,
                 developer_id=developer_id,
                 workspace_id=self.workspace_id,
+                feature="docs.knowledge_extraction",
             )
 
             extracted_data = self._parse_json_response(llm_result.raw_response)

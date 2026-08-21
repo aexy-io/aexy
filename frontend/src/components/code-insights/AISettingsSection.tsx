@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -10,7 +11,7 @@ import {
   useWorkspaceAISettings,
 } from "@/hooks/useCodeInsights";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
-import type { AIModelTier, AISettingsMode } from "@/lib/code-insights-api";
+import type { AISettingsMode } from "@/lib/code-insights-api";
 
 /**
  * Workspace-level AI analysis toggle. Drop into the settings/insights page.
@@ -30,13 +31,11 @@ export function AISettingsSection() {
   const update = useUpdateWorkspaceAISettings(currentWorkspaceId);
 
   const [mode, setMode] = useState<AISettingsMode>("on");
-  const [modelTier, setModelTier] = useState<AIModelTier>("haiku");
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (settings) {
       setMode(settings.mode);
-      setModelTier(settings.model_tier);
       setDirty(false);
     }
   }, [settings]);
@@ -45,7 +44,7 @@ export function AISettingsSection() {
 
   const handleSave = () => {
     if (!currentWorkspaceId) return;
-    update.mutate({ mode, model_tier: modelTier });
+    update.mutate({ mode });
   };
 
   return (
@@ -94,24 +93,17 @@ export function AISettingsSection() {
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium" htmlFor="ai-tier">
-            {t("modelTierLabel")}
-          </label>
-          <select
-            id="ai-tier"
-            disabled={disabled || mode === "off"}
-            value={modelTier}
-            onChange={(e) => {
-              setModelTier(e.target.value as AIModelTier);
-              setDirty(true);
-            }}
-            className="w-full max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            <option value="haiku">{t("modelTierHaiku")}</option>
-            <option value="sonnet">{t("modelTierSonnet")}</option>
-          </select>
-        </div>
+        {/* There used to be a haiku/sonnet dropdown here. It was never read by
+            anything — the gateway resolved its model from WorkspaceAISettings and
+            had no idea this existed — so an admin could change it, save it, and
+            change nothing. Model choice now lives at /settings/ai/models, where
+            every row shows what it will actually resolve to. */}
+        <p className="text-xs text-muted-foreground">
+          {t("modelChoiceMoved")}{" "}
+          <Link href="/settings/ai/models" className="underline">
+            {t("modelChoiceLink")}
+          </Link>
+        </p>
 
         <div className="flex items-center gap-3 pt-2">
           <button

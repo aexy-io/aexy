@@ -341,7 +341,7 @@ class HiringIntelligenceService:
                 context={},
             )
 
-            result = await self.llm_gateway.analyze(request, use_cache=True)
+            result = await self.llm_gateway.analyze(request, use_cache=True, feature="hiring.roadmap_skills")
 
             if result.raw_response:
                 try:
@@ -452,7 +452,7 @@ class HiringIntelligenceService:
                 context={"system_prompt": JOB_DESCRIPTION_SYSTEM_PROMPT},
             )
 
-            result = await self.llm_gateway.analyze(request, use_cache=False)
+            result = await self.llm_gateway.analyze(request, use_cache=False, feature="hiring.job_description")
 
             data = extract_json_object(result.raw_response)
             if data:
@@ -633,7 +633,7 @@ We are seeking a talented {level} {role_title} to join our engineering team. In 
                 context={"system_prompt": INTERVIEW_RUBRIC_SYSTEM_PROMPT},
             )
 
-            result = await self.llm_gateway.analyze(request, use_cache=False)
+            result = await self.llm_gateway.analyze(request, use_cache=False, feature="hiring.interview_rubric")
 
             data = extract_json_object(result.raw_response)
             if data:
