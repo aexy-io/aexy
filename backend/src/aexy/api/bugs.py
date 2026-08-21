@@ -60,15 +60,6 @@ async def check_workspace_permission(
         )
 
 
-async def generate_bug_key(db: AsyncSession, workspace_id: str) -> str:
-    """Generate a unique bug key for the workspace."""
-    result = await db.execute(
-        select(func.count(Bug.id)).where(Bug.workspace_id == workspace_id)
-    )
-    count = result.scalar() or 0
-    return f"BUG-{count + 1:03d}"
-
-
 def bug_to_response(bug: Bug) -> BugResponse:
     """Convert Bug model to response schema."""
     return BugResponse(
@@ -227,7 +218,9 @@ async def create_bug(
     """Create a new bug."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    key = await generate_bug_key(db, workspace_id)
+    # The key is assigned by the `before_insert` listener on Bug, atomically
+    # against the workspace counter. Allocating it here would be the race that
+    # listener exists to remove: read in one statement, written in another.
 
     steps = [
         {"step_number": i + 1, "description": s.description}
@@ -237,7 +230,6 @@ async def create_bug(
     bug = Bug(
         workspace_id=workspace_id,
         project_id=data.project_id,
-        key=key,
         title=data.title,
         description=data.description,
         description_json=data.description_json,

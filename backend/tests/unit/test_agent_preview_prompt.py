@@ -50,20 +50,29 @@ from aexy.services.agent_service import AgentService
 # import-only so the registration carries over.
 
 
+from aexy.models.workspace import Workspace
+
 _stub_meta = MetaData()
+# A stand-in `workspaces` with no foreign keys, so the agent tables can be
+# created without pulling in half the schema.
+#
+# Its columns are DERIVED from the real model rather than listed here. They used
+# to be typed out by name, which meant every column added to `Workspace` broke
+# these two files with "no such column" — a hand-copied schema drifts the moment
+# somebody touches the real one, and the failure lands on a test that has nothing
+# to do with the change.
+#
+# Everything is String because nothing here reads a workspace's values; the table
+# exists so the rows the agent tables reference can exist.
 _workspaces_stub = Table(
     "workspaces",
     _stub_meta,
     Column("id", String, primary_key=True),
-    *(Column(c, String) for c in (
-        "name", "slug", "type", "description", "avatar_url",
-        "github_org_id", "owner_id", "plan_id", "settings",
-        "next_task_key", "llm_tokens_used_this_month",
-        "llm_input_tokens_this_month", "llm_output_tokens_this_month",
-        "llm_requests_this_month", "llm_tokens_reset_at",
-        "llm_provider_breakdown", "llm_overage_cost_cents", "is_active",
-        "created_at", "updated_at",
-    )),
+    *(
+        Column(column.name, String)
+        for column in Workspace.__table__.columns
+        if column.name != "id"
+    ),
 )
 _developers_stub = Table(
     "developers",

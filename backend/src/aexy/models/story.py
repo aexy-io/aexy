@@ -1,10 +1,22 @@
 """User Story model for requirement tracking between Epic and Task."""
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    event,
+    func,
+    update,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,10 +24,10 @@ from aexy.core.database import Base
 
 if TYPE_CHECKING:
     from aexy.models.developer import Developer
-    from aexy.models.workspace import Workspace
     from aexy.models.epic import Epic
-    from aexy.models.sprint import SprintTask
     from aexy.models.release import Release
+    from aexy.models.sprint import SprintTask
+    from aexy.models.workspace import Workspace
 
 
 class UserStory(Base):
@@ -263,3 +275,32 @@ class StoryActivity(Base):
         "Developer",
         lazy="selectin",
     )
+
+
+# Atomic per-workspace key assignment, the same mechanism `SprintTask` uses (see
+# `_assign_task_key` in models/sprint.py) and for the same reason: the
+# UPDATE...RETURNING locks the workspace row, so concurrent inserts serialize on
+# it and get distinct keys. It rolls back with the surrounding transaction.
+#
+# A `before_insert` listener rather than a helper, because it then covers every
+# creation path — the API route, the intake service, a future importer — without
+# each one having to remember. The previous helper read `count(*) + 1` in one
+# statement and wrote in another, so two concurrent creates took the same number,
+# and with no unique constraint the duplicate was silent.
+#
+# `next_story_key` holds the value to assign NEXT, so a fresh workspace at 1
+# produces STORY-001 and leaves the counter at 2.
+@event.listens_for(UserStory, "before_insert")
+def _assign_story_key(mapper: Any, connection: Any, target: Any) -> None:
+    if target.key is not None or target.workspace_id is None:
+        return
+    from aexy.models.workspace import Workspace
+
+    row = connection.execute(
+        update(Workspace)
+        .where(Workspace.id == target.workspace_id)
+        .values(next_story_key=Workspace.next_story_key + 1)
+        .returning(Workspace.next_story_key)
+    ).fetchone()
+    if row is not None:
+        target.key = f"STORY-{row[0] - 1:03d}"

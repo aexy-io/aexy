@@ -55,15 +55,6 @@ async def check_workspace_permission(
         )
 
 
-async def generate_story_key(db: AsyncSession, workspace_id: str) -> str:
-    """Generate a unique story key for the workspace."""
-    result = await db.execute(
-        select(func.count(UserStory.id)).where(UserStory.workspace_id == workspace_id)
-    )
-    count = result.scalar() or 0
-    return f"STORY-{count + 1:03d}"
-
-
 def story_to_response(story: UserStory) -> StoryResponse:
     """Convert UserStory model to response schema."""
     return StoryResponse(
@@ -220,7 +211,9 @@ async def create_story(
     """Create a new user story."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    key = await generate_story_key(db, workspace_id)
+    # The key is assigned by the `before_insert` listener on UserStory, atomically
+    # against the workspace counter. Allocating it here would be the race that
+    # listener exists to remove: read in one statement, written in another.
 
     # Convert acceptance criteria to proper format
     acceptance_criteria = [
@@ -236,7 +229,6 @@ async def create_story(
 
     story = UserStory(
         workspace_id=workspace_id,
-        key=key,
         title=data.title,
         as_a=data.as_a,
         i_want=data.i_want,

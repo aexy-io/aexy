@@ -37,7 +37,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.models.documentation import CONTENT_FORMAT_DOCX, Document
@@ -506,20 +506,15 @@ class DocxIntakeService:
     ) -> list[dict[str, Any]]:
         from aexy.models.bug import Bug
 
-        created: list[dict[str, Any]] = []
-        # Counted once and incremented locally: the repo's own key generator
-        # counts rows per call, which inside one loop would hand every bug in the
-        # batch the same key until each flush landed.
-        count = (
-            await self.db.execute(
-                select(func.count(Bug.id)).where(Bug.workspace_id == workspace_id)
-            )
-        ).scalar() or 0
-
-        for offset, candidate in enumerate(candidates, start=1):
+        created: list[Bug] = []
+        # No local counting any more. `Bug` has a `before_insert` listener that
+        # allocates its key atomically against the workspace counter, so a batch
+        # gets distinct keys and so does a concurrent create from anywhere else.
+        # This used to count rows once and increment locally, which was correct
+        # within one batch and raced with everything outside it.
+        for candidate in candidates:
             bug = Bug(
                 workspace_id=workspace_id,
-                key=f"BUG-{count + offset:03d}",
                 title=candidate.title,
                 description=_body(candidate, document),
                 reporter_id=created_by_id,
@@ -532,10 +527,14 @@ class DocxIntakeService:
                 source_id=_provenance_id(document, candidate),
                 source_url=f"/docs/{document.id}",
             )
+            created.append(bug)
             self.db.add(bug)
-            created.append({"id": str(bug.id), "title": bug.title, "key": bug.key})
+        # Flushed before the keys are read: the listener assigns them during the
+        # INSERT, so `bug.key` is None until then.
         await self.db.flush()
-        return created
+        return [
+            {"id": str(bug.id), "title": bug.title, "key": bug.key} for bug in created
+        ]
 
     async def _create_stories(
         self,
@@ -561,19 +560,11 @@ class DocxIntakeService:
                 "them in the document as \"As a …, I want …\"."
             )
 
-        created: list[dict[str, Any]] = []
-        count = (
-            await self.db.execute(
-                select(func.count(UserStory.id)).where(
-                    UserStory.workspace_id == workspace_id
-                )
-            )
-        ).scalar() or 0
-
-        for offset, candidate in enumerate(candidates, start=1):
+        created: list[UserStory] = []
+        # Keys come from the `before_insert` listener, as with bugs above.
+        for candidate in candidates:
             story = UserStory(
                 workspace_id=workspace_id,
-                key=f"STORY-{count + offset:03d}",
                 title=candidate.title,
                 # Parsed from the document where it said so, otherwise the
                 # persona the person supplied. Never inferred: guessing "As a
@@ -589,10 +580,12 @@ class DocxIntakeService:
                 source_id=_provenance_id(document, candidate),
                 source_url=f"/docs/{document.id}",
             )
+            created.append(story)
             self.db.add(story)
-            created.append({"id": str(story.id), "title": story.title, "key": story.key})
         await self.db.flush()
-        return created
+        return [
+            {"id": str(s.id), "title": s.title, "key": s.key} for s in created
+        ]
 
     async def _create_tickets(
         self,
