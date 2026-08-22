@@ -64,6 +64,7 @@ import { useShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useTaskStatuses } from "@/hooks/useTaskConfig";
 import { useTasksLayout } from "@/hooks/useTasksLayout";
 import { TaskTableView } from "@/components/planning/TaskTableView";
+import { BOARD_COLUMN_STACKING } from "@/lib/boardLayout";
 
 const KANBAN_ROW_CLASSES =
   "flex flex-col gap-3 md:flex-row md:overflow-x-auto md:pb-4";
@@ -313,7 +314,8 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "group/col flex-shrink-0 w-full md:w-[320px] rounded-xl transition-all duration-200",
+        "group/col rounded-xl transition-all duration-200",
+        BOARD_COLUMN_STACKING,
         tone.bg,
         isOver && "ring-2 ring-primary-500/50 bg-primary-900/20",
       )}
@@ -939,7 +941,10 @@ export function WorkspaceTasksTab({ workspaceId }: WorkspaceTasksTabProps) {
           {renderStatuses.map((s, colIdx) => (
             <div
               key={s}
-              className="flex-shrink-0 w-full md:w-[320px] rounded-xl bg-muted/30 border border-border/30 overflow-hidden"
+              className={cn(
+                "rounded-xl bg-muted/30 border border-border/30 overflow-hidden",
+                BOARD_COLUMN_STACKING,
+              )}
             >
               <div className="flex items-center justify-between px-3 py-3 border-b border-border/30 bg-background/30">
                 <div className="h-3 w-20 rounded bg-muted/60 animate-pulse" />

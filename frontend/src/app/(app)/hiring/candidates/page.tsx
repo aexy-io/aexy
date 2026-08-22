@@ -32,6 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BOARD_COLUMN } from "@/lib/boardLayout";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
@@ -277,7 +278,8 @@ function StageColumn({
   return (
     <div
       className={cn(
-        "flex flex-col min-w-[280px] w-[280px] bg-background/50 rounded-xl border transition-colors",
+        "flex flex-col bg-background/50 rounded-xl border transition-colors",
+        BOARD_COLUMN,
         isDragOver ? "border-primary-500/50 bg-primary-500/5" : "border-border"
       )}
       onDragOver={(e) => {

@@ -25,6 +25,7 @@ import type {
   ValidationRules,
   FieldOption,
 } from "@/lib/formsApi";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Form List Hook ====================
 
@@ -107,7 +108,7 @@ export function useForms(workspaceId: string | null) {
   });
 
   return {
-    forms: forms || [],
+    forms: forms ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -475,7 +476,7 @@ export function useFormAutomations(workspaceId: string | null, formId: string | 
   });
 
   return {
-    automations: automations || [],
+    automations: automations ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -501,7 +502,7 @@ export function useFormSubmissions(workspaceId: string | null, formId: string | 
   });
 
   return {
-    submissions: submissions || [],
+    submissions: submissions ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

@@ -4,6 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BOARD_COLUMN } from "@/lib/boardLayout";
 import { CRMRecord, CRMAttribute } from "@/lib/api";
 import { KanbanCard, KanbanCardSkeleton } from "./KanbanCard";
 import { ColorDot } from "./ColorPicker";
@@ -50,7 +51,8 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] flex flex-col rounded-xl transition-all duration-200",
+        "flex flex-col rounded-xl transition-all duration-200",
+        BOARD_COLUMN,
         "bg-muted/30",
         isOver && "ring-2 ring-purple-500/50 bg-purple-900/10",
         className

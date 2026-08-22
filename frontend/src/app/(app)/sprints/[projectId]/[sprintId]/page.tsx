@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/lib/utils";
+import { BOARD_COLUMN } from "@/lib/boardLayout";
 import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -291,7 +292,7 @@ function KanbanColumn({ column, tasks, onDelete, onAssign, onTaskClick, suggesti
 
   return (
     <div
-      className={`flex-1 min-w-[280px] rounded-xl p-3 ${!column.customColor ? column.bgColor : ''}`}
+      className={`${BOARD_COLUMN} rounded-xl p-3 ${!column.customColor ? column.bgColor : ''}`}
       style={bgStyle}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">

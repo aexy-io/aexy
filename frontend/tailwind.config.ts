@@ -3,9 +3,20 @@ import type { Config } from "tailwindcss";
 const config: Config = {
   darkMode: "class",
   content: [
+    // `src/lib`, `src/config` and `src/hooks` were missing, and they are where
+    // the app keeps its *shared* class strings — `lib/statusColors.ts` calls
+    // itself the "single source of truth for all status colors", and
+    // `lib/boardLayout.ts` holds the kanban column width. Classes declared
+    // only there were never generated; the ones that still rendered did so
+    // because some component happened to spell the same utility inline. That
+    // is luck, and it runs out precisely when the raw-palette migration
+    // deletes the duplicates.
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/config/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/hooks/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {

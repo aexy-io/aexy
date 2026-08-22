@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { exportsApi, ExportJob } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useExports(limit = 20) {
   const queryClient = useQueryClient();
@@ -40,7 +41,7 @@ export function useExports(limit = 20) {
   });
 
   return {
-    exports: data || [],
+    exports: data ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

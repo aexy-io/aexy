@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -38,6 +38,88 @@ interface SortableWidgetProps {
   className?: string;
 }
 
+/*
+  Widgets are as tall as their contents, and the grid packs around them.
+
+  The grid used to force every card in a row to the height of the tallest one
+  (`[&>*]:h-full` plus `flex-1` on the card's last section). With "My Work"
+  setting a 669px row, "Work by type" — five bars, 295px of content — was
+  stretched to 669 and drew 374px of empty card. Two of those voids were
+  visible above the fold at 1600×900.
+
+  Instead each item now spans as many 1px rows as its content actually needs,
+  and `grid-flow-row-dense` backfills the holes that leaves, so a short widget
+  rises to sit beside a tall one rather than being inflated to match it.
+
+  The row gap is baked into the span (ROW_GAP below) rather than set with
+  `gap-y`, because a real row gap would quantise every card to a multiple of
+  the gap. Column gap stays a normal `gap-x-4`.
+*/
+const ROW_GAP = 16;
+
+const GRID_CLASS =
+  "grid grid-flow-row-dense grid-cols-1 gap-x-4 [grid-auto-rows:1px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+/**
+ * How many 1px grid rows this item's content occupies.
+ *
+ * The setState bails out when the number has not changed. That is not a
+ * micro-optimisation: a ResizeObserver that sets state unconditionally, on an
+ * element whose height that state controls, is an infinite render loop, and
+ * this is exactly that shape.
+ */
+function useContentRowSpan() {
+  // Measures an inner wrapper, never the grid item: the grid item's height is
+  // what this hook sets, so measuring it would feed the span back into itself.
+  const ref = useRef<HTMLDivElement>(null);
+  const [span, setSpan] = useState<number | null>(null);
+
+  const measure = useCallback(() => {
+    const content = ref.current;
+    if (!content) return;
+    const height = content.getBoundingClientRect().height;
+    // 0 means the widget returned null — Sprint Overview with no sprint, say.
+    // Kept distinct from "one row of content" so the style below can collapse
+    // the item instead of leaving a ROW_GAP-tall sliver in the grid.
+    const next = height === 0 ? 0 : Math.ceil(height + ROW_GAP);
+    setSpan((prev) => (prev === next ? prev : next));
+  }, []);
+
+  useLayoutEffect(() => {
+    const content = ref.current;
+    if (!content) return;
+    // No explicit first measure: ResizeObserver delivers one for every element
+    // the moment it is observed, and that callback runs after layout but
+    // before paint — so the span is set for the first frame either way, and
+    // this stays off the wrong side of react-hooks/set-state-in-effect.
+    const ro = new ResizeObserver(measure);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [measure]);
+
+  /*
+    `null` until measured: the item keeps auto placement for that first pass,
+    so nothing is collapsed to a sliver before the first measurement.
+
+    `0` means the widget rendered nothing. The item collapses to a single 1px
+    row, which is invisible — and, unlike `display: none`, still participates
+    in layout. That matters: a hidden element measures 0 forever, so a widget
+    that starts empty and later has something to show (Sprint Overview once
+    its team query resolves) could never measure its way back into view.
+    `overflow: hidden` covers the one frame between content appearing and the
+    span catching up; it is only ever set while the item is empty, so it can
+    never clip a real widget's menus.
+  */
+  const style =
+    span === null
+      ? undefined
+      : span === 0
+        ? ({ gridRowEnd: "span 1", overflow: "hidden" } as const)
+        : ({ gridRowEnd: `span ${span}` } as const);
+
+  return { ref, style };
+}
+
 function SortableWidget({ id, isEditing, children, className = "" }: SortableWidgetProps) {
   const {
     attributes,
@@ -47,11 +129,13 @@ function SortableWidget({ id, isEditing, children, className = "" }: SortableWid
     transition,
     isDragging,
   } = useSortable({ id });
+  const { ref: measureRef, style: spanStyle } = useContentRowSpan();
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...spanStyle,
   };
 
   return (
@@ -65,7 +149,17 @@ function SortableWidget({ id, isEditing, children, className = "" }: SortableWid
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
       )}
-      {children}
+      <div ref={measureRef}>{children}</div>
+    </div>
+  );
+}
+
+/** The read-only grid's item: same span behaviour, no drag machinery. */
+function MasonryItem({ className, children }: { className: string; children: ReactNode }) {
+  const { ref, style } = useContentRowSpan();
+  return (
+    <div style={style} className={className}>
+      <div ref={ref}>{children}</div>
     </div>
   );
 }
@@ -123,9 +217,11 @@ export function SortableWidgetGrid({
 
   if (!isEditing) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grid-flow-row-dense">
-        {renderableWidgets.map((widgetId,index) => (
-          <div key={widgetId+index} className={`${getGridClass?.(widgetId) || ""} min-h-0 [&>*]:h-full [&>*]:flex [&>*]:flex-col [&>*>*:last-child]:flex-1`}>{renderWidget(widgetId)}</div>
+      <div className={GRID_CLASS}>
+        {renderableWidgets.map((widgetId, index) => (
+          <MasonryItem key={widgetId + index} className={getGridClass?.(widgetId) || ""}>
+            {renderWidget(widgetId)}
+          </MasonryItem>
         ))}
       </div>
     );
@@ -139,9 +235,14 @@ export function SortableWidgetGrid({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={renderableWidgets} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grid-flow-row-dense">
-          {renderableWidgets.map((widgetId,index) => (
-            <SortableWidget key={widgetId+index} id={widgetId} isEditing={isEditing} className={`${getGridClass?.(widgetId) || ""} min-h-0 [&>*]:h-full [&>*]:flex [&>*]:flex-col [&>*>*:last-child]:flex-1`}>
+        <div className={GRID_CLASS}>
+          {renderableWidgets.map((widgetId, index) => (
+            <SortableWidget
+              key={widgetId + index}
+              id={widgetId}
+              isEditing={isEditing}
+              className={getGridClass?.(widgetId) || ""}
+            >
               {renderWidget(widgetId)}
             </SortableWidget>
           ))}

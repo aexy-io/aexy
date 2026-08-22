@@ -141,7 +141,7 @@ DASHBOARD_WIDGETS = {
     # Planning / Sprints
     "sprintOverview": {"name": "Sprint Overview", "category": "planning", "personas": ["manager", "product", "developer"], "default_size": "large", "icon": "Calendar"},
     "sprintBurndown": {"name": "Sprint Burndown", "category": "planning", "personas": ["manager", "product"], "default_size": "medium", "icon": "TrendingDown"},
-    "upcomingDeadlines": {"name": "Upcoming Deadlines", "category": "planning", "personas": ["all"], "default_size": "small", "icon": "Clock"},
+    "upcomingDeadlines": {"name": "Upcoming Deadlines", "category": "planning", "personas": ["all"], "default_size": "large", "icon": "Clock"},
 
     # Tickets
     "ticketStats": {"name": "Ticket Stats", "category": "tickets", "personas": ["support", "admin"], "default_size": "medium", "icon": "Ticket"},
@@ -235,7 +235,9 @@ SURFACE_DEFAULT_WIDGETS = {
         "sprintOverview",
         "upcomingDeadlines",
         "recentTickets",
-        "myGoals",
+        # myGoals is off by default: goals are set in Reviews, and on a fresh
+        # workspace this widget is a full-width empty state directly under two
+        # other empty states. Still available in Customize.
     ],
 }
 

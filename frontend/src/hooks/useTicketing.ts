@@ -25,6 +25,7 @@ import {
   FieldOption,
   ExternalMappings,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Form Hooks ====================
 
@@ -79,7 +80,7 @@ export function useTicketForms(workspaceId: string | null) {
   });
 
   return {
-    forms: forms || [],
+    forms: forms ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -255,7 +256,7 @@ export function useTickets(
   });
 
   return {
-    tickets: data?.tickets || [],
+    tickets: data?.tickets ?? EMPTY_ARRAY,
     total: data?.total || 0,
     limit: data?.limit || 50,
     offset: data?.offset || 0,
@@ -363,7 +364,7 @@ export function useTicketResponses(workspaceId: string | null, ticketId: string 
   });
 
   return {
-    responses: responses || [],
+    responses: responses ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

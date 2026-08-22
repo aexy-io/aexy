@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { teamApi, TeamListItem, Team, TeamMember, TeamProfile } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useTeams(workspaceId: string | null) {
   const queryClient = useQueryClient();
@@ -57,7 +58,7 @@ export function useTeams(workspaceId: string | null) {
   });
 
   return {
-    teams: teams || [],
+    teams: teams ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -173,7 +174,7 @@ export function useTeamMembers(workspaceId: string | null, teamId: string | null
   });
 
   return {
-    members: members || [],
+    members: members ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

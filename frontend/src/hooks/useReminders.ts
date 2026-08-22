@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/lib/utils";
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -27,6 +28,7 @@ import {
   ReminderPriority,
   ReminderInstanceStatus,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ============ Reminder List Hook ============
 
@@ -101,7 +103,7 @@ export function useReminders(
   });
 
   return {
-    reminders: data?.reminders || [],
+    reminders: data?.reminders ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     pageSize: data?.page_size || 20,
@@ -269,7 +271,7 @@ export function useReminderInstances(
   });
 
   return {
-    instances: data?.instances || [],
+    instances: data?.instances ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     pageSize: data?.page_size || 20,
@@ -311,7 +313,7 @@ export function useReminderDashboard(workspaceId: string | null) {
     overdueInstances: stats?.total_overdue_instances || 0,
     completedThisWeek: stats?.completed_this_week || 0,
     completedThisMonth: stats?.completed_this_month || 0,
-    byCategory: stats?.by_category || [],
+    byCategory: stats?.by_category ?? EMPTY_ARRAY,
     criticalOverdue: stats?.critical_overdue || 0,
     highOverdue: stats?.high_overdue || 0,
     isLoading,
@@ -371,11 +373,11 @@ export function useMyReminders(workspaceId: string | null) {
   });
 
   return {
-    assignedToMe: data?.assigned_to_me || [],
-    myTeamReminders: data?.my_team_reminders || [],
-    overdue: data?.overdue || [],
-    dueToday: data?.due_today || [],
-    dueThisWeek: data?.due_this_week || [],
+    assignedToMe: data?.assigned_to_me ?? EMPTY_ARRAY,
+    myTeamReminders: data?.my_team_reminders ?? EMPTY_ARRAY,
+    overdue: data?.overdue ?? EMPTY_ARRAY,
+    dueToday: data?.due_today ?? EMPTY_ARRAY,
+    dueThisWeek: data?.due_this_week ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -405,7 +407,7 @@ export function useReminderCalendar(
   });
 
   return {
-    events: events || [],
+    events: events ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -463,7 +465,7 @@ export function useControlOwners(workspaceId: string | null, domain?: string) {
   });
 
   return {
-    controlOwners: controlOwners || [],
+    controlOwners: controlOwners ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -515,7 +517,7 @@ export function useDomainTeamMappings(workspaceId: string | null) {
   });
 
   return {
-    mappings: mappings || [],
+    mappings: mappings ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -577,7 +579,7 @@ export function useAssignmentRules(workspaceId: string | null) {
   });
 
   return {
-    rules: rules || [],
+    rules: rules ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -639,9 +641,16 @@ export function useReminderSuggestions(
     },
   });
 
+  // `.filter()` allocates on every call, so this needs memoising to be worth
+  // returning at all — see the note in @/lib/emptyArray.
+  const pendingSuggestions = useMemo(
+    () => (suggestions ?? EMPTY_ARRAY).filter((s) => s.status === "pending"),
+    [suggestions],
+  );
+
   return {
-    suggestions: suggestions || [],
-    pendingSuggestions: (suggestions || []).filter((s) => s.status === "pending"),
+    suggestions: suggestions ?? EMPTY_ARRAY,
+    pendingSuggestions,
     isLoading,
     error,
     refetch,

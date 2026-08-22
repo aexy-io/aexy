@@ -19,6 +19,7 @@ import {
   TaskActivity,
   TaskActivityList,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List sprints for a team
 export function useSprints(workspaceId: string | null, teamId: string | null) {
@@ -51,7 +52,7 @@ export function useSprints(workspaceId: string | null, teamId: string | null) {
   });
 
   return {
-    sprints: sprints || [],
+    sprints: sprints ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -322,7 +323,7 @@ export function useSprintTasks(sprintId: string | null) {
   });
 
   return {
-    tasks: tasks || [],
+    tasks: tasks ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -372,7 +373,7 @@ export function useTaskActivities(sprintId: string | null, taskId: string | null
   });
 
   return {
-    activities: activityData?.activities || [],
+    activities: activityData?.activities ?? EMPTY_ARRAY,
     total: activityData?.total || 0,
     isLoading,
     error,

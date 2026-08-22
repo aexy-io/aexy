@@ -9,6 +9,7 @@ import {
   ReleaseStatus,
   UserStory,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List releases for a workspace
 export function useReleases(
@@ -46,7 +47,7 @@ export function useReleases(
   });
 
   return {
-    releases: data?.items || [],
+    releases: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -166,7 +167,7 @@ export function useReleaseStories(workspaceId: string | null, releaseId: string 
   });
 
   return {
-    stories: data?.items || [],
+    stories: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,

@@ -5,6 +5,119 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-08-23
+
+Post-login craft: the boards, the dashboard, the sidebar, and a render loop
+that had been running since the backlog page shipped.
+
+### Fixed: every kanban board was cut off
+
+Each of the four boards sized its columns with a hard pixel width —
+`w-[280px]` in the hiring pipeline, `w-[300px]` in CRM and on the project
+board, `w-[320px]` in Planning — and let the row scroll. A fixed column times a
+column count the board does not control is a width the container almost never
+has, so the last column was permanently sliced in half. Measured at a 1600px
+viewport, i.e. on a screen with room to spare:
+
+| board | needs | has | hidden |
+|---|---|---|---|
+| Planning ▸ All Tasks | 1648px | 1248px | 400px |
+| Hiring ▸ Candidates | 1760px | 1296px | 464px |
+| CRM ▸ Deals | 2196px | 1280px | 916px |
+| Project board | 1596px | 1344px | 252px |
+
+Planning made it worse by wrapping the board in a centred `max-w-7xl`, so the
+board was boxed into 1280px of an available 1344 on a page whose entire content
+is a horizontal board. Worse still, on a tall board the horizontal scrollbar
+sat below the fold, so the usual read of a clipped edge — "there is more,
+scroll for it" — was not even available. The board simply looked broken.
+
+Columns flex now, between a 248px floor and a 360px ceiling, from one shared
+contract in `lib/boardLayout.ts`. The floor is where a card still holds its
+badges on one line and its title on two; it is also what lets a five-status
+board fit whole on a 1600px screen, which is the case that was failing. Boards
+still scroll when they genuinely cannot fit — seven CRM stages will not tile at
+1280px at any readable width — but the scroll is the last resort rather than
+the first.
+
+### Fixed: "Maximum update depth exceeded" on the sprint backlog
+
+`/sprints/[projectId]/backlog` re-rendered until React gave up, on every visit,
+for as long as the page was open. The chain started somewhere that looks
+harmless:
+
+```
+useTaskStatuses     statuses: statuses || []      ← new identity every render
+  → useProjectBoard   projectStatusSlugs → tasksByStatus
+    → backlog page    backlogItems → filteredItems
+      → useEffect(() => setOrderedItems(filteredItems), [filteredItems])
+```
+
+`|| []` allocates a fresh array on every call — while the query is in flight,
+while it is disabled, and forever if it errors — which invalidates every
+`useMemo` downstream. Four memos of amplification later, a component mirrors
+the result into state inside an effect, and the two feed each other.
+
+Both ends are fixed, and each is independently sufficient: hooks return a
+single frozen `EMPTY_ARRAY`, and the backlog effect uses the updater form and
+returns `prev` when nothing changed, so React skips the re-render outright.
+
+### Changed: `|| []` is gone from every hook return
+
+The same literal appeared in **166 return properties across 46 hook files**.
+Only the backlog page ended its chain in a setState, so only it hung; the rest
+were paying for renders nobody could see. All of them now return the shared
+frozen array from `lib/emptyArray.ts`, typed `never[]` so the element type
+survives. Two neighbouring cases went with them —
+`todoStatuses`/`inProgressStatuses`/`doneStatuses` and `pendingSuggestions`
+were unmemoised `.filter()` calls in return objects, which allocate regardless
+of the data.
+
+### Fixed: Tailwind never compiled the app's shared class strings
+
+The `content` globs listed `pages`, `components` and `app` — not `lib`,
+`config` or `hooks`. `lib/statusColors.ts` calls itself the "single source of
+truth for all status colors" and lives in one of the unscanned directories: its
+classes render today only because some component happens to spell the same
+utility inline. That is luck, and it runs out exactly when the raw-palette
+migration deletes the duplicates.
+
+### Changed: the project board header
+
+Eleven controls in one non-wrapping row beside an unconstrained title. The row
+overflowed its container by 34px at a 1600px viewport with `overflow: visible`,
+so the last toggle was clipped off the page — not scrolled, clipped — while the
+squeeze crushed the `<h1>` to 62px and wrapped "Project Board" onto three
+lines.
+
+The title truncates instead of wrapping and the toolbar wraps instead of
+overflowing, so neither can cut the other off. The heading is the project's
+name now — the breadcrumb already says "Board"; what it did not say was which
+project. Import, Templates, Export and Keyboard shortcuts move into one "More"
+menu, which closes on Escape. And the board fills the viewport instead of
+leaving grey space under it, with each column scrolling its own tasks.
+
+### Changed: dashboard widgets are as tall as their contents
+
+The grid forced every card in a row to the height of the tallest one. "My Work"
+set a 669px row, so "Work by type" — five bars, 295px of content — was inflated
+to 669 and drew 374px of empty card. Two of those were visible above the fold.
+
+Widgets now span as many rows as they measure, and dense packing closes up
+around them: the grid went from ~1700px to 1207px, and the worst slack from
+374px to 16px — exactly the row gap. Upcoming Deadlines is half-width to match
+Sprint Overview, Sprint Overview hides itself when there is no sprint rather
+than drawing a card around an empty state, and My Goals is off by default.
+Anyone who has already saved a layout keeps it; only the defaults change.
+
+### Fixed: sidebar favourites truncated with space to spare
+
+Favourites read "Das… SERVICE DESK" and "Autom… AUTOPILOT" with visible empty
+space to the right of them. Nothing was too long: the pin and remove buttons
+are `opacity-0` until hover, but opacity does not free layout, so they held
+34px of the 204px row at all times. "Dashboard" needed 73px and was allotted
+46. Out of flow it gets 92.
+
 ## [0.28.0] - 2026-08-22
 
 The public site: a new look, and the SEO and conversion audit that came with it.

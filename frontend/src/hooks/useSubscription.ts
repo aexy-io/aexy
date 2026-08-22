@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { billingApi, SubscriptionStatus, PlanFeatures } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useSubscription(workspaceId?: string | null) {
   const {
@@ -113,7 +114,7 @@ export function usePlans() {
   });
 
   return {
-    plans: plans || [],
+    plans: plans ?? EMPTY_ARRAY,
     isLoading,
     error,
   };

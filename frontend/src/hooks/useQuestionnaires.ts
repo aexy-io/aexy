@@ -8,6 +8,7 @@ import {
   QuestionnaireListResponse,
   QuestionnaireAnalyzeResult,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ============ Questionnaire List Hook ============
 
@@ -41,7 +42,7 @@ export function useQuestionnaires(workspaceId: string | null) {
   });
 
   return {
-    questionnaires: data?.questionnaires || [],
+    questionnaires: data?.questionnaires ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -100,7 +101,7 @@ export function useQuestionnaire(
 
   return {
     questionnaire,
-    questions: questions || [],
+    questions: questions ?? EMPTY_ARRAY,
     isLoading,
     questionsLoading,
     error,

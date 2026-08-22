@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { workspaceApi, WorkspaceListItem, Workspace, CustomTaskStatus, StatusCategory, WorkspacePendingInvite, WorkspaceAppSettings } from "@/lib/api";
 import { useAuth } from "./useAuth";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 const CURRENT_WORKSPACE_KEY = "current_workspace_id";
 
@@ -185,7 +186,7 @@ export function useWorkspace() {
 
   return {
     // Workspace list
-    workspaces: workspaces || [],
+    workspaces: workspaces ?? EMPTY_ARRAY,
     workspacesLoading,
     workspacesError,
     refetchWorkspaces,
@@ -346,7 +347,7 @@ export function useWorkspaceMembers(
   });
 
   return {
-    members: members || [],
+    members: members ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -503,7 +504,7 @@ export function useCustomTaskStatuses(workspaceId: string | null) {
   }, {} as Record<StatusCategory, CustomTaskStatus[]>) || {};
 
   return {
-    statuses: statuses || [],
+    statuses: statuses ?? EMPTY_ARRAY,
     statusesByCategory,
     isLoading,
     error,
@@ -557,7 +558,7 @@ export function usePendingInvites(workspaceId: string | null) {
   });
 
   return {
-    pendingInvites: pendingInvites || [],
+    pendingInvites: pendingInvites ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

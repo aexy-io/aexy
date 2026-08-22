@@ -9,6 +9,7 @@ import {
   TimelineResponse,
   EntityActivity,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // Hook for listing activities (optionally filtered by entity)
 export function useEntityActivities(
@@ -61,7 +62,7 @@ export function useEntityActivities(
   });
 
   return {
-    activities: data?.items || [],
+    activities: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     hasMore: data?.has_more || false,
     isLoading,
@@ -118,7 +119,7 @@ export function useEntityTimeline(
   });
 
   return {
-    timeline: data?.entries || [],
+    timeline: data?.entries ?? EMPTY_ARRAY,
     total: data?.total || 0,
     entityType: data?.entity_type,
     entityId: data?.entity_id,

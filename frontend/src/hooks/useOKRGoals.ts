@@ -11,6 +11,7 @@ import {
   OKRGoalStatus,
   OKRPeriodType,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List OKR goals for a workspace
 export function useOKRGoals(
@@ -64,7 +65,7 @@ export function useOKRGoals(
   });
 
   return {
-    goals: data?.items || [],
+    goals: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -190,7 +191,7 @@ export function useOKRKeyResults(workspaceId: string | null, goalId: string | nu
   });
 
   return {
-    keyResults: data?.items || [],
+    keyResults: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -222,7 +223,7 @@ export function useOKRDashboard(workspaceId: string | null) {
   });
 
   return {
-    objectives: data?.objectives || [],
+    objectives: data?.objectives ?? EMPTY_ARRAY,
     summary: data?.summary || {
       total_objectives: 0,
       on_track: 0,

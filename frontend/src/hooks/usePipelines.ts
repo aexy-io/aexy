@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { crmApi, CRMPipeline, CRMPipelineStage, CRMStageType } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 const pipelinesKey = (workspaceId: string | null, objectId?: string | null) => [
   "crmPipelines",
@@ -125,7 +126,7 @@ export function usePipelines(workspaceId: string | null, objectId: string | null
   });
 
   return {
-    pipelines: pipelines || [],
+    pipelines: pipelines ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

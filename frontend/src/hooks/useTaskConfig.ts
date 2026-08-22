@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   taskConfigApi,
@@ -12,6 +13,7 @@ import {
   CustomFieldOption,
 } from "@/lib/api";
 import { invalidateTaskCaches } from "@/hooks/invalidateTaskCaches";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // Task Statuses
 // When `projectId` is supplied the hook returns the project's status set, with
@@ -111,24 +113,41 @@ export function useTaskStatuses(
   });
 
   // Helper to get statuses by category
-  const getStatusesByCategory = (category: StatusCategory) => {
-    return (statuses || []).filter((s) => s.category === category);
-  };
+  const getStatusesByCategory = useCallback(
+    (category: StatusCategory) =>
+      (statuses ?? EMPTY_ARRAY).filter((s) => s.category === category),
+    [statuses],
+  );
+
+  /*
+    Memoised for the same reason the empty array is shared: these three go out
+    in the return object, and `.filter()` allocates a new array on every call.
+    Left bare they were a fresh identity per render even when the data had not
+    moved — the same dependency-array poison as `|| []`, one step further down.
+  */
+  const byCategory = useMemo(
+    () => ({
+      todo: getStatusesByCategory("todo"),
+      inProgress: getStatusesByCategory("in_progress"),
+      done: getStatusesByCategory("done"),
+    }),
+    [getStatusesByCategory],
+  );
 
   // Helper to get status by slug
   const getStatusBySlug = (slug: string) => {
-    return (statuses || []).find((s) => s.slug === slug);
+    return (statuses ?? EMPTY_ARRAY).find((s) => s.slug === slug);
   };
 
   // True when the rows we're showing for a project are actually workspace
   // defaults (the project hasn't customized yet). Useful for "Customize for
   // this project" CTAs in the UI.
-  const isUsingWorkspaceFallback = !!projectId && (statuses || []).every(
+  const isUsingWorkspaceFallback = !!projectId && (statuses ?? EMPTY_ARRAY).every(
     (s) => s.project_id === null,
   );
 
   return {
-    statuses: statuses || [],
+    statuses: statuses ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -146,9 +165,9 @@ export function useTaskStatuses(
     // Helpers
     getStatusesByCategory,
     getStatusBySlug,
-    todoStatuses: getStatusesByCategory("todo"),
-    inProgressStatuses: getStatusesByCategory("in_progress"),
-    doneStatuses: getStatusesByCategory("done"),
+    todoStatuses: byCategory.todo,
+    inProgressStatuses: byCategory.inProgress,
+    doneStatuses: byCategory.done,
   };
 }
 
@@ -217,7 +236,7 @@ export function useStatusCategories(
   });
 
   return {
-    categories: categories || [],
+    categories: categories ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -329,7 +348,7 @@ export function useCustomFields(workspaceId: string | null) {
   };
 
   return {
-    fields: fields || [],
+    fields: fields ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

@@ -527,7 +527,17 @@ function SprintsPageContent() {
 
   return (
     <div>
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* The board is the widest thing this page renders: five columns that
+          need ~1400px. Boxing it into a centred 1280 column left the last
+          status sliced in half on a 1600px screen while 256px of viewport sat
+          empty beside it. Only the board tab opts out — Projects and Epics are
+          card grids that read better at a bounded measure. */}
+      <div
+        className={cn(
+          "mx-auto px-4 py-8",
+          activeTab === "tasks" ? "max-w-none" : "max-w-7xl",
+        )}
+      >
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

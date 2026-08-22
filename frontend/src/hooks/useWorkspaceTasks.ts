@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { useProjects } from "@/hooks/useProjects";
 import { invalidateTaskCaches } from "@/hooks/invalidateTaskCaches";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export interface WorkspaceBoardFilters {
   assignees: string[];
@@ -365,8 +366,8 @@ export function useWorkspaceTasks(
     filteredTasks,
     tasksByStatus,
     projects,
-    sprints: allSprints || [],
-    epics: allEpics || [],
+    sprints: allSprints ?? EMPTY_ARRAY,
+    epics: allEpics ?? EMPTY_ARRAY,
     filterOptions,
     filters,
     updateFilters,

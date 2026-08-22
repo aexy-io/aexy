@@ -27,6 +27,7 @@ import {
   CRMAutomationTriggerType,
   CRMAutomationActionType,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Object Hooks ====================
 
@@ -116,7 +117,7 @@ export function useCRMObjects(workspaceId: string | null) {
   });
 
   return {
-    objects: objects || [],
+    objects: objects ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -243,7 +244,7 @@ export function useCRMAttributes(workspaceId: string | null, objectId: string | 
   });
 
   return {
-    attributes: attributes || [],
+    attributes: attributes ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -369,7 +370,7 @@ export function useCRMRecords(
   });
 
   return {
-    records: data?.records || [],
+    records: data?.records ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -492,7 +493,7 @@ export function useCRMNotes(workspaceId: string | null, recordId: string | null)
   });
 
   return {
-    notes: notes || [],
+    notes: notes ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -520,7 +521,7 @@ export function useCRMActivities(workspaceId: string | null, recordId: string | 
   });
 
   return {
-    activities: activities || [],
+    activities: activities ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -661,7 +662,7 @@ export function useCRMLists(workspaceId: string | null, objectId?: string) {
   });
 
   return {
-    lists: lists || [],
+    lists: lists ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -810,7 +811,7 @@ export function useCRMListEntries(workspaceId: string | null, listId: string | n
   });
 
   return {
-    entries: data?.entries || [],
+    entries: data?.entries ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -927,7 +928,7 @@ export function useCRMAutomations(workspaceId: string | null, params?: { object_
   });
 
   return {
-    automations: automations || [],
+    automations: automations ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -957,7 +958,7 @@ export function useCRMAutomationRuns(workspaceId: string | null, automationId: s
   });
 
   return {
-    runs: runs || [],
+    runs: runs ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -1032,7 +1033,7 @@ export function useCRMSequences(workspaceId: string | null, params?: { object_id
   });
 
   return {
-    sequences: sequences || [],
+    sequences: sequences ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -1112,7 +1113,7 @@ export function useCRMSequenceSteps(workspaceId: string | null, sequenceId: stri
   });
 
   return {
-    steps: steps || [],
+    steps: steps ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -1186,7 +1187,7 @@ export function useCRMSequenceEnrollments(workspaceId: string | null, sequenceId
   });
 
   return {
-    enrollments: enrollments || [],
+    enrollments: enrollments ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -1303,7 +1304,7 @@ export function useCRMWebhooks(workspaceId: string | null, params?: { object_id?
   });
 
   return {
-    webhooks: webhooks || [],
+    webhooks: webhooks ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -1348,7 +1349,7 @@ export function useCRMWebhookDeliveries(workspaceId: string | null, webhookId: s
   });
 
   return {
-    deliveries: deliveries || [],
+    deliveries: deliveries ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

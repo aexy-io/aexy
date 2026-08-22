@@ -9,6 +9,7 @@ import {
   AgentConversationWithMessages,
   AgentMessage,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Conversation Hooks ====================
 
@@ -48,7 +49,7 @@ export function useAgentConversations(
   });
 
   return {
-    conversations: conversations || [],
+    conversations: conversations ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -95,7 +96,7 @@ export function useAgentConversation(
 
   return {
     conversation,
-    messages: conversation?.messages || [],
+    messages: conversation?.messages ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

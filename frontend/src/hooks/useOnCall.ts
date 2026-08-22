@@ -12,6 +12,7 @@ import {
   GoogleCalendarStatus,
   GoogleCalendarInfo,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ============ On-Call Config Hooks ============
 
@@ -130,7 +131,7 @@ export function useOnCallSchedules(
   });
 
   return {
-    schedules: data?.schedules || [],
+    schedules: data?.schedules ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -220,7 +221,7 @@ export function useSwapRequests(workspaceId: string | null, teamId: string | nul
   });
 
   return {
-    swapRequests: swapRequests || [],
+    swapRequests: swapRequests ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -336,7 +337,7 @@ export function useGoogleCalendars(workspaceId: string | null, isConnected: bool
   });
 
   return {
-    calendars: data?.calendars || [],
+    calendars: data?.calendars ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

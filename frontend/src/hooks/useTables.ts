@@ -20,6 +20,7 @@ import {
   TableAuditEntry,
   WorkspaceFieldType,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Table Hooks ====================
 
@@ -88,7 +89,7 @@ export function useTables(workspaceId: string | null) {
   });
 
   return {
-    tables: tables || [],
+    tables: tables ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -167,7 +168,7 @@ export function useTableFields(workspaceId: string | null, tableId: string | nul
   });
 
   return {
-    fields: fields || [],
+    fields: fields ?? EMPTY_ARRAY,
     isLoading,
     error,
     addField: createMutation.mutateAsync,
@@ -250,7 +251,7 @@ export function useTableRecords(
   });
 
   return {
-    records: data?.records || [],
+    records: data?.records ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -329,7 +330,7 @@ export function useTableCollaborators(workspaceId: string | null, tableId: strin
   });
 
   return {
-    collaborators: collaborators || [],
+    collaborators: collaborators ?? EMPTY_ARRAY,
     isLoading,
     addCollaborator: addMutation.mutateAsync,
     updateCollaborator: updateMutation.mutateAsync,
@@ -403,7 +404,7 @@ export function useSavedViews(workspaceId: string | null, tableId: string | null
   });
 
   return {
-    views: views || [],
+    views: views ?? EMPTY_ARRAY,
     isLoading,
     error,
     createView: createMutation.mutateAsync,
@@ -455,7 +456,7 @@ export function useTableShareLinks(workspaceId: string | null, tableId: string |
   });
 
   return {
-    shareLinks: shareLinks || [],
+    shareLinks: shareLinks ?? EMPTY_ARRAY,
     isLoading,
     createShareLink: createMutation.mutateAsync,
     revokeShareLink: revokeMutation.mutateAsync,
@@ -477,7 +478,7 @@ export function useTableAuditLog(
   });
 
   return {
-    entries: data?.entries || [],
+    entries: data?.entries ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -551,7 +552,7 @@ export function useCustomFieldTypes(workspaceId: string | null) {
   });
 
   return {
-    fieldTypes: fieldTypes || [],
+    fieldTypes: fieldTypes ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

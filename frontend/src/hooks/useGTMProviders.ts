@@ -11,6 +11,7 @@ import {
   ICPTemplateCreate,
   ICPTemplateUpdate,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useGTMProviders(workspaceId: string | null) {
   const queryClient = useQueryClient();
@@ -83,7 +84,7 @@ export function useGTMProviders(workspaceId: string | null) {
   });
 
   return {
-    providers: data || [],
+    providers: data ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -141,7 +142,7 @@ export function useICPTemplates(workspaceId: string | null) {
   });
 
   return {
-    templates: data || [],
+    templates: data ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

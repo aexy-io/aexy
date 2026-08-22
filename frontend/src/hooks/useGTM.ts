@@ -20,6 +20,7 @@ import {
   TrendAnalytics,
   ReplyClassificationStats,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useGTMDashboard(workspaceId: string | null, days: number = 30) {
   const overview = useQuery<GTMDashboardOverview>({
@@ -46,7 +47,7 @@ export function useGTMDashboard(workspaceId: string | null, days: number = 30) {
     overviewError: overview.error,
     funnel: funnel.data,
     funnelLoading: funnel.isLoading,
-    recentVisitors: recentVisitors.data || [],
+    recentVisitors: recentVisitors.data ?? EMPTY_ARRAY,
     recentVisitorsLoading: recentVisitors.isLoading,
     refetch: () => {
       overview.refetch();
@@ -67,7 +68,7 @@ export function useGTMVisitors(
   });
 
   return {
-    sessions: data?.sessions || [],
+    sessions: data?.sessions ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 20,
@@ -118,7 +119,7 @@ export function useGTMScoredLeads(
   });
 
   return {
-    leads: data?.leads || [],
+    leads: data?.leads ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 25,
@@ -145,7 +146,7 @@ export function useOutreachSequences(
   });
 
   return {
-    sequences: data?.items || [],
+    sequences: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 25,
@@ -179,7 +180,7 @@ export function useSequenceEnrollments(
   });
 
   return {
-    enrollments: data?.items || [],
+    enrollments: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 25,
@@ -328,7 +329,7 @@ export function useGTMAlertConfigs(workspaceId: string | null) {
     queryFn: () => gtmApi.alerts.listConfigs(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { configs: data || [], isLoading, error, refetch };
+  return { configs: data ?? EMPTY_ARRAY, isLoading, error, refetch };
 }
 
 export function useGTMAlertLogs(workspaceId: string | null, params?: { page?: number; per_page?: number; event_type?: string }) {
@@ -337,7 +338,7 @@ export function useGTMAlertLogs(workspaceId: string | null, params?: { page?: nu
     queryFn: () => gtmApi.alerts.listLogs(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { logs: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { logs: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -350,7 +351,7 @@ export function useGTMRoutingRules(workspaceId: string | null) {
     queryFn: () => gtmApi.routing.listRules(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { rules: data || [], isLoading, error, refetch };
+  return { rules: data ?? EMPTY_ARRAY, isLoading, error, refetch };
 }
 
 export function useGTMSLADashboard(workspaceId: string | null, days?: number) {
@@ -368,7 +369,7 @@ export function useGTMAssignments(workspaceId: string | null, params?: { page?: 
     queryFn: () => gtmApi.routing.listAssignments(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { assignments: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { assignments: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -390,7 +391,7 @@ export function useGTMHealthScores(workspaceId: string | null, params?: { page?:
     queryFn: () => gtmApi.health.listScores(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { scores: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { scores: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -403,7 +404,7 @@ export function useGTMExpansionPlaybooks(workspaceId: string | null) {
     queryFn: () => gtmApi.expansion.listPlaybooks(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { playbooks: data || [], isLoading, error, refetch };
+  return { playbooks: data ?? EMPTY_ARRAY, isLoading, error, refetch };
 }
 
 export function useGTMExpansionAnalytics(workspaceId: string | null) {
@@ -421,7 +422,7 @@ export function useGTMExpansionEnrollments(workspaceId: string | null, params?: 
     queryFn: () => gtmApi.expansion.listEnrollments(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { enrollments: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { enrollments: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -434,7 +435,7 @@ export function useGTMHandoffs(workspaceId: string | null, params?: { page?: num
     queryFn: () => gtmApi.handoffs.list(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { handoffs: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { handoffs: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 export function useGTMHandoffAnalytics(workspaceId: string | null) {
@@ -456,7 +457,7 @@ export function useGTMIntentSignals(workspaceId: string | null, params?: { page?
     queryFn: () => gtmApi.intent.listSignals(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { signals: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { signals: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 export function useGTMIntentSummary(workspaceId: string | null) {
@@ -478,7 +479,7 @@ export function useGTMCompetitors(workspaceId: string | null) {
     queryFn: () => gtmApi.competitors.list(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { competitors: data || [], isLoading, error, refetch };
+  return { competitors: data ?? EMPTY_ARRAY, isLoading, error, refetch };
 }
 
 export function useGTMCompetitor(workspaceId: string | null, competitorId: string | null) {
@@ -496,7 +497,7 @@ export function useGTMCompetitorChanges(workspaceId: string | null, params?: { p
     queryFn: () => gtmApi.competitors.listChanges(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { changes: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { changes: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 export function useGTMBattleCard(workspaceId: string | null, competitorId: string | null) {
@@ -518,7 +519,7 @@ export function useGTMSEOAudits(workspaceId: string | null, params?: { page?: nu
     queryFn: () => gtmApi.seo.listAudits(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { audits: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { audits: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 export function useGTMSEOAudit(workspaceId: string | null, auditId: string | null) {
@@ -540,7 +541,7 @@ export function useGTMContentAnalyses(workspaceId: string | null, params?: { pag
     queryFn: () => gtmApi.contentGap.listAnalyses(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { analyses: data?.items || [], total: data?.total || 0, isLoading, error, refetch };
+  return { analyses: data?.items ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }
 
 // =============================================================================
@@ -562,7 +563,7 @@ export function useGTMABMTargetLists(workspaceId: string | null) {
     queryFn: () => gtmApi.abm.listLists(workspaceId!),
     enabled: !!workspaceId,
   });
-  return { lists: data || [], isLoading, error, refetch };
+  return { lists: data ?? EMPTY_ARRAY, isLoading, error, refetch };
 }
 
 export function useGTMABMAccounts(workspaceId: string | null, params?: { page?: number; per_page?: number; target_list_id?: string; tier?: string; stage?: string }) {
@@ -571,5 +572,5 @@ export function useGTMABMAccounts(workspaceId: string | null, params?: { page?: 
     queryFn: () => gtmApi.abm.listAccounts(workspaceId!, params),
     enabled: !!workspaceId,
   });
-  return { accounts: data?.items || data?.accounts || [], total: data?.total || 0, isLoading, error, refetch };
+  return { accounts: data?.items ?? data?.accounts ?? EMPTY_ARRAY, total: data?.total || 0, isLoading, error, refetch };
 }

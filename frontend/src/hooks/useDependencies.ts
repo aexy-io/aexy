@@ -11,6 +11,7 @@ import {
   DependencyGraphEdge,
   BlockedItem,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // Story dependencies
 export function useStoryDependencies(
@@ -74,7 +75,7 @@ export function useStoryDependencies(
   });
 
   return {
-    dependencies: data?.items || [],
+    dependencies: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -152,7 +153,7 @@ export function useTaskDependencies(
   });
 
   return {
-    dependencies: data?.items || [],
+    dependencies: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -188,8 +189,8 @@ export function useDependencyGraph(
   });
 
   return {
-    nodes: data?.nodes || [],
-    edges: data?.edges || [],
+    nodes: data?.nodes ?? EMPTY_ARRAY,
+    edges: data?.edges ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -214,8 +215,8 @@ export function useBlockedItems(workspaceId: string | null) {
   });
 
   return {
-    blockedStories: data?.blocked_stories || [],
-    blockedTasks: data?.blocked_tasks || [],
+    blockedStories: data?.blocked_stories ?? EMPTY_ARRAY,
+    blockedTasks: data?.blocked_tasks ?? EMPTY_ARRAY,
     totalBlocked: data?.total_blocked || 0,
     isLoading,
     error,
