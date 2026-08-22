@@ -78,8 +78,8 @@ export default function UptimeDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <div className="h-7 w-48 bg-accent rounded mb-2" />
@@ -116,14 +116,14 @@ export default function UptimeDashboard() {
               </div>
             ))}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -357,7 +357,7 @@ export default function UptimeDashboard() {
             <ModuleAutomationsPanel module="uptime" moduleLabel="Uptime" compact />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

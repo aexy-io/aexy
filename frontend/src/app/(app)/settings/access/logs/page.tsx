@@ -141,10 +141,6 @@ export default function AccessLogsPage() {
       <SettingsPage
         title={t("title")}
         description={t("description")}
-        breadcrumbs={[
-          { label: t("breadcrumbParent"), href: "/settings/access" },
-          { label: t("title") },
-        ]}
       >
         <div className="text-center py-16">
           <div className="mx-auto w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
@@ -167,10 +163,6 @@ export default function AccessLogsPage() {
       title={t("title")}
       description={t("description")}
       width="wide"
-      breadcrumbs={[
-        { label: t("breadcrumbParent"), href: "/settings/access" },
-        { label: t("title") },
-      ]}
       actions={
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />

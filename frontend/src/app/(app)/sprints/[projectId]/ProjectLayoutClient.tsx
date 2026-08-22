@@ -119,7 +119,7 @@ export default function ProjectLayoutClient({
   const deliveryItems = navItems.filter(item => item.group === "delivery");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Sub-navigation for planning views */}
       <div className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="px-4">

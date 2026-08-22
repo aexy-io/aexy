@@ -31,6 +31,25 @@ const EXCLUDED = new Set([
   "README.md",
 ]);
 
+/**
+ * Internal planning documents, excluded by shape rather than by name.
+ *
+ * The named-file list above only holds back files somebody remembered to add.
+ * Four got through: MCP_COVERAGE_PLAN, TEAM_INBOX_PLAN, UNIFIED_EMAIL_PLAN and
+ * plans/docs-from-code-ux. None is referenced from README, so each was swept up
+ * by the orphan bucketer, published under its raw uppercase filename as a
+ * title, added to the search index, and listed in sitemap.xml for search
+ * engines to crawl. They carry "Status: proposed", unreleased branch names, and
+ * frank assessments of what does not work yet ("the account-mixing leak, still
+ * live"). That is internal roadmap on a public marketing site.
+ *
+ * Matching a pattern rather than a list means the next plan document is held
+ * back by default. A plan that genuinely should ship publicly can be renamed or
+ * linked from README, which is a deliberate act either way.
+ */
+const INTERNAL = [/(^|\/)[A-Z0-9_]+_PLAN\.md$/, /^plans\//];
+const isInternal = (rel) => INTERNAL.some((re) => re.test(rel));
+
 const ORPHAN_BUCKETS = {
   "guides/": "Developer guides (cross-cutting)",
   "architecture/": "Architecture & Design",
@@ -57,7 +76,7 @@ function walk(dir, relBase = "") {
     if (stat.isDirectory()) {
       walk(abs, rel);
     } else if (name.endsWith(".md")) {
-      if (EXCLUDED.has(rel)) continue;
+      if (EXCLUDED.has(rel) || isInternal(rel)) continue;
       allFiles.push(rel);
       const outPath = path.join(DOCS_OUT, rel);
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -95,7 +114,7 @@ for (const line of readmeRaw.split("\n")) {
   const item = line.match(/^- \[([^\]]+)\]\(\.\/([^)]+)\)(?:\s*[-—]\s*(.+))?$/);
   if (item && currentSection) {
     const [, title, relPath, desc] = item;
-    if (EXCLUDED.has(relPath)) continue;
+    if (EXCLUDED.has(relPath) || isInternal(relPath)) continue;
     if (!allFiles.includes(relPath)) continue;
     currentSection.items.push({
       title: title.trim(),

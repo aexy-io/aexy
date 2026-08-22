@@ -21,19 +21,22 @@ import { SiGithub } from "@icons-pack/react-simple-icons";
 // declarations out in prose above them — the scan keys on first occurrence.
 
 const productLinks = [
-  { href: "/products/tracking", label: "Activity Tracking" },
+  // A curated dozen for the footer. The full catalogue is /products — 29 rows
+  // in one footer column was 29 stacked links at 375px, which is a list nobody
+  // reads rather than navigation. `marketingRouteParity.test.ts` checks every
+  // product page is reachable from here *or* from the index.
   { href: "/products/planning", label: "Sprint Planning" },
   { href: "/products/tickets", label: "Ticketing" },
-  { href: "/products/forms", label: "Forms" },
-  { href: "/products/docs", label: "Documentation" },
-  { href: "/products/reviews", label: "Performance Reviews" },
-  { href: "/products/learning", label: "Learning & Dev" },
-  { href: "/products/hiring", label: "Technical Hiring" },
+  { href: "/products/analytics", label: "Engineering Insights" },
   { href: "/products/crm", label: "CRM" },
-  { href: "/products/email-marketing", label: "Email Marketing" },
-  { href: "/products/ai-agents", label: "AI Agents" },
-  { href: "/products/mcp", label: "MCP Server" },
+  { href: "/products/service-desk", label: "Service Desk" },
   { href: "/products/gtm-intelligence", label: "GTM Intelligence" },
+  { href: "/products/email-marketing", label: "Email Marketing" },
+  { href: "/products/docs", label: "Documentation" },
+  { href: "/products/tables", label: "Tables" },
+  { href: "/products/ai-agents", label: "AI Agents" },
+  { href: "/products/automations", label: "Automations" },
+  { href: "/products/mcp", label: "MCP Server" },
 ];
 
 const solutionLinks = [
@@ -106,22 +109,46 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>
+            {/*
+              `px-6 py-5` is not decoration. `sheetVariants` deliberately drops
+              `p-6` from its base so a sheet can lay out SheetHeader/Body/Footer
+              itself — and this one used neither, so it inherited nothing: the
+              title sat at y=0 against the top of the screen, every nav link
+              started 1px from the panel edge, and the "Get started" button ran
+              flush into the right edge of the viewport.
+
+              The width is capped against the viewport as well as in pixels. A
+              flat 300px leaves a 375px phone a 75px strip of page, and a 320px
+              one barely 20px — not enough of the underlay left to read as
+              "tap here to dismiss".
+            */}
             <SheetContent
               side="right"
-              className="w-[300px] overflow-y-auto border-ledger-ink/12 bg-ledger-paper text-ledger-ink"
+              className="w-[min(300px,85vw)] overflow-y-auto border-ledger-ink/12 bg-ledger-paper px-6 py-5 text-ledger-ink"
             >
-              <SheetTitle className="mb-6 font-display text-lg font-semibold text-ledger-ink">
+              {/* pr-10 keeps the title clear of the absolutely-positioned close
+                  button, which sits at right-4 top-4 inside this same box. */}
+              <SheetTitle className="mb-5 pr-10 font-display text-lg font-semibold text-ledger-ink">
                 Menu
               </SheetTitle>
-              <nav className="flex flex-col gap-4 font-brand-mono text-sm uppercase tracking-[0.1em] text-ledger-ink/75">
+              {/* gap-1 with py-3 rather than gap-4 with none: the links were
+                  ~20px tall, less than half the 44px touch target a thumb
+                  needs, with 16px of dead space between them. Same rhythm on
+                  screen, and every row now clears 44. */}
+              <nav className="-mx-2 flex flex-col gap-1 font-brand-mono text-sm uppercase tracking-[0.1em] text-ledger-ink/75">
                 {NAV_LINKS.map(([href, label]) => (
-                  <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-[2px] px-2 py-3 transition hover:bg-ledger-ink/5 hover:text-ledger-ink"
+                  >
                     {label}
                   </Link>
                 ))}
                 <a
                   href="https://github.com/aexy-io/aexy"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 rounded-[2px] px-2 py-3 transition hover:bg-ledger-ink/5 hover:text-ledger-ink"
                 >
                   <SiGithub className="h-4 w-4" />
                   GitHub
@@ -130,7 +157,7 @@ export function LandingHeader({ showGetStarted = true }: LandingHeaderProps) {
                   <Link
                     href="/login"
                     onClick={() => setMobileOpen(false)}
-                    className="mt-2 inline-flex items-center justify-center gap-2 rounded-[2px] bg-ledger-green px-4 py-2.5 font-sans font-semibold normal-case tracking-normal text-ledger-paper"
+                    className="mx-2 mt-4 inline-flex items-center justify-center gap-2 rounded-[2px] bg-ledger-green px-4 py-3 font-sans font-semibold normal-case tracking-normal text-ledger-paper transition hover:bg-[#095A31]"
                   >
                     Get started
                     <ArrowRight className="h-4 w-4" />
@@ -221,6 +248,7 @@ export function LandingFooter() {
             title="Products"
             links={[
               ...productLinks,
+              { href: "/products", label: "All products →" },
               { href: "/ai-company-os", label: "AI Company OS" },
               { href: "/open-source-company-os", label: "Open Source Company OS" },
             ]}

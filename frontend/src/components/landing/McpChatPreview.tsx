@@ -1,3 +1,10 @@
+/*
+ * Radii are pinned to arbitrary values rather than the `rounded-*` scale.
+ * This frame imitates a third-party chat client, so its soft corners are the
+ * point; Open Ledger set --radius to 2px and routed xl/2xl/3xl through it,
+ * which would have squared the mockup off into something that looks like
+ * Aexy rather than like the app Aexy is being used from.
+ */
 import { ArrowRight, Plug } from "lucide-react";
 
 /**
@@ -35,10 +42,10 @@ export function McpChatPreview() {
           /products/mcp has always had; the homepage's .theme-ledger scope
           restyles the frame and hides the glow via globals.css. */}
       <div className="mcp-preview-glow absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-teal-500/16 via-cyan-500/16 to-violet-500/12 blur-2xl" />
-      <div className="mcp-preview-frame relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f14] shadow-2xl">
+      <div className="mcp-preview-frame relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0d0f14] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white text-black">
               <Plug className="h-5 w-5" />
             </div>
             <div>
@@ -53,20 +60,20 @@ export function McpChatPreview() {
 
         {/* The ask */}
         <div className="space-y-3 border-b border-white/10 p-4">
-          <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-white/[0.07] px-4 py-3 text-sm text-white/85">
+          <div className="ml-auto max-w-[85%] rounded-[16px] rounded-br-[6px] bg-white/[0.07] px-4 py-3 text-sm text-white/85">
             Move the auth refresh bug to In Review and assign it to Priya.
           </div>
           <div className="flex flex-wrap gap-2">
             {TOOL_CALLS.map((call) => (
               <span
                 key={call}
-                className="rounded-lg border border-teal-400/20 bg-teal-400/10 px-2.5 py-1 font-mono text-[11px] text-teal-200"
+                className="rounded-[8px] border border-teal-400/20 bg-teal-400/10 px-2.5 py-1 font-mono text-[11px] text-teal-200"
               >
                 {call}
               </span>
             ))}
           </div>
-          <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70">
+          <div className="max-w-[85%] rounded-[16px] rounded-bl-[6px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70">
             Done — moved to In Review and assigned to Priya.
           </div>
         </div>
@@ -82,7 +89,7 @@ export function McpChatPreview() {
             {COLUMNS.map((column) => (
               <div
                 key={column.name}
-                className="rounded-2xl border border-white/10 bg-white/[0.025] p-3"
+                className="rounded-[16px] border border-white/10 bg-white/[0.025] p-3"
               >
                 <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/42">
                   {column.name}
@@ -91,13 +98,13 @@ export function McpChatPreview() {
                   {column.cards.map((card) => (
                     <div
                       key={card}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs leading-snug text-white/60"
+                      className="rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs leading-snug text-white/60"
                     >
                       {card}
                     </div>
                   ))}
                   {"landed" in column && column.landed && (
-                    <div className="rounded-xl border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-xs leading-snug text-white/85">
+                    <div className="rounded-[12px] border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-xs leading-snug text-white/85">
                       {column.landed}
                       <div className="mt-2 flex items-center gap-1.5">
                         <span className="flex h-4 w-4 items-center justify-center rounded-full bg-violet-400/25 text-[9px] font-semibold text-violet-100">

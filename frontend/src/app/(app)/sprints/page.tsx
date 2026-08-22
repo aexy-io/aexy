@@ -495,7 +495,7 @@ function SprintsPageContent() {
   // Deep link in flight: forwarding to the task's project board.
   if (openingTask) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+      <div className="min-h-full flex flex-col items-center justify-center gap-4">
         <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
         <p className="text-sm text-muted-foreground">Opening task…</p>
       </div>
@@ -504,7 +504,7 @@ function SprintsPageContent() {
 
   if (taskNotFound) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="min-h-full flex flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center">
           <ListTodo className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -526,8 +526,8 @@ function SprintsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -651,7 +651,7 @@ function SprintsPageContent() {
             hasWorkspaces={hasWorkspaces}
           />
         )}
-      </main>
+      </div>
 
       {showCreateProject && (
         <CreateProjectModal
@@ -668,7 +668,7 @@ export default function SprintsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-full flex items-center justify-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
         </div>
       }

@@ -129,27 +129,27 @@ export default function TicketDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-muted-foreground">Loading ticket...</div>
-        </main>
+        </div>
       </div>
     );
   }
 
   if (!ticket) {
     return (
-      <div className="min-h-screen bg-background">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-muted-foreground">Ticket not found</div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb
           items={[
             { label: "Tickets", href: "/tickets" },
@@ -788,7 +788,7 @@ export default function TicketDetailPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
     Bell,
     Clock,
     Send,
+    ExternalLink,
 } from "lucide-react";
 import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "../ui/button";
@@ -305,9 +306,24 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     )}
                     style={depth > 0 ? { paddingLeft: `${(depth * 12) + 12}px` } : undefined}
                 >
-                    <Link href={item.href} className="flex-1 flex items-center gap-x-3 truncate">
+                    <Link
+                        href={item.href}
+                        // An external item leaves the app shell entirely, so it
+                        // opens beside the app rather than replacing it, and
+                        // says so before you click.
+                        {...(item.external
+                            ? { target: "_blank", rel: "noreferrer" }
+                            : {})}
+                        className="flex-1 flex items-center gap-x-3 truncate"
+                    >
                         <Icon className="h-4 w-4 shrink-0" />
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
+                        {!isCollapsed && item.external && (
+                            <ExternalLink
+                                className="h-3 w-3 shrink-0 text-muted-foreground/60"
+                                aria-label="opens in a new tab"
+                            />
+                        )}
                         {/* Collapsed, the label is gone and a number would be
                             meaningless — so it becomes a dot that still says
                             "there is something here". */}

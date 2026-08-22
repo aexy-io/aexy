@@ -133,7 +133,7 @@ export default function TemplateDetailPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -147,7 +147,7 @@ export default function TemplateDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 text-sky-500 animate-spin" />
         </div>
@@ -157,7 +157,7 @@ export default function TemplateDetailPage() {
 
   if (error || !template) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -178,7 +178,7 @@ export default function TemplateDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}

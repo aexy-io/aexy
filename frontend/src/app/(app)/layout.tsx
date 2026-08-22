@@ -50,7 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Show skeleton until auth state is definitively resolved
     if (!isResolved || isLoading) {
         return (
-            <div className="min-h-screen bg-background flex">
+            <div className="flex">
                 {/* Sidebar skeleton */}
                 <div className="hidden md:flex w-[220px] flex-col border-r border-border bg-muted/30 animate-pulse">
                     <div className="p-4 space-y-2">

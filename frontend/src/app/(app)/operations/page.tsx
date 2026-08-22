@@ -159,7 +159,7 @@ export default function OperationsPage() {
   const isLoading = agentsLoading || automationsLoading;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <header className="border-b border-border bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <Breadcrumb items={[{ label: t("title") }]} className="mb-3" />
@@ -184,7 +184,7 @@ export default function OperationsPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatCard label={t("stats.total")} value={totals.total} />
@@ -283,7 +283,7 @@ export default function OperationsPage() {
             ))}
           </ul>
         )}
-      </main>
+      </div>
 
       <CreatePicker
         open={showPicker}

@@ -151,7 +151,7 @@ export default function MonitorDetailPage() {
 
   if (!monitor) {
     return (
-      <div className="min-h-screen bg-background p-8 text-center">
+      <div className="p-8 text-center">
         <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
         <p className="text-foreground">Monitor not found.</p>
         <Link href="/uptime/monitors" className="text-emerald-400 hover:underline mt-2 inline-block">
@@ -165,8 +165,8 @@ export default function MonitorDetailPage() {
   const statusStyle = getStatusColor(UPTIME_MONITOR_STATUS_COLORS, monitor.current_status);
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <Breadcrumb
@@ -469,7 +469,7 @@ export default function MonitorDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -78,7 +78,7 @@ export default function HandoffsPage() {
     totalCount > 0 ? ((converted / totalCount) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

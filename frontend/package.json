@@ -10,6 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "lint:palette": "eslint . --config eslint.palette.config.mjs",
+    "audit:contrast": "node scripts/contrast-audit.mjs",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",

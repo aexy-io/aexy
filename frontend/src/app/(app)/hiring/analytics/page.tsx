@@ -172,7 +172,7 @@ export default function HiringAnalyticsPage() {
 
   if (isLoading || loading || workspacesLoading) {
     return (
-      <main className="w-full px-6 py-8 animate-pulse">
+      <div className="w-full px-6 py-8 animate-pulse">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 bg-accent rounded-xl" />
@@ -198,7 +198,7 @@ export default function HiringAnalyticsPage() {
           <div className="bg-muted rounded-xl p-6 border border-border h-72" />
           <div className="bg-muted rounded-xl p-6 border border-border h-72" />
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -208,7 +208,7 @@ export default function HiringAnalyticsPage() {
 
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Building2 className="h-10 w-10 text-muted-foreground" />
@@ -270,7 +270,7 @@ export default function HiringAnalyticsPage() {
   const attemptRate = assessmentMetrics?.attempt_rate ?? 0;
 
   return (
-    <main className="w-full px-6 py-8">
+    <div className="w-full px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
@@ -846,6 +846,6 @@ export default function HiringAnalyticsPage() {
             ))}
           </div>
         </div>
-    </main>
+    </div>
   );
 }

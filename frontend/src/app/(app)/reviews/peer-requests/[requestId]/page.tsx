@@ -200,7 +200,7 @@ export default function PeerRequestDetailPage() {
 
   if (authLoading || !isAuthenticated || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -208,8 +208,8 @@ export default function PeerRequestDetailPage() {
 
   if (error || !request) {
     return (
-      <div className="min-h-screen bg-background">
-        <main className="max-w-3xl mx-auto px-4 py-8">
+      <div>
+        <div className="max-w-3xl mx-auto px-4 py-8">
           <Breadcrumb
             items={[
               { label: "Reviews", href: "/reviews" },
@@ -229,7 +229,7 @@ export default function PeerRequestDetailPage() {
               {t("backLink")}
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -239,8 +239,8 @@ export default function PeerRequestDetailPage() {
   const isMine = request.reviewer_id === user?.id;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <Breadcrumb
           items={[
             { label: "Reviews", href: "/reviews" },
@@ -448,7 +448,7 @@ export default function PeerRequestDetailPage() {
             </Link>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

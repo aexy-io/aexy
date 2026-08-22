@@ -1,4 +1,4 @@
-import { displayFont, brandMonoFont } from "@/components/landing/fonts";
+import { displayFont, brandMonoFont } from "@/lib/fonts";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
 
 // Root wrapper for every "Open Ledger" marketing page: the theme scope (which

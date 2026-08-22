@@ -80,10 +80,35 @@ function stripSocialBlocks(src: string): string {
   return out;
 }
 
-/** page.tsx plus its sibling layout.tsx — either may carry the metadata. */
+/**
+ * page.tsx, its sibling layout.tsx, and any local module the page builds its
+ * metadata *from*.
+ *
+ * The last part matters because thirteen product pages export
+ * `metadata = productMetadata(data)` rather than an object literal. The
+ * canonical is set — in the helper, from the page's own slug — and a scan that
+ * only reads the two files would report all thirteen as missing it. Following
+ * the import is what keeps this check about the shipped `<head>` rather than
+ * about how the file happens to be written.
+ */
 function metadataSources(pageFile: string): string {
   const layout = join(pageFile, "..", "layout.tsx");
-  const raw = readFileSync(pageFile, "utf8") + (existsSync(layout) ? readFileSync(layout, "utf8") : "");
+  let raw = readFileSync(pageFile, "utf8") + (existsSync(layout) ? readFileSync(layout, "utf8") : "");
+
+  for (const m of raw.matchAll(/export const metadata[^=]*=\s*(\w+)\(/g)) {
+    const helper = m[1];
+    const imp = raw.match(
+      new RegExp(`import\\s*\\{[^}]*\\b${helper}\\b[^}]*\\}\\s*from\\s*"@/([^"]+)"`),
+    );
+    if (!imp) continue;
+    for (const ext of [".tsx", ".ts"]) {
+      const f = join(ROOT, "src", imp[1] + ext);
+      if (existsSync(f)) {
+        raw += readFileSync(f, "utf8");
+        break;
+      }
+    }
+  }
   return stripComments(raw);
 }
 
@@ -117,6 +142,25 @@ describe("public route metadata coverage", () => {
       return !/\btitle\s*[:,]/.test(src) || !/\bdescription\s*[:,]/.test(src);
     }).map(routeOf);
     expect(missing, "no title/description — these inherit the homepage's").toEqual([]);
+  });
+
+  /*
+    A page built from a shared metadata helper canonicalises to `slug`, not to a
+    literal path — so the literal check below cannot see it, and a copy-pasted
+    page whose slug was never updated would quietly tell Google it is a
+    duplicate of whichever page it was copied from. That is the same failure the
+    root-layout canonical caused, one page at a time.
+  */
+  it("helper-built product pages carry their own slug", () => {
+    const wrong: string[] = [];
+    for (const f of PAGES) {
+      const src = stripComments(readFileSync(f, "utf8"));
+      if (!/productMetadata\(/.test(src)) continue;
+      const slug = src.match(/slug:\s*"([^"]+)"/)?.[1];
+      const expected = routeOf(f).split("/").pop();
+      if (slug !== expected) wrong.push(`${routeOf(f)} declares slug "${slug ?? "(none)"}"`);
+    }
+    expect(wrong).toEqual([]);
   });
 
   it("static routes canonicalise to their own path", () => {

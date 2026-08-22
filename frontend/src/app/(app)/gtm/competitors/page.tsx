@@ -44,7 +44,7 @@ export default function CompetitorsPage() {
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

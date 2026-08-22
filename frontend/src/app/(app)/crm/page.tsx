@@ -485,7 +485,7 @@ export default function CRMPage() {
 
   if (isLoading || authLoading || !hasCheckedOnboarding) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-8">
@@ -506,7 +506,7 @@ export default function CRMPage() {
   const onboardingComplete = localStorage.getItem("crm_onboarding_complete") === "true";
   if (objects.length === 0 && !onboardingComplete) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <EmptyState onStartOnboarding={handleStartOnboarding} />
@@ -517,7 +517,7 @@ export default function CRMPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex gap-8 md:flex-row flex-col-reverse">

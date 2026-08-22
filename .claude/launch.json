@@ -63,6 +63,15 @@
         "3004"
       ],
       "port": 3004
+    },
+    {
+      "name": "frontend-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "start"
+      ],
+      "cwd": "frontend",
+      "port": 3000
     }
   ]
 }

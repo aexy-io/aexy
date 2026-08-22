@@ -686,7 +686,7 @@ export default function BacklogPage({
   const planningSprints = sprints?.filter((s) => s.status === "planning") || [];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
       <CommandPalette
         workspaceId={currentWorkspaceId}
         projectId={projectId}
@@ -754,7 +754,7 @@ export default function BacklogPage({
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main backlog list */}
-        <main className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-6">
             {/* Search and filters */}
             <div className="flex items-center gap-3 mb-6">
@@ -892,7 +892,7 @@ export default function BacklogPage({
               </>
             )}
           </div>
-        </main>
+        </div>
 
         {/* Sprint sidebar */}
         <aside className="w-80 border-l border-border bg-muted/30 overflow-y-auto flex-shrink-0 hidden lg:block">

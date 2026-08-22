@@ -32,7 +32,7 @@ export default function PipelineAnalyticsPage() {
   }, [pipelines, activeId]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="px-8 pt-6 pb-4 border-b border-border">
         <button
           onClick={() => router.push(`/crm/${objectSlug}`)}

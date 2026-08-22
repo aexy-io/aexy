@@ -13,11 +13,6 @@ export default function ServiceDeskStakeholdersSettingsPage() {
     <SettingsPage
       title={t("stakeholders.title")}
       description={t("stakeholders.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("stakeholders.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

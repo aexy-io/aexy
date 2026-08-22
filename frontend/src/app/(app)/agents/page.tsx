@@ -342,7 +342,7 @@ export default function AgentsListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -367,7 +367,7 @@ export default function AgentsListPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <UpgradeBanner trigger="ai_limit" compact />
 
         {/* Stats Summary */}
@@ -491,7 +491,7 @@ export default function AgentsListPage() {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       <ConfirmDialog
         open={!!deleteTargetId}

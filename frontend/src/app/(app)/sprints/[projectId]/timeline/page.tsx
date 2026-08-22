@@ -269,7 +269,7 @@ export default function TimelinePage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -287,7 +287,7 @@ export default function TimelinePage({
       ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
       <CommandPalette workspaceId={currentWorkspaceId} projectId={projectId} />
 
       {/* Header */}
@@ -349,7 +349,7 @@ export default function TimelinePage({
       </header>
 
       {/* Roadmap content */}
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {sprintsLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
@@ -428,7 +428,7 @@ export default function TimelinePage({
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Legend */}
       <footer className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">

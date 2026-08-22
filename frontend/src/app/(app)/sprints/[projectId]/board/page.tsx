@@ -1554,7 +1554,7 @@ export default function ProjectBoardPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading...</p>
@@ -1568,7 +1568,7 @@ export default function ProjectBoardPage({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
       {/* Command Palette */}
       <CommandPalette
         workspaceId={currentWorkspaceId}
@@ -2133,7 +2133,7 @@ export default function ProjectBoardPage({
       </AnimatePresence>
 
       {/* Board Content */}
-      <main className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         {boardView === "archived" ? (
           <div className="p-4 overflow-y-auto h-full">
             {archivedLoading ? (
@@ -2313,7 +2313,7 @@ export default function ProjectBoardPage({
             </DragOverlay>
           </DndContext>
         )}
-      </main>
+      </div>
 
       {/* Keyboard shortcuts hint */}
       <div className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">

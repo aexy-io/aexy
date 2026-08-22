@@ -57,10 +57,6 @@ export default function AdminGhostsPage() {
       title={t("title")}
       description={t("intro")}
       width="wide"
-      breadcrumbs={[
-        { label: t("breadcrumbParent"), href: "/settings/identity" },
-        { label: t("title") },
-      ]}
     >
       {!isAdmin && (
         <section className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">

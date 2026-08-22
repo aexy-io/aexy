@@ -350,15 +350,15 @@ export default function QuestionsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="w-full px-6 py-8">
+    <div>
+      <div className="w-full px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -622,7 +622,7 @@ export default function QuestionsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

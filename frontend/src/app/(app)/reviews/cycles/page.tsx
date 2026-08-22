@@ -397,8 +397,8 @@ export default function ReviewCyclesPage() {
 
   if (!hasWorkspaces) {
     return (
-      <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-10 h-10 text-muted-foreground" />
@@ -415,7 +415,7 @@ export default function ReviewCyclesPage() {
               {t("noWorkspace.cta")}
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -431,8 +431,8 @@ export default function ReviewCyclesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -599,7 +599,7 @@ export default function ReviewCyclesPage() {
             </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

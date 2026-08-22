@@ -79,7 +79,7 @@ export default function CompetitorDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
       </div>
     );
@@ -87,7 +87,7 @@ export default function CompetitorDetailPage() {
 
   if (!competitor) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <Swords className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">Competitor not found</p>
@@ -103,7 +103,7 @@ export default function CompetitorDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Back + Header */}
         <Link

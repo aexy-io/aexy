@@ -558,7 +558,7 @@ export default function AgentDetailPage() {
       },
     };
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center max-w-md">
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" aria-hidden />
           <h2 className="text-xl font-medium text-foreground mb-2">{copy[variant].title}</h2>
@@ -589,7 +589,7 @@ export default function AgentDetailPage() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 space-y-3 sm:space-y-0">
@@ -906,7 +906,7 @@ export default function AgentDetailPage() {
         tools={agent.tools}
       />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Left: Stats & Config */}
           <div className="col-span-12 lg:col-span-3 space-y-6">
@@ -1078,7 +1078,7 @@ export default function AgentDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <ConfirmDialog
         open={showDeleteConfirm}

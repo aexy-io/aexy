@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { displayFont, brandMonoFont } from "@/lib/fonts";
+import { DEFAULT_THEME, THEME_STORAGE_KEY, resolveTheme } from "@/stores/themeStore";
 import Script from "next/script";
 import { getMessages, getLocale } from "next-intl/server";
 import "./globals.css";
@@ -84,7 +86,39 @@ export default async function RootLayout({
   const [messages, locale] = await Promise.all([getMessages(), getLocale()]);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${displayFont.variable} ${brandMonoFont.variable}`}
+    >
+      <head>
+        {/*
+          Stamp the theme class before first paint.
+
+          ThemeProvider resolves the theme in a `useEffect`, which is one frame
+          too late: until it ran, <html> carried no class at all. That was
+          invisible while the dark palette lived on `:root` and merely wrong for
+          light-mode users; now that paper is the default it would flash paper
+          at everyone who chose dark. Worse either way, the missing `.dark`
+          class left all 1,761 `dark:` utilities in the app inert for that
+          frame, so `bg-gray-100 dark:bg-gray-800` painted its light half on the
+          wrong ground.
+
+          Inline and synchronous on purpose — a deferred script paints first.
+          Reads the same zustand-persisted key the store writes, and falls back
+          to the store's own default rather than assuming one, so there is a
+          single source of truth for "what does a new visitor get".
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem(${JSON.stringify(
+              THEME_STORAGE_KEY,
+            )});var t=s?JSON.parse(s).state.theme:${JSON.stringify(
+              DEFAULT_THEME,
+            )};if(t==='system'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.classList.add(t==='dark'?'dark':'light')}catch(e){document.documentElement.classList.add(${JSON.stringify(resolveTheme(DEFAULT_THEME))})}})()`,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <script
           type="application/ld+json"

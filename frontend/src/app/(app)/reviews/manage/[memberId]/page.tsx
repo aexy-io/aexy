@@ -214,8 +214,8 @@ export default function MemberDetailPage() {
 
   if (authLoading || reviewLoading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
-        <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header skeleton */}
           <div className="bg-muted rounded-xl border border-border p-6 mb-6">
             <div className="flex items-start gap-4">
@@ -250,7 +250,7 @@ export default function MemberDetailPage() {
               <div className="h-32 bg-muted rounded-xl border border-border" />
             </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -261,7 +261,7 @@ export default function MemberDetailPage() {
 
   if (reviewError || !member) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
@@ -280,8 +280,8 @@ export default function MemberDetailPage() {
   const completedGoals = member.goals.filter(g => g.status === "completed");
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -928,7 +928,7 @@ export default function MemberDetailPage() {
             }}
           />
         )}
-      </main>
+      </div>
     </div>
   );
 }

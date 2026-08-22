@@ -1,5 +1,33 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import noRawPalette from "./eslint-rules/no-raw-palette.mjs";
+
+/**
+ * Modules already migrated onto the Open Ledger token layer.
+ *
+ * This list IS the migration tracker. Append a path in the PR that migrates
+ * that module and `local/no-raw-palette` turns from `warn` to `error` for it,
+ * so the next feature added there cannot quietly reintroduce `bg-blue-600`.
+ * Nothing else keeps a migrated surface migrated.
+ *
+ * Empty at the end of the token-foundation PR — no module has moved yet.
+ */
+const TOKEN_MIGRATED = [];
+
+/**
+ * Surfaces that are not the app. Marketing paints with the static `ledger-*`
+ * Tailwind tokens and must NOT flip with the app's dark mode, so raw colour
+ * there is correct rather than debt.
+ *
+ * Exported because eslint.palette.config.mjs needs the same exemptions; two
+ * copies would drift and start reporting marketing as debt.
+ */
+export const NOT_APP_SURFACE = [
+  "src/components/landing/**",
+  "src/components/marketing/**",
+  "src/components/docs-site/**",
+  "src/lib/chartPalette.ts",
+];
 
 /**
  * ESLint 9 flat config.
@@ -101,6 +129,44 @@ export default [
       "no-restricted-syntax": "off",
     },
   },
+  // ── Colour goes through the token layer ──────────────────────────────────
+  //
+  // The app is mid-migration onto Open Ledger, and it is roughly 54/46:
+  // ~14,700 semantic-token uses (`text-foreground`, `bg-muted`,
+  // `border-border`) against **12,485 raw palette classes across 603 files**,
+  // plus 693 inline hex literals. That ratio is why the retheme is not a
+  // config change — recolouring the CSS variables repaints the semantic half
+  // and leaves the other half indigo-on-paper.
+  //
+  // Two gaps produced the debt, and both are now closed at the source, which
+  // is what makes holding the line reasonable rather than merely strict:
+  //
+  //   - there was no status vocabulary, so a quiet pill had to be spelled
+  //     `bg-red-50 text-red-700 border-red-200`. It is now
+  //     `bg-destructive-subtle text-destructive border-destructive-border`,
+  //     with the same four slots on success / warning / info / neutral.
+  //   - charts had nowhere to get a colour from, hence 693 hex literals.
+  //     `@/lib/chartPalette` owns series colours plus axis/grid/tooltip
+  //     chrome, and the chrome follows the theme instead of being pinned to
+  //     dark values that vanish on paper.
+  //
+  // Unlike the other tracked migrations in this file, this one is NOT held at
+  // `warn` globally. Turning it on everywhere took `npm run lint` from 1,122
+  // warnings to 16,202 — a signal nobody reads is not a signal, and it would
+  // have buried the 1,122 real ones. So it is an `error` on modules that have
+  // already migrated (the list above), and `npm run lint:palette` prints the
+  // outstanding debt on demand via eslint.palette.config.mjs.
+  // Spread rather than a literal block: flat config rejects an empty `files`
+  // array, and TOKEN_MIGRATED is empty until the first module lands.
+  ...(TOKEN_MIGRATED.length
+    ? [
+        {
+          files: TOKEN_MIGRATED,
+          plugins: { local: { rules: { "no-raw-palette": noRawPalette } } },
+          rules: { "local/no-raw-palette": "error" },
+        },
+      ]
+    : []),
   {
     // ── React Compiler ruleset: a tracked migration, not noise ───────────────
     //

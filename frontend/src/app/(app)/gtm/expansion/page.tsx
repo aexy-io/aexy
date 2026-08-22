@@ -48,7 +48,7 @@ export default function ExpansionPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
           <span className="text-muted-foreground text-sm">Loading expansion data...</span>
@@ -68,7 +68,7 @@ export default function ExpansionPage() {
   const activePlaybooks = safePlaybooks.filter((p: any) => p.status === "active").length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

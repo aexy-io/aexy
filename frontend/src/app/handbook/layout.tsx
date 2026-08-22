@@ -1,7 +1,7 @@
 import "highlight.js/styles/github-dark-dimmed.css";
 import "./docs.css";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
-import { displayFont, brandMonoFont } from "@/components/landing/fonts";
+import { displayFont, brandMonoFont } from "@/lib/fonts";
 import { DocsSidebar } from "@/components/docs-site/DocsSidebar";
 import { DocsSearch } from "@/components/docs-site/DocsSearch";
 import { DocsMobileNav } from "@/components/docs-site/DocsMobileNav";

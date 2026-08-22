@@ -38,6 +38,25 @@ const stripComments = (src: string) =>
 const productPages = () =>
   readdirSync(join(APP, "products")).filter((d) => existsSync(join(APP, "products", d, "page.tsx")));
 
+/**
+ * Everything that contributes to a product page's rendered output: its own
+ * file, its sibling layout, and — for the pages that are pure data — the
+ * shared template that renders them.
+ *
+ * Without the last part these checks measure file layout rather than shipped
+ * HTML, and would have reported thirteen pages as missing a signup CTA and
+ * structured data that they demonstrably emit.
+ */
+function productSources(slug: string): string {
+  const page = read(APP, "products", slug, "page.tsx");
+  const layoutPath = join(APP, "products", slug, "layout.tsx");
+  const layout = existsSync(layoutPath) ? readFileSync(layoutPath, "utf8") : "";
+  const template = /ProductPageTemplate/.test(page)
+    ? read(APP, "..", "components", "marketing", "ProductPageTemplate.tsx")
+    : "";
+  return page + layout + template;
+}
+
 describe("self-serve conversion path", () => {
   it("the shared SEO templates lead with the self-serve CTA", () => {
     for (const file of ["SeoLandingPage.tsx", "ComparisonPage.tsx"]) {
@@ -83,9 +102,14 @@ describe("self-serve conversion path", () => {
   it("every product page offers a self-serve CTA before a sales one", () => {
     // The four server-rendered product pages (crm, ai-agents, gtm-intelligence,
     // mcp) each led with "Book demo" while the other twelve led with signup.
+    //
+    // Thirteen pages render through `ProductPageTemplate` and carry no markup
+    // of their own, so their CTAs live there. `productSources` reads the
+    // template alongside them, keeping this a check on what ships rather than
+    // on where the JSX happens to be written.
     const offenders: string[] = [];
     for (const slug of productPages()) {
-      const src = read(APP, "products", slug, "page.tsx");
+      const src = productSources(slug);
       const loginAt = src.indexOf('href="/login"');
       const contactAt = src.indexOf('href="/contact"');
       if (loginAt === -1) {
@@ -99,7 +123,7 @@ describe("self-serve conversion path", () => {
 
   it("no product page uses /manifesto as a call to action", () => {
     const offenders = productPages().filter((slug) =>
-      read(APP, "products", slug, "page.tsx").includes('href="/manifesto"'),
+      productSources(slug).includes('href="/manifesto"'),
     );
     expect(offenders, "/manifesto is a dead end from a product page").toEqual([]);
   });
@@ -197,10 +221,7 @@ describe("document landmarks", () => {
 describe("structured data", () => {
   it("every product page emits SoftwareApplication and BreadcrumbList", () => {
     const missing = productPages().filter((slug) => {
-      const page = read(APP, "products", slug, "page.tsx");
-      const layoutPath = join(APP, "products", slug, "layout.tsx");
-      const layout = existsSync(layoutPath) ? readFileSync(layoutPath, "utf8") : "";
-      const both = page + layout;
+      const both = productSources(slug);
       const hasProduct = /ProductJsonLd|"SoftwareApplication"/.test(both);
       const hasCrumb = /BreadcrumbJsonLd|"BreadcrumbList"/.test(both);
       return !hasProduct || !hasCrumb;

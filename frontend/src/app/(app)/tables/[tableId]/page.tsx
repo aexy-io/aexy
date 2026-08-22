@@ -637,7 +637,7 @@ export default function TableDetailPage() {
   const availableViews: ViewMode[] = hasStatusField ? ["table", "board"] : ["table"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <Breadcrumb

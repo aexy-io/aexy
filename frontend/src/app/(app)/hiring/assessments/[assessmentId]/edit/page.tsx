@@ -196,7 +196,7 @@ export default function AssessmentWizardPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading || isLoadingStatus) {
     return (
-      <div className="min-h-screen bg-background flex flex-col animate-pulse">
+      <div className="flex flex-col animate-pulse">
         <div className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
             <div className="h-5 w-5 bg-accent rounded" />
@@ -229,7 +229,7 @@ export default function AssessmentWizardPage() {
 
   if (!assessment) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-foreground mb-2">
             Assessment not found
@@ -254,7 +254,7 @@ export default function AssessmentWizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

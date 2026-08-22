@@ -229,7 +229,7 @@ export default function QuestionDetailPage() {
 
   if (authLoading || workspacesLoading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
@@ -237,15 +237,15 @@ export default function QuestionDetailPage() {
 
   if (error || !question) {
     return (
-      <div className="min-h-screen bg-gray-50">
-<main className="w-full px-6 py-8">
+      <div className="bg-gray-50">
+<div className="w-full px-6 py-8">
           <div className="text-center py-12">
             <h2 className="text-xl font-semibold text-gray-900">Question not found</h2>
             <Link href="/hiring/questions" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
               Back to Questions
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -254,8 +254,8 @@ export default function QuestionDetailPage() {
   const isDeleted = !!question.deleted_at;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-<main className="w-full px-6 py-8">
+    <div className="bg-gray-50">
+<div className="w-full px-6 py-8">
         {/* Header */}
         <div className="mb-6">
           <Breadcrumb
@@ -718,7 +718,7 @@ export default function QuestionDetailPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -59,6 +59,8 @@ const config: Config = {
           destructive: {
             DEFAULT: "hsl(var(--destructive))",
             foreground: "hsl(var(--destructive-foreground))",
+            subtle: "hsl(var(--destructive-subtle))",
+            border: "hsl(var(--destructive-border))",
           },
           muted: {
             DEFAULT: "hsl(var(--muted))",
@@ -83,44 +85,52 @@ const config: Config = {
             active: "hsl(var(--surface-active))",
             elevated: "hsl(var(--surface-elevated))",
           },
-          "text-theme": {
-            primary: "hsl(var(--text-primary))",
-            secondary: "hsl(var(--text-secondary))",
-            muted: "hsl(var(--text-muted))",
-            inverted: "hsl(var(--text-inverted))",
-          },
-          "border-theme": {
-            DEFAULT: "hsl(var(--border-default))",
-            muted: "hsl(var(--border-muted))",
-            strong: "hsl(var(--border-strong))",
-          },
-          sidebar: {
-            DEFAULT: "hsl(var(--sidebar-bg))",
-            hover: "hsl(var(--sidebar-hover))",
-            active: "hsl(var(--sidebar-active))",
-          },
-          "input-theme": {
-            DEFAULT: "hsl(var(--input-bg))",
-            border: "hsl(var(--input-border))",
-            focus: "hsl(var(--input-focus))",
-          },
+          // ── status roles ────────────────────────────────────────────────
+          // `subtle` (tinted background) and `border` are the slots that were
+          // missing. Without them the only status colour on offer was a solid
+          // fill, so every module that wanted a quiet pill hand-wrote
+          // `bg-red-50 text-red-700 border-red-200` — about 5,000 raw palette
+          // classes grew out of that gap. `destructive` above is the danger
+          // role; there is deliberately no second name for it.
           success: {
             DEFAULT: "hsl(var(--success))",
             foreground: "hsl(var(--success-foreground))",
+            subtle: "hsl(var(--success-subtle))",
+            border: "hsl(var(--success-border))",
           },
           warning: {
             DEFAULT: "hsl(var(--warning))",
             foreground: "hsl(var(--warning-foreground))",
+            subtle: "hsl(var(--warning-subtle))",
+            border: "hsl(var(--warning-border))",
           },
           info: {
             DEFAULT: "hsl(var(--info))",
             foreground: "hsl(var(--info-foreground))",
+            subtle: "hsl(var(--info-subtle))",
+            border: "hsl(var(--info-border))",
+          },
+          neutral: {
+            DEFAULT: "hsl(var(--neutral))",
+            foreground: "hsl(var(--neutral-foreground))",
+            subtle: "hsl(var(--neutral-subtle))",
+            border: "hsl(var(--neutral-border))",
           },
         },
         borderRadius: {
+          // --radius is 2px. Tailwind's defaults only wire lg/md/sm to it,
+          // which would have left `rounded`, `rounded-xl` and `rounded-2xl`
+          // (~3,100 uses across the app) rounded while everything else went
+          // square. Routing them here is the difference between a config
+          // change and a 3,100-site codemod. `rounded-full` is untouched —
+          // avatars and pills are meant to be circular.
+          DEFAULT: "var(--radius)",
+          sm: "max(calc(var(--radius) - 1px), 0px)",
+          md: "var(--radius)",
           lg: "var(--radius)",
-          md: "calc(var(--radius) - 2px)",
-          sm: "calc(var(--radius) - 4px)",
+          xl: "calc(var(--radius) + 1px)",
+          "2xl": "calc(var(--radius) + 2px)",
+          "3xl": "calc(var(--radius) + 3px)",
         },
       keyframes: {
         shimmer: {

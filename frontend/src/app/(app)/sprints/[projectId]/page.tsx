@@ -380,7 +380,7 @@ export default function SprintsPage({ params }: { params: Promise<{ projectId: s
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading...</p>
@@ -400,7 +400,7 @@ export default function SprintsPage({ params }: { params: Promise<{ projectId: s
   const completedSprints = sprints.filter((s) => s.status === "completed");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="px-4 py-3">
@@ -435,7 +435,7 @@ export default function SprintsPage({ params }: { params: Promise<{ projectId: s
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Quick Stats Dashboard */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {/* Stories Widget */}
@@ -662,7 +662,7 @@ export default function SprintsPage({ params }: { params: Promise<{ projectId: s
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Sprint Modal */}
       {showCreateModal && (

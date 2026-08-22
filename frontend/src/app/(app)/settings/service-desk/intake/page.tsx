@@ -15,11 +15,6 @@ export default function ServiceDeskIntakeSettingsPage() {
     <SettingsPage
       title={t("deskDepartment.title")}
       description={t("deskDepartment.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("deskDepartment.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

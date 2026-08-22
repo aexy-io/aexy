@@ -201,7 +201,7 @@ export default function CandidateDetailsPage() {
 
   if (loading || authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -209,7 +209,7 @@ export default function CandidateDetailsPage() {
 
   if (error || !details) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-foreground mb-2">
             {error || "Candidate not found"}
@@ -242,8 +242,8 @@ export default function CandidateDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <div className="flex-1">
@@ -786,7 +786,7 @@ export default function CandidateDetailsPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

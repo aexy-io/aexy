@@ -369,7 +369,7 @@ export default function RetrospectivePage({
 
   if (authLoading || currentWorkspaceLoading || sprintLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading retrospective...</p>
@@ -387,7 +387,7 @@ export default function RetrospectivePage({
   const actionItems = (retrospective?.action_items || []) as ActionItem[];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -431,7 +431,7 @@ export default function RetrospectivePage({
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Team Mood */}
         <div className="bg-muted rounded-xl p-6 border border-border mb-8">
           <h3 className="text-lg font-semibold text-foreground mb-4">Team Mood</h3>
@@ -496,7 +496,7 @@ export default function RetrospectivePage({
             className="w-full px-4 py-3 bg-accent border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-500 resize-none"
           />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

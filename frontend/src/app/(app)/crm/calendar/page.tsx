@@ -705,7 +705,7 @@ function CalendarPageContent() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-col">
 <div className="flex-1 flex items-center justify-center">
           <div className="text-muted-foreground">Loading workspace...</div>
         </div>
@@ -715,7 +715,7 @@ function CalendarPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col animate-pulse">
+      <div className="flex flex-col animate-pulse">
         <div className="border-b border-border px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -750,7 +750,7 @@ function CalendarPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
 {/* Header */}
       <div className="border-b border-border px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -920,7 +920,7 @@ function CalendarPageContent() {
 
 export default function CalendarPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
       <CalendarPageContent />
     </Suspense>
   );

@@ -518,7 +518,7 @@ export default function TaskTemplatesPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
+      <div className="animate-pulse">
         <header className="border-b border-border bg-muted/50 sticky top-0 z-30">
           <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between gap-4">
@@ -562,7 +562,7 @@ export default function TaskTemplatesPage({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -622,7 +622,7 @@ export default function TaskTemplatesPage({
       </header>
 
       {/* Content */}
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {templatesLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -680,7 +680,7 @@ export default function TaskTemplatesPage({
             </AnimatePresence>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Modal */}
       <AnimatePresence>

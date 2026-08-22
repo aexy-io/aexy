@@ -235,7 +235,7 @@ export default function TablesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <Breadcrumb items={[{ label: "Tables" }]} />

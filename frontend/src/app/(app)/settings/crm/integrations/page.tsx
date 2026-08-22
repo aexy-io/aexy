@@ -1096,11 +1096,6 @@ function CRMIntegrationsContent() {
       title={t("integrations.title")}
       description={t("integrations.description")}
       width="wide"
-      breadcrumbs={[
-        { label: t("breadcrumbRoot"), href: "/settings" },
-        { label: t("title"), href: "/settings/crm" },
-        { label: t("integrations.title") },
-      ]}
     >
       {workspaceId ? (
         <IntegrationsTab workspaceId={workspaceId} />

@@ -445,7 +445,7 @@ export default function EditAgentPage() {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>
@@ -1146,7 +1146,7 @@ export default function EditAgentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4">
@@ -1244,7 +1244,7 @@ export default function EditAgentPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-600 dark:text-red-400">
             {error}
@@ -1370,7 +1370,7 @@ export default function EditAgentPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <ConfirmDialog
         open={showDisableEmailConfirm}

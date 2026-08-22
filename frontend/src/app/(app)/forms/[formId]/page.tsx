@@ -1408,7 +1408,7 @@ export default function FormEditorPage() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <p className="text-muted-foreground">No workspace selected</p>
       </div>
     );
@@ -1416,7 +1416,7 @@ export default function FormEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-muted rounded w-1/4"></div>
@@ -1429,7 +1429,7 @@ export default function FormEditorPage() {
 
   if (error || !form) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <p className="text-red-400">Failed to load form</p>
@@ -1460,7 +1460,7 @@ export default function FormEditorPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">

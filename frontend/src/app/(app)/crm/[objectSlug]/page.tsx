@@ -435,7 +435,7 @@ export default function RecordsPage() {
 
   if (!currentObject && !isLoadingObjects) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="text-center py-16">
@@ -460,7 +460,7 @@ export default function RecordsPage() {
   const availableViews: ViewMode[] = ["table", "board"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

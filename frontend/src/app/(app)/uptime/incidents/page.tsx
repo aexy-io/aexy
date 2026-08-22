@@ -115,8 +115,8 @@ export default function IncidentsPage() {
 
   if (loading && incidents.length === 0) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="h-7 w-32 bg-accent rounded mb-2" />
@@ -152,14 +152,14 @@ export default function IncidentsPage() {
               </div>
             ))}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -366,7 +366,7 @@ export default function IncidentsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

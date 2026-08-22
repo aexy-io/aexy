@@ -15,11 +15,6 @@ export default function ServiceDeskHoursSettingsPage() {
     <SettingsPage
       title={t("workingHours.title")}
       description={t("workingHours.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("workingHours.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

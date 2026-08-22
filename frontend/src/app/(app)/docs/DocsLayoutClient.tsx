@@ -100,7 +100,7 @@ export default function DocsLayoutClient({
 
   if (!mounted || isLoading || currentWorkspaceLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
           <p className="text-muted-foreground text-sm">Loading…</p>
@@ -120,7 +120,7 @@ export default function DocsLayoutClient({
   // AI-slop tell and added nothing the headline doesn't.
   if (workspaces.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-col">
         <div className="flex-1 flex items-center justify-center px-6">
           <div className="text-center max-w-lg mx-auto">
             <p className="text-xs font-medium tracking-[0.18em] uppercase text-muted-foreground mb-4">

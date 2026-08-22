@@ -88,11 +88,6 @@ export default function AIModelsPage() {
       title={t("title")}
       description={t("description")}
       width="wide"
-      breadcrumbs={[
-        { label: t("breadcrumbSettings"), href: "/settings" },
-        { label: t("breadcrumbAi"), href: "/settings/ai" },
-        { label: t("breadcrumbModels") },
-      ]}
     >
       {!data.can_manage && (
         <p

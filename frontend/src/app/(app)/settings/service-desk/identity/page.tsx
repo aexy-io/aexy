@@ -15,11 +15,6 @@ export default function ServiceDeskIdentitySettingsPage() {
     <SettingsPage
       title={t("deskIdentity.title")}
       description={t("deskIdentity.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("deskIdentity.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />
