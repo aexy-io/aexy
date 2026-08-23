@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(__dirname, "..", "..");
@@ -38,7 +38,30 @@ function internalHrefs(src: string): string[] {
 }
 
 function routeExists(slug: string): boolean {
-  return existsSync(join(APP, ...slug.split("/"), "page.tsx"));
+  // Walks the segments rather than joining them, because a literal path on
+  // disk is not the only way a route exists: `/handbook/guides/getting-started`
+  // is served by `handbook/[...slug]`, and checking only for the literal
+  // directory reported a link that returns 200 as broken. At each level, fall
+  // back to a dynamic segment — `[...x]`/`[[...x]]` swallow the rest of the
+  // path, `[x]` matches exactly one.
+  const segments = slug.split("/");
+  let dir = APP;
+  for (let i = 0; i < segments.length; i++) {
+    const literal = join(dir, segments[i]);
+    if (existsSync(literal)) {
+      dir = literal;
+      continue;
+    }
+    const dynamic = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name.startsWith("["))
+      .map((e) => e.name);
+    const catchAll = dynamic.find((n) => n.includes("..."));
+    if (catchAll) return existsSync(join(dir, catchAll, "page.tsx"));
+    const single = dynamic.find((n) => !n.includes("..."));
+    if (!single) return false;
+    dir = join(dir, single);
+  }
+  return existsSync(join(dir, "page.tsx"));
 }
 
 describe("homepage server/client split", () => {

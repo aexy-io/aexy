@@ -115,11 +115,16 @@ export default async function Home() {
                 Start free
                 <ArrowRight className="h-5 w-5" />
               </Link>
+              {/* The second CTA is the self-host path, not a sales call. Someone
+                  who arrives from a repository or a link about open source is
+                  here to run it, and "Book demo" turns that person away at the
+                  top of the page. The sales CTA is still on the closing block,
+                  where a buyer evaluating it will look. */}
               <Link
-                href="/contact"
+                href="/handbook/guides/getting-started"
                 className="inline-flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-7 py-4 text-base font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
               >
-                Book demo
+                Self-host it
                 <ChevronRight className="h-5 w-5" />
               </Link>
             </div>

@@ -102,6 +102,18 @@ services:
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
       - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+      # Demo sign-in, on by default for a fresh clone: every OAuth provider
+      # needs an app registered with GitHub/Google/Microsoft first, so without
+      # this there is no way into a local install. One shared account — see
+      # backend/src/aexy/services/demo_login_service.py. Set AEXY_DEMO_LOGIN=false
+      # to turn it off; docker-compose.prod.yml already does.
+      - AEXY_DEMO_LOGIN=${AEXY_DEMO_LOGIN:-true}
+      - AEXY_DEMO_EMAIL=${AEXY_DEMO_EMAIL:-demo@example.com}
+      - AEXY_DEMO_PASSWORD=${AEXY_DEMO_PASSWORD:-aexy-demo}
+      # While demo login is on, outbound email is refused at both send paths and
+      # the demo workspace keeps AI and email marketing switched off. Set this to
+      # true if you want mail to reach the bundled Mailpit on :8025.
+      - AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=${AEXY_DEMO_ALLOW_OUTBOUND_EMAIL:-false}
       # Inside the container `localhost` is the container itself, not
       # the developer's host — LM Studio runs on the host. Use
       # host.docker.internal so the agent action can actually reach
@@ -143,6 +155,18 @@ services:
       - S3_REGION=us-east-1
       - S3_PUBLIC_ENDPOINT_URL=http://localhost:9000
       - PLATFORM_ORG_ID=${PLATFORM_ORG_ID:-}
+      # Demo sign-in, on by default for a fresh clone: every OAuth provider
+      # needs an app registered with GitHub/Google/Microsoft first, so without
+      # this there is no way into a local install. One shared account — see
+      # backend/src/aexy/services/demo_login_service.py. Set AEXY_DEMO_LOGIN=false
+      # to turn it off; docker-compose.prod.yml already does.
+      - AEXY_DEMO_LOGIN=${AEXY_DEMO_LOGIN:-true}
+      - AEXY_DEMO_EMAIL=${AEXY_DEMO_EMAIL:-demo@example.com}
+      - AEXY_DEMO_PASSWORD=${AEXY_DEMO_PASSWORD:-aexy-demo}
+      # While demo login is on, outbound email is refused at both send paths and
+      # the demo workspace keeps AI and email marketing switched off. Set this to
+      # true if you want mail to reach the bundled Mailpit on :8025.
+      - AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=${AEXY_DEMO_ALLOW_OUTBOUND_EMAIL:-false}
     depends_on:
       postgres:
         condition: service_healthy

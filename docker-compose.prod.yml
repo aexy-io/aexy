@@ -100,6 +100,10 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env.prod}
+      # Off in production. Turning this on publishes one shared account whose
+      # password is in the environment — only do it for a deliberately public
+      # demo box, never for a deployment holding real data.
+      - AEXY_DEMO_LOGIN=${AEXY_DEMO_LOGIN:-false}
       - FRONTEND_URL=${FRONTEND_URL:-https://aexy.io}
       - BACKEND_URL=${BACKEND_URL:-https://server.aexy.io}
       - ENVIRONMENT=production

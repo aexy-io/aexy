@@ -22,6 +22,20 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
+class DemoLoginRequest(BaseModel):
+    """Credentials for the shared demo account (see AEXY_DEMO_LOGIN)."""
+
+    email: str
+    password: str
+
+
+class DemoLoginStatus(BaseModel):
+    """Whether this deployment offers demo sign-in, and under which address."""
+
+    enabled: bool
+    email: str | None = None
+
+
 class GitHubUserInfo(BaseModel):
     """GitHub user information from API."""
 

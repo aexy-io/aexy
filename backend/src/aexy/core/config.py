@@ -479,6 +479,44 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 10080  # 7 days for development
 
+    # Demo login. Off by default, and the only way into a fresh self-hosted
+    # install without first registering an OAuth app with GitHub, Google or
+    # Microsoft — which is what every provider flow below requires. Turning it
+    # on publishes one shared account whose password is in the environment, so
+    # it belongs on a laptop or a deliberately public demo box and nowhere
+    # else. `docker-compose.yml` (dev) enables it; `docker-compose.prod.yml`
+    # does not.
+    demo_login_enabled: bool = Field(
+        default=False,
+        description="Allow password sign-in to the shared demo workspace",
+        validation_alias="AEXY_DEMO_LOGIN",
+    )
+    demo_login_email: str = Field(
+        default="demo@example.com",
+        description=(
+            "Email of the shared demo account. Must be a real-looking domain: "
+            "DeveloperResponse validates it as an EmailStr, and pydantic "
+            "rejects reserved TLDs like .local, so /developers/me would 500 "
+            "right after a successful sign-in."
+        ),
+        validation_alias="AEXY_DEMO_EMAIL",
+    )
+    demo_login_password: str = Field(
+        default="aexy-demo",
+        description="Password for the shared demo account. Empty disables demo login outright.",
+        validation_alias="AEXY_DEMO_PASSWORD",
+    )
+    demo_allow_outbound_email: bool = Field(
+        default=False,
+        description=(
+            "Let a demo deployment send real email. Off by default: a "
+            "deployment with demo login on is a demo, and a shared account "
+            "that anyone can sign into should not be able to mail strangers "
+            "from your domain."
+        ),
+        validation_alias="AEXY_DEMO_ALLOW_OUTBOUND_EMAIL",
+    )
+
     # GitHub API
     github_api_base_url: str = "https://api.github.com"
     github_oauth_url: str = "https://github.com/login/oauth"

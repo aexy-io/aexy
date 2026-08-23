@@ -864,6 +864,29 @@ class ProviderService:
         Returns:
             dict with 'success', 'message_id', 'provider' keys
         """
+        # A demo deployment does not send mail. Checked here rather than at the
+        # callers because every campaign, sequence and automation send in the
+        # product funnels through this method, and a demo box with working
+        # provider credentials is a bulk sender anyone can sign into. See
+        # `demo_login_service.outbound_email_blocked`.
+        from aexy.core.config import get_settings
+        from aexy.services.demo_login_service import outbound_email_blocked
+
+        if outbound_email_blocked(get_settings()):
+            logger.warning(
+                "Demo deployment: refused outbound email to %s via %s",
+                to_email,
+                provider.provider_type,
+            )
+            return {
+                "success": False,
+                "error": (
+                    "Outbound email is disabled on this demo deployment. "
+                    "Set AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=true to allow it."
+                ),
+                "provider": provider.provider_type,
+            }
+
         # Check provider status
         if provider.status != ProviderStatus.ACTIVE.value:
             return {

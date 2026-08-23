@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode, urlsplit
@@ -17,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.core.config import get_settings
 from aexy.core.database import get_db
-from aexy.schemas.auth import TokenResponse
+from aexy.schemas.auth import DemoLoginRequest, DemoLoginStatus, TokenResponse
+from aexy.services.demo_login_service import (
+    demo_credentials_match,
+    demo_login_available,
+    ensure_demo_account,
+)
 from aexy.services.developer_service import DeveloperService
 from aexy.services.github_service import GitHubAPIError, GitHubAuthError, GitHubService
 
@@ -221,11 +227,67 @@ def create_access_token(
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
+# --------------------------------------------------------------------------- #
+# Demo login
+# --------------------------------------------------------------------------- #
+# Every provider flow below needs the operator to register an OAuth app first,
+# which means a fresh `docker compose up -d` has no way in at all. These two
+# endpoints are that way in, off unless AEXY_DEMO_LOGIN says otherwise. See
+# services/demo_login_service.py for why it is one shared account rather than
+# password auth.
+
+
+@router.get("/demo/status", response_model=DemoLoginStatus)
+async def demo_login_status() -> DemoLoginStatus:
+    """Whether demo sign-in is available, and the address it expects.
+
+    The sign-in page asks before it offers the button, so a deployment with
+    demo login off never advertises it. The email is returned because the
+    point of the demo account is that its credentials are not a secret; the
+    password is not, because echoing a configured secret back over an
+    unauthenticated endpoint is a habit worth not having.
+    """
+    if not demo_login_available(settings):
+        return DemoLoginStatus(enabled=False)
+    return DemoLoginStatus(enabled=True, email=settings.demo_login_email)
+
+
+@router.post("/demo/login", response_model=TokenResponse)
+async def demo_login(
+    credentials: DemoLoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Sign in to the shared demo workspace with the configured password."""
+    if not demo_login_available(settings):
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Demo login is not enabled on this deployment",
+        )
+    if not demo_credentials_match(credentials.email, credentials.password, settings):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Invalid demo credentials"
+        )
+
+    developer, workspace = await ensure_demo_account(db, settings.demo_login_email)
+    logger.info(
+        "Demo sign-in as %s into workspace %s", developer.id, workspace.id
+    )
+    return TokenResponse(
+        access_token=create_access_token(
+            developer.id, account_type=developer.account_type
+        ),
+        expires_in=settings.access_token_expire_minutes * 60,
+    )
+
+
 _DEVICE_PROVIDERS = {"github", "google", "microsoft"}
 
 
+_DEVICE_STATE_RE = re.compile(r"^[A-Za-z0-9._~-]{8,128}$")
+
+
 @router.get("/device/login")
-async def device_login(provider: str, port: int) -> RedirectResponse:
+async def device_login(provider: str, port: int, state: str | None = None) -> RedirectResponse:
     """Native-app sign-in entry point (Aexy Tracker desktop, RFC 8252 loopback).
 
     Validates the provider + loopback port, then redirects into the normal
@@ -234,12 +296,19 @@ async def device_login(provider: str, port: int) -> RedirectResponse:
     address, where the desktop app's local listener captures it (and exchanges
     it for a long-lived API token). The host is server-forced to loopback so the
     JWT can only ever be delivered to the local machine.
+
+    ``state`` is an app-generated nonce echoed back on the loopback callback so
+    the desktop listener can reject callbacks it didn't initiate.
     """
     if provider not in _DEVICE_PROVIDERS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unsupported provider")
     if not 1024 <= port <= 65535:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Port out of range")
+    if state is not None and not _DEVICE_STATE_RE.match(state):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bad state")
     redirect_url = f"http://127.0.0.1:{port}/callback"
+    if state:
+        redirect_url += "?" + urlencode({"state": state})
     query = urlencode({"redirect_url": redirect_url})
     return RedirectResponse(url=f"/api/v1/auth/{provider}/login?{query}")
 
