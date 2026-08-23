@@ -312,8 +312,27 @@ class WorkspaceAISettingsService:
         await self._require_manager(workspace_id, developer_id)
         await self._require_plan(workspace_id)
 
-        if await self.db.get(Workspace, workspace_id) is None:
+        workspace = await self.db.get(Workspace, workspace_id)
+        if workspace is None:
             raise HTTPException(status_code=404, detail="Workspace not found")
+
+        # The demo workspace's kill switch is not the demo user's to lift. The
+        # account is shared and is an owner, so without this any visitor could
+        # turn AI on and every session after them would spend the operator's
+        # credential. Refused rather than undone at the next sign-in, which is
+        # too late.
+        if data.ai_enabled:
+            from aexy.core.config import get_settings
+            from aexy.services.demo_login_service import demo_workspace_ai_locked
+
+            if demo_workspace_ai_locked(get_settings(), workspace):
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "AI is held off for the demo workspace. Turn off "
+                        "AEXY_DEMO_LOGIN, or use a workspace of your own."
+                    ),
+                )
 
         row = await _get_row(self.db, workspace_id)
         if row is None:

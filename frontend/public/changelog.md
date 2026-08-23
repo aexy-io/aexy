@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.1] - 2026-08-23
+
+A follow-up on the demo account: it now shows the two modules it refuses to run,
+and the refusal is no longer something the demo user can lift.
+
+### Changed: the demo shows the modules it will not run
+
+Demo provisioning switched `email_marketing` and `agents` off in the workspace's
+`app_settings` — the outermost layer of app access, off "for everybody, admins
+included". The reasoning was that a shared account should not be able to send
+mail or spend tokens, which is right; hiding the modules was the wrong way to
+get there.
+
+It cost the demo its point. Those two are among the three things the marketing
+site leads with, so a visitor who opened the demo to see the agent story found
+it absent — and "Request Access" on a module you own reads as broken or
+paywalled, not as a safety measure. It also quietly contradicted the claim that
+self-hosting is not a crippled edition.
+
+It also protected nothing. What actually refuses is the workspace AI kill switch,
+which the LLM gateway resolves through on every path, and the outbound-email
+block on the two send paths. Both work with every module on screen. Hiding
+`agents` did not even close the hole it appeared to: the AI setting lives under
+Settings, not inside that module, so it was reachable either way.
+
+So nothing is hidden now. Open an agent and read its tools and policy gates;
+build a campaign in the builder. Pressing the button is where it stops, with
+"AI features are disabled for this workspace" or a send that answers with the
+reason it did not go. The seeded automations stay inactive for the same reason
+they always were — one of them runs an agent on every lead created, so an enabled
+copy is a way to spend the operator's budget by filling in a form — but they
+still show their triggers, actions and run history.
+
+### Fixed: the demo could switch AI back on for everybody
+
+Re-asserting the kill switch at sign-in was the whole enforcement, and that is
+not enough for an account that is shared. The demo user is an owner, so one
+visitor turning AI on in Settings left it on for every session after them until
+somebody signed in again — and each of those sessions spent the operator's
+credential. "Reverted at the next sign-in" is too late when the sign-in is not
+yours.
+
+`WorkspaceAISettingsService.update` now refuses a request to enable AI for the
+demo workspace outright, scoped by owner so that anyone signing in through OAuth
+on the same install still configures their own workspaces normally. The
+re-assertion stays as the floor underneath it. On a free-plan install the
+existing plan gate already refuses first with a 402; this is what catches a
+hosted demo on a plan that would otherwise allow the write.
+
 ## [0.29.0] - 2026-08-23
 
 Post-login craft: the boards, the dashboard, the sidebar, and a render loop

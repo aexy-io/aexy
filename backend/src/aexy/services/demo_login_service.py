@@ -153,7 +153,6 @@ async def ensure_demo_account(
 
     await _ensure_full_sidebar(db, developer.id)
     await _ensure_ai_disabled(db, workspace.id)
-    await _ensure_apps_disabled(workspace)
 
     if commit:
         await db.commit()
@@ -196,19 +195,6 @@ async def _ensure_full_sidebar(db: AsyncSession, developer_id: str) -> None:
         await db.flush()
 
 
-# Apps switched off for the demo workspace. `workspace.settings["app_settings"]`
-# is the outermost layer of app access — "off for everybody, admins included" —
-# so this holds even though the demo account is the workspace owner.
-#
-#   email_marketing — campaigns send real mail to real addresses
-#   agents          — LangGraph agents are the largest single LLM spend
-#
-# `mcp` deliberately stays on: it is the most interesting thing here to
-# demonstrate, it spends nothing itself, and the AI kill switch below is what
-# stops anything it reaches from spending either.
-DEMO_DISABLED_APPS = ("email_marketing", "agents")
-
-
 async def _ensure_ai_disabled(db: AsyncSession, workspace_id: str) -> None:
     """Hold the workspace AI kill switch off.
 
@@ -248,33 +234,6 @@ async def _ensure_ai_disabled(db: AsyncSession, workspace_id: str) -> None:
         logger.info("Demo workspace %s: AI switched back off", workspace_id)
 
 
-async def _ensure_apps_disabled(workspace: Workspace) -> None:
-    """Hold the sending and spending modules off in the demo workspace.
-
-    Same re-assertion reasoning as `_ensure_ai_disabled`: the demo account owns
-    the workspace, so the toggle it could flip has to be re-applied rather than
-    written once. Only the apps named here are touched — every other entry in
-    `app_settings` is left as the operator left it.
-    """
-    settings_blob = dict(workspace.settings or {})
-    app_settings = dict(settings_blob.get("app_settings") or {})
-    changed = [app for app in DEMO_DISABLED_APPS if app_settings.get(app) is not False]
-    if not changed:
-        return
-    for app in DEMO_DISABLED_APPS:
-        app_settings[app] = False
-    settings_blob["app_settings"] = app_settings
-    # Reassigned rather than mutated in place: `settings` is JSONB and SQLAlchemy
-    # will not notice an in-place change to a nested dict.
-    workspace.settings = settings_blob
-    logger.info("Demo workspace %s: apps disabled %s", workspace.id, changed)
-
-    from aexy.services.app_access_service import invalidate_app_settings_cache
-
-    # Notifies the other workers too; the toggle is cached per process for 30s.
-    await invalidate_app_settings_cache(workspace.id)
-
-
 def outbound_email_blocked(settings: Settings) -> bool:
     """Should this deployment refuse to send mail?
 
@@ -294,3 +253,22 @@ def outbound_email_blocked(settings: Settings) -> bool:
     default and `docker-compose.prod.yml` never sets it.
     """
     return bool(settings.demo_login_enabled and not settings.demo_allow_outbound_email)
+
+
+def demo_workspace_ai_locked(settings: Settings, workspace: Workspace) -> bool:
+    """May AI be switched back on for this workspace?
+
+    Re-asserting the kill switch at sign-in is not enough on its own. The demo
+    account is shared: one visitor turning AI on in Settings leaves it on for
+    everybody else until the next sign-in re-asserts it, and every session in
+    between spends the operator's credential. So the write is refused rather
+    than merely undone afterwards.
+
+    Scoped to the demo workspace, not to the deployment — someone who signs in
+    through OAuth on the same install still configures their own workspaces
+    normally.
+    """
+    return bool(
+        settings.demo_login_enabled
+        and str(workspace.owner_id) == DEMO_DEVELOPER_ID
+    )

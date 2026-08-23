@@ -10,11 +10,13 @@ object — monkeypatch restores the attributes afterwards, which matters because
 """
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from aexy.api import auth as auth_module
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace, WorkspaceMember
+from aexy.services.demo_login_service import DEMO_DEVELOPER_ID
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "aexy-demo"
@@ -194,9 +196,15 @@ async def test_the_shipped_default_email_is_a_valid_address():
 # Email and AI stay off
 # --------------------------------------------------------------------------- #
 # The demo account is a workspace owner, so it can reach the settings that turn
-# these back on. Provisioning therefore re-asserts them on every sign-in rather
-# than writing them once — these tests are about the re-assertion, not just the
-# initial state.
+# these back on. Two things stop it: provisioning re-asserts the kill switch on
+# every sign-in, and the write that would lift it is refused outright — the
+# account is shared, so "undone at the next sign-in" would still leave every
+# session in between spending.
+#
+# Note what is deliberately *not* here: the modules are not hidden. Hiding
+# email marketing and agents from a demo removes the two features worth showing
+# and reads as broken or paywalled, while adding no protection — the gateway and
+# the send paths are what actually refuse.
 
 
 @pytest.mark.asyncio
@@ -232,63 +240,6 @@ async def test_ai_is_switched_back_off_on_the_next_sign_in(
     assert row.ai_enabled is False
 
 
-@pytest.mark.asyncio
-async def test_sending_apps_are_disabled_for_the_demo_workspace(
-    client, db_session, demo_enabled
-):
-    from aexy.services.demo_login_service import DEMO_DISABLED_APPS
-
-    await client.post(
-        "/api/v1/auth/demo/login",
-        json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
-    )
-    workspace = (await db_session.execute(select(Workspace))).scalar_one()
-    app_settings = (workspace.settings or {}).get("app_settings", {})
-    assert set(DEMO_DISABLED_APPS) <= app_settings.keys()
-    assert all(app_settings[app] is False for app in DEMO_DISABLED_APPS)
-    # email_marketing is the one that sends; agents is the one that spends.
-    assert "email_marketing" in DEMO_DISABLED_APPS
-    assert "agents" in DEMO_DISABLED_APPS
-
-
-@pytest.mark.asyncio
-async def test_disabled_apps_are_switched_back_off_on_the_next_sign_in(
-    client, db_session, demo_enabled
-):
-    payload = {"email": DEMO_EMAIL, "password": DEMO_PASSWORD}
-    await client.post("/api/v1/auth/demo/login", json=payload)
-
-    workspace = (await db_session.execute(select(Workspace))).scalar_one()
-    workspace.settings = {"app_settings": {"email_marketing": True, "agents": True}}
-    await db_session.commit()
-
-    await client.post("/api/v1/auth/demo/login", json=payload)
-    await db_session.refresh(workspace)
-    app_settings = workspace.settings["app_settings"]
-    assert app_settings["email_marketing"] is False
-    assert app_settings["agents"] is False
-
-
-@pytest.mark.asyncio
-async def test_other_app_settings_are_left_alone(client, db_session, demo_enabled):
-    payload = {"email": DEMO_EMAIL, "password": DEMO_PASSWORD}
-    await client.post("/api/v1/auth/demo/login", json=payload)
-
-    workspace = (await db_session.execute(select(Workspace))).scalar_one()
-    workspace.settings = {
-        "app_settings": {"uptime": False},
-        "something_else": {"kept": True},
-    }
-    await db_session.commit()
-
-    await client.post("/api/v1/auth/demo/login", json=payload)
-    await db_session.refresh(workspace)
-    # The operator's own choice survives, and so does unrelated settings data.
-    assert workspace.settings["app_settings"]["uptime"] is False
-    assert workspace.settings["app_settings"]["email_marketing"] is False
-    assert workspace.settings["something_else"] == {"kept": True}
-
-
 def test_outbound_email_is_blocked_on_a_demo_deployment():
     from aexy.core.config import Settings
     from aexy.services.demo_login_service import outbound_email_blocked
@@ -302,3 +253,73 @@ def test_outbound_email_is_blocked_on_a_demo_deployment():
 
     # And nothing at all changes for a deployment that is not a demo.
     assert outbound_email_blocked(Settings(AEXY_DEMO_LOGIN=False)) is False
+
+
+@pytest.mark.asyncio
+async def test_the_demo_account_cannot_turn_ai_back_on(
+    client, db_session, demo_enabled, monkeypatch
+):
+    """The write is refused, not merely reverted at the next sign-in.
+
+    `_require_manager` and `_require_plan` are stubbed because they run first and
+    `_require_plan` inserts a `Plan` row whose `llm_provider_access` is an ARRAY
+    column that SQLite cannot bind. Both would pass for real here — the demo
+    account is an owner — and neither is what this test is about.
+    """
+    from aexy.schemas.workspace_ai_settings import AISettingsUpdate
+    from aexy.services import workspace_ai_settings_service as mod
+
+    async def allow(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(mod.WorkspaceAISettingsService, "_require_manager", allow)
+    monkeypatch.setattr(mod.WorkspaceAISettingsService, "_require_plan", allow)
+
+    await client.post(
+        "/api/v1/auth/demo/login",
+        json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
+    )
+    workspace = (await db_session.execute(select(Workspace))).scalar_one()
+
+    with pytest.raises(HTTPException) as exc:
+        await mod.WorkspaceAISettingsService(db_session).update(
+            workspace.id,
+            AISettingsUpdate(ai_enabled=True),
+            DEMO_DEVELOPER_ID,
+        )
+    assert exc.value.status_code == 403
+    assert "demo" in str(exc.value.detail).lower()
+
+
+def test_the_lock_is_scoped_to_the_demo_workspace():
+    from aexy.core.config import Settings
+    from aexy.services.demo_login_service import demo_workspace_ai_locked
+
+    demo_ws = Workspace(owner_id=DEMO_DEVELOPER_ID)
+    other_ws = Workspace(owner_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    on = Settings(AEXY_DEMO_LOGIN=True)
+
+    assert demo_workspace_ai_locked(on, demo_ws) is True
+    # Somebody who signed in through OAuth on the same install is unaffected.
+    assert demo_workspace_ai_locked(on, other_ws) is False
+    # And a deployment without demo login locks nothing at all.
+    assert demo_workspace_ai_locked(Settings(AEXY_DEMO_LOGIN=False), demo_ws) is False
+
+
+@pytest.mark.asyncio
+async def test_the_modules_stay_visible_in_the_demo_workspace(
+    client, db_session, demo_enabled
+):
+    """Provisioning must not switch any app off.
+
+    Enforcement is the kill switch and the send-path refusal, both of which work
+    with every module on screen. Hiding them would cost the demo the two
+    features most worth showing and protect nothing.
+    """
+    await client.post(
+        "/api/v1/auth/demo/login",
+        json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
+    )
+    workspace = (await db_session.execute(select(Workspace))).scalar_one()
+    app_settings = (workspace.settings or {}).get("app_settings", {})
+    assert [app for app, on in app_settings.items() if on is False] == []

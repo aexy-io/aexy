@@ -33,9 +33,10 @@ into an exposed one.
   environment. It is off by default and on in `docker-compose.yml` for local
   development. Do not enable it on a deployment holding real data; for a
   deliberately public demo, set your own `AEXY_DEMO_PASSWORD`. While it is on,
-  outbound email is refused at both send paths and the demo workspace keeps AI
-  and the email-marketing module switched off — so a visitor cannot mail
-  strangers from your domain or spend your token budget.
+  outbound email is refused at both send paths and the demo workspace's AI kill
+  switch is held off — so a visitor cannot mail strangers from your domain or
+  spend your token budget. The modules stay visible and simply refuse; that is
+  deliberate, and the refusal is the enforcement.
   `AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=true` lifts the email block; only set it for a
   box whose provider is a local catcher such as the bundled Mailpit.
 - **Database and Redis** should not be reachable from the internet. The

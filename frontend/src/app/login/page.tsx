@@ -133,8 +133,8 @@ export default function LoginPage() {
                 </p>
                 <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                   This install has demo sign-in switched on. One shared workspace, no
-                  OAuth app to register. Email sending and AI are switched off, so
-                  nothing here can mail anyone or spend tokens.
+                  OAuth app to register. Every module is there to explore; sending
+                  email and running AI are the two that won&apos;t actually fire.
                 </p>
                 <div className="mt-4 space-y-3">
                   <div>

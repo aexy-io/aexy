@@ -31,11 +31,11 @@ Open http://localhost:3000/login and use the **Self-hosted demo** panel —
 GitHub, Google or Microsoft OAuth, which means registering an app with one of
 them first. `docker-compose.prod.yml` leaves demo login off.
 
-The demo account cannot send email or spend LLM tokens. Its workspace has the AI
-kill switch off and the email-marketing and agents modules disabled, outbound
-email is refused at both send paths while demo login is on, and the seeded
-automations are left inactive — all re-applied on every sign-in, because the demo
-account is an owner and could otherwise switch them back on. Details in
+Every module is there to look at, and the two that cost money don't fire. The
+workspace AI kill switch is off, so the LLM gateway refuses every call; outbound
+email is refused at both send paths; the seeded automations are left inactive.
+Nothing is hidden — you can open Email Marketing and the agents, see how they're
+built, and get a plain "disabled for this workspace" if you press send. Details in
 [getting-started](docs/guides/getting-started.md#about-that-demo-account).
 
 Services come up on: frontend `:3000`, backend `:8000` (OpenAPI at `/docs`),
