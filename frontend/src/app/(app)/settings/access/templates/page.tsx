@@ -173,10 +173,6 @@ export default function AccessTemplatesPage() {
       title={t("title")}
       description={t("description")}
       width="wide"
-      breadcrumbs={[
-        { label: t("breadcrumbParent"), href: "/settings/access" },
-        { label: t("title") },
-      ]}
       actions={
         <Button size="sm" onClick={() => setShowCreateModal(true)} className="gap-2">
           <Plus className="h-4 w-4" aria-hidden />

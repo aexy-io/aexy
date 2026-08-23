@@ -278,8 +278,8 @@ export default function AssessmentsPage() {
 
   if (authLoading || workspacesLoading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
-        <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="animate-pulse">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <div className="h-7 w-36 bg-accent rounded mb-2" />
@@ -311,14 +311,14 @@ export default function AssessmentsPage() {
               </div>
             ))}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -427,7 +427,7 @@ export default function AssessmentsPage() {
             Showing {assessments.length} of {total} assessments
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Assessment Modal */}
       {showCreateModal && (

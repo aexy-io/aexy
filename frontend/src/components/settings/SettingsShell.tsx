@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Menu, Settings } from "lucide-react";
+import { Menu } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -10,14 +9,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SimpleTooltip } from "@/components/ui/tooltip";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useSettingsAccess } from "@/hooks/useSettingsAccess";
 import { SettingsSidebar } from "./SettingsSidebar";
-import { SettingsSearch } from "./SettingsSearch";
 import { SettingsAccessDenied, SettingsSkeleton } from "./SettingsPrimitives";
 
 interface SettingsShellProps {
@@ -43,62 +40,46 @@ export function SettingsShell({ children }: SettingsShellProps) {
   const { allowed, isLoading: accessLoading } = useSettingsAccess();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3 px-4 py-3">
-          {/* Mobile hamburger */}
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition md:hidden">
-                <Menu className="h-5 w-5" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-0">
-              <SheetHeader className="px-4 pt-4 pb-2">
-                <SheetTitle className="text-base">Settings</SheetTitle>
-              </SheetHeader>
-              <div className="overflow-y-auto px-2 pb-4">
-                <SettingsSidebar
-                  {...access}
-                  isEnterprise={isEnterprise}
-                  onItemClick={() => setSheetOpen(false)}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Back to dashboard */}
-          <SimpleTooltip content="Back to dashboard" side="bottom">
-            <Link
-              href="/dashboard"
-              aria-label="Back to dashboard"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition hidden md:flex"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </SimpleTooltip>
-
-          {/* The title is a link, so the index is reachable from any sub-page —
-              it is the only route that lists all 29 destinations. */}
-          <Link
-            href="/settings"
-            className="flex items-center gap-2 rounded-md px-1 py-0.5 transition-colors hover:text-foreground"
-          >
-            <Settings className="h-5 w-5 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold text-foreground">Settings</span>
-          </Link>
-
-          {/* Search */}
-          <div className="ml-auto w-full max-w-xs">
-            <SettingsSearch {...access} />
-          </div>
-        </div>
-      </header>
+    /*
+      This used to open with `min-h-screen` and its own sticky header carrying a
+      back arrow, a "Settings" title link and a search box. All three are now the
+      app topbar's job — it renders "Settings › Service Desk › Mailboxes", every
+      crumb a link, on every route. Keeping the old bar left /settings showing
+      two breadcrumb trails and, with the sidebar filter forty pixels below it,
+      three separate search inputs on one screen.
+    */
+    <div className="bg-background">
+      {/* Mobile: the settings sub-nav needs its own trigger. This is the
+          settings tree, not the app sidebar, so it cannot share the topbar's. */}
+      <div className="sticky top-14 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur md:hidden">
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <button className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition hover:bg-accent hover:text-foreground">
+              <Menu className="h-4 w-4" />
+              All settings
+            </button>
+          </SheetTrigger>
+          {/* Capped against the viewport as well as in pixels: a flat 280px on a
+              320px phone leaves a 40px strip of page, which is not enough of the
+              underlay left to read as "tap here to dismiss". */}
+          <SheetContent side="left" className="w-[min(280px,85vw)] p-0">
+            <SheetHeader className="px-4 pb-2 pt-4">
+              <SheetTitle className="text-base">Settings</SheetTitle>
+            </SheetHeader>
+            <div className="overflow-y-auto px-2 pb-4">
+              <SettingsSidebar
+                {...access}
+                isEnterprise={isEnterprise}
+                onItemClick={() => setSheetOpen(false)}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <div className="flex">
-        {/* Desktop sidebar */}
-        <aside className="hidden md:block w-[232px] shrink-0 border-r border-border overflow-y-auto sticky top-[57px] h-[calc(100vh-57px)] px-2">
+        {/* Desktop sidebar. Sticks below the 56px app topbar. */}
+        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-[232px] shrink-0 overflow-y-auto border-r border-border px-2 md:block">
           <SettingsSidebar {...access} isEnterprise={isEnterprise} />
         </aside>
 
@@ -106,7 +87,10 @@ export function SettingsShell({ children }: SettingsShellProps) {
             centres itself) rather than here — a `max-w-*` on this element left a
             wide screen with all the content jammed left and a third of the
             viewport empty. */}
-        <main className="min-w-0 flex-1 px-6 py-6 md:px-10 md:py-8">
+        {/* A plain div: AppShell owns the page's single <main>, and nesting a
+            second one makes the "skip to main content" target ambiguous for
+            screen readers. */}
+        <div className="min-w-0 flex-1 px-6 py-6 md:px-10 md:py-8">
           {/* Permissions arrive over the network; showing the denial while they
               load would flash it at people who do have access. */}
           {accessLoading ? (
@@ -118,7 +102,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
           ) : (
             <SettingsAccessDenied />
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

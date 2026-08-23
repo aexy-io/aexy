@@ -4,11 +4,14 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Company Knowledge Graph",
   description: "Build a company knowledge graph in Aexy by connecting docs, CRM records, tickets, workflows, people, files, and AI agents.",
+  alternates: { canonical: "/use-cases/company-knowledge-graph" },
 };
 
 export default function CompanyKnowledgeGraphPage() {
   return (
     <SeoLandingPage
+      path="/use-cases/company-knowledge-graph"
+      breadcrumbName="Company knowledge graph"
       eyebrow="Use case"
       title="Build a company knowledge graph agents can actually use."
       description="Aexy connects docs, files, CRM records, projects, workflows, people, and activities so AI agents and humans can find the context behind company decisions."

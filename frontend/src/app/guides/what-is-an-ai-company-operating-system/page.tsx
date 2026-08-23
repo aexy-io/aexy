@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "What Is an AI Company Operating System? Definition, Modules & Deployment",
   description:
     "An AI company operating system unifies CRM, engineering, workflows, HR, and docs in one workspace that AI agents can operate. Definition, core modules, deployment models, and how it differs from point tools.",
+  alternates: { canonical: "/guides/what-is-an-ai-company-operating-system" },
 };
 
 export default function WhatIsAiCompanyOsGuide() {

@@ -89,24 +89,24 @@ export function DocsSearch({ entries, variant = "button" }: DocsSearchProps) {
       {variant === "input" ? (
         <button
           onClick={() => setOpen(true)}
-          className="group flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.05] transition text-left"
+          className="group flex items-center gap-3 w-full px-4 py-3 rounded-[2px] bg-ledger-card border border-ledger-ink/12 hover:border-ledger-ink/30 transition text-left"
         >
-          <Search className="h-4 w-4 text-white/40 group-hover:text-white/60 transition" />
-          <span className="flex-1 text-white/40 group-hover:text-white/60 transition text-sm">
+          <Search className="h-4 w-4 text-ledger-ink/50 group-hover:text-ledger-ink/70 transition" />
+          <span className="flex-1 text-ledger-ink/50 group-hover:text-ledger-ink/70 transition text-sm">
             Search docs…
           </span>
-          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-[11px] text-white/50 font-mono">
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 text-[11px] text-ledger-ink/60 font-brand-mono">
             ⌘K
           </kbd>
         </button>
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.15] hover:bg-white/[0.06] transition text-sm text-white/60 hover:text-white"
+          className="flex items-center gap-2 px-3 py-2 rounded-[2px] bg-ledger-card border border-ledger-ink/12 hover:border-ledger-ink/30 transition text-sm text-ledger-ink/60 hover:text-ledger-ink"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">Search</span>
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[10px] text-white/50 font-mono">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 text-[10px] text-ledger-ink/60 font-brand-mono">
             ⌘K
           </kbd>
         </button>
@@ -115,30 +115,30 @@ export function DocsSearch({ entries, variant = "button" }: DocsSearchProps) {
       {open && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4">
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-ledger-ink/30 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative w-full max-w-2xl bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 px-4 border-b border-white/[0.06]">
-              <Search className="h-4 w-4 text-white/40" />
+          <div className="relative w-full max-w-2xl bg-ledger-card border border-ledger-ink/25 rounded-[2px] shadow-2xl shadow-ledger-ink/20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 px-4 border-b border-ledger-ink/12">
+              <Search className="h-4 w-4 text-ledger-ink/50" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="Search documentation…"
-                className="flex-1 bg-transparent py-4 text-white placeholder:text-white/30 outline-none text-sm"
+                className="flex-1 bg-transparent py-4 text-ledger-ink placeholder:text-ledger-ink/40 outline-none text-sm"
               />
               <button
                 onClick={() => setOpen(false)}
-                className="p-1 rounded-md hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition"
+                className="p-1 rounded-[2px] hover:bg-ledger-ink/[0.06] text-ledger-ink/50 hover:text-ledger-ink/80 transition"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-2">
               {results.length === 0 ? (
-                <div className="px-4 py-12 text-center text-white/40 text-sm">
+                <div className="px-4 py-12 text-center text-ledger-ink/50 text-sm">
                   No results for &ldquo;{query}&rdquo;
                 </div>
               ) : (
@@ -148,30 +148,30 @@ export function DocsSearch({ entries, variant = "button" }: DocsSearchProps) {
                       <button
                         onMouseEnter={() => setActiveIndex(i)}
                         onClick={() => navigate(r.item.slug)}
-                        className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition ${
+                        className={`w-full flex items-start gap-3 p-3 rounded-[2px] text-left transition ${
                           i === activeIndex
-                            ? "bg-primary-500/[0.12] border border-primary-500/30"
-                            : "border border-transparent hover:bg-white/[0.04]"
+                            ? "bg-ledger-green/[0.08] border border-ledger-green/40"
+                            : "border border-transparent hover:bg-ledger-ink/[0.04]"
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          className={`w-8 h-8 rounded-[2px] flex items-center justify-center flex-shrink-0 ${
                             i === activeIndex
-                              ? "bg-primary-500/20 text-primary-300"
-                              : "bg-white/[0.04] text-white/50"
+                              ? "bg-ledger-green/15 text-ledger-green"
+                              : "bg-ledger-ink/[0.05] text-ledger-ink/50"
                           }`}
                         >
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-[11px] text-white/40 mb-0.5">
+                          <div className="flex items-center gap-2 font-brand-mono text-[11px] uppercase tracking-[0.08em] text-ledger-ink/50 mb-0.5">
                             {r.item.section}
                           </div>
-                          <div className="text-sm font-medium text-white truncate">
+                          <div className="text-sm font-medium text-ledger-ink truncate">
                             {r.item.title}
                           </div>
                           {r.item.description && (
-                            <div className="text-[12.5px] text-white/50 mt-0.5 line-clamp-2 leading-snug">
+                            <div className="text-[12.5px] text-ledger-ink/60 mt-0.5 line-clamp-2 leading-snug">
                               {r.item.description}
                             </div>
                           )}
@@ -182,19 +182,19 @@ export function DocsSearch({ entries, variant = "button" }: DocsSearchProps) {
                 </ul>
               )}
             </div>
-            <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/[0.06] text-[11px] text-white/40 bg-white/[0.015]">
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-ledger-ink/12 text-[11px] text-ledger-ink/50 bg-ledger-ink/[0.02]">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] font-mono">↑↓</kbd>
+                  <kbd className="px-1.5 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 font-brand-mono">↑↓</kbd>
                   navigate
                 </span>
                 <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] font-mono">↵</kbd>
+                  <kbd className="px-1.5 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 font-brand-mono">↵</kbd>
                   open
                 </span>
               </div>
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] font-mono">esc</kbd>
+                <kbd className="px-1.5 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 font-brand-mono">esc</kbd>
                 close
               </span>
             </div>

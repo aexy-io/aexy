@@ -100,7 +100,7 @@ export default function GoalDetailPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
@@ -114,7 +114,7 @@ export default function GoalDetailPage() {
 
   if (error || !goal) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Goal not found</h2>
@@ -134,8 +134,8 @@ export default function GoalDetailPage() {
   const progressPercent = goal.progress_percentage || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-5xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -454,7 +454,7 @@ export default function GoalDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
       <ConfirmDialog
         open={showCompleteConfirm}
         onOpenChange={setShowCompleteConfirm}

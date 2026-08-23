@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Keyboard } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { getModifierKey } from "@/hooks/useKeyboardShortcuts";
+import { APP_COMMANDS, useAppCommand } from "@/lib/appCommands";
 
 interface ShortcutGroup {
   title: string;
@@ -60,6 +61,11 @@ export function KeyboardShortcutsHelp() {
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
+
+  // Reachable from the topbar help menu too. Binding this list to `?` and then
+  // never mentioning `?` anywhere in the UI meant only people who already knew
+  // the convention could find it.
+  useAppCommand(APP_COMMANDS.shortcuts, open);
 
   // Listen for "?" key
   useEffect(() => {

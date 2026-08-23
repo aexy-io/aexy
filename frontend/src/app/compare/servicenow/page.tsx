@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs ServiceNow",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs ServiceNow" },
   description: "Compare Aexy and ServiceNow for teams evaluating governed AI agents, enterprise workflows, company OS platforms, CRM, GTM, docs, and engineering operations.",
+  alternates: { canonical: "/compare/servicenow" },
 };
 
 export default function ServiceNowComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/servicenow"
       competitor="ServiceNow"
       eyebrow="Aexy vs ServiceNow"
       title="A ServiceNow alternative for teams that want open, product-led company operations."

@@ -89,6 +89,17 @@ export const authApi = {
     const base = `${API_BASE_URL}/auth/google/login`;
     return redirectUrl ? `${base}?redirect_url=${encodeURIComponent(redirectUrl)}` : base;
   },
+  // Demo sign-in — the way into a self-hosted install that has no OAuth app
+  // registered. Off unless the backend sets AEXY_DEMO_LOGIN, so the sign-in
+  // page asks first and only renders the option when the answer is yes.
+  getDemoStatus: async (): Promise<{ enabled: boolean; email?: string | null }> => {
+    const response = await api.get("/auth/demo/status");
+    return response.data;
+  },
+  demoLogin: async (email: string, password: string) => {
+    const response = await api.post("/auth/demo/login", { email, password });
+    return response.data as { access_token: string; token_type: string; expires_in: number };
+  },
 };
 
 // Developer API

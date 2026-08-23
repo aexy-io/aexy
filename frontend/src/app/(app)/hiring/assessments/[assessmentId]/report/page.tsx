@@ -386,7 +386,7 @@ export default function AssessmentReportPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -394,7 +394,7 @@ export default function AssessmentReportPage() {
 
   if (!assessment) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-foreground mb-2">Assessment not found</h2>
           <Link href="/hiring/assessments" className="text-primary hover:text-primary/80">
@@ -406,8 +406,8 @@ export default function AssessmentReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -595,7 +595,7 @@ export default function AssessmentReportPage() {
             </table>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

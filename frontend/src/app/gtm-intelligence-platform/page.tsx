@@ -4,6 +4,7 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "GTM Intelligence Platform",
   description: "Aexy GTM Intelligence connects website visitors, ICP scoring, routing, CRM context, workflows, and AI agents for product-led and technical revenue teams.",
+  alternates: { canonical: "/gtm-intelligence-platform" },
 };
 
 const faqs: Array<[string, string]> = [
@@ -15,6 +16,7 @@ const faqs: Array<[string, string]> = [
 export default function GtmIntelligencePlatformPage() {
   return (
     <SeoLandingPage
+      path="/gtm-intelligence-platform"
       eyebrow="GTM intelligence platform"
       title="Turn market and customer signals into routed work."
       description="Aexy brings visitor context, ICP scoring, CRM records, account health, routing, workflows, and AI agents into one operating layer for revenue and product teams."

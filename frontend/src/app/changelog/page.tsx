@@ -1,12 +1,14 @@
 import fs from "fs";
 import path from "path";
 import { Metadata } from "next";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
 export const metadata: Metadata = {
-  title: "Changelog - Aexy",
+  // Bare: the root title.template appends " | Aexy".
+  title: "Changelog",
   description:
     "All notable changes to Aexy. Track new features, improvements, and fixes.",
+  alternates: { canonical: "/changelog" },
 };
 
 interface Version {
@@ -63,7 +65,7 @@ function renderInline(text: string): React.ReactNode {
       elements.push(text.slice(lastIndex, match.index));
     if (match[1]) {
       elements.push(
-        <strong key={key++} className="text-white font-semibold">
+        <strong key={key++} className="font-semibold text-ledger-ink">
           {match[2]}
         </strong>
       );
@@ -71,7 +73,7 @@ function renderInline(text: string): React.ReactNode {
       elements.push(
         <code
           key={key++}
-          className="px-1.5 py-0.5 bg-white/10 rounded text-primary-400 text-[13px] font-mono"
+          className="rounded-[2px] bg-ledger-ink/[0.06] px-1.5 py-0.5 font-brand-mono text-[13px] text-ledger-green"
         >
           {match[4]}
         </code>
@@ -81,7 +83,7 @@ function renderInline(text: string): React.ReactNode {
         <a
           key={key++}
           href={match[7]}
-          className="text-primary-400 hover:underline"
+          className="text-ledger-green hover:underline"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -95,39 +97,42 @@ function renderInline(text: string): React.ReactNode {
   return elements.length === 1 ? elements[0] : <>{elements}</>;
 }
 
+/* Change-type tags are mono uppercase marks in the margin of the ledger, not
+   coloured pills. Ledger-red is reserved for what a ledger subtracts — a
+   removal — so every other kind carries the same green mark and unknown kinds
+   (section headings that aren't a keep-a-changelog category) stay in ink. */
 const SECTION_STYLES: Record<string, string> = {
-  added: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  changed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  fixed: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  removed: "bg-red-500/20 text-red-400 border-red-500/30",
-  deprecated: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  security: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  added: "text-ledger-green",
+  changed: "text-ledger-green",
+  fixed: "text-ledger-green",
+  removed: "text-ledger-red",
+  deprecated: "text-ledger-red",
+  security: "text-ledger-green",
 };
 
 /**
- * A section heading: the kind as a coloured pill, the rest as a heading.
+ * A section heading: the kind as a mono tag, the rest as a heading.
  *
  * Entries here are written as `### Fixed: your work list showed every
- * workspace`, and the whole string used to go in the pill — so the colour
+ * workspace`, and the whole string used to go in the tag — so the colour
  * lookup never matched anything and every section came out the same grey,
- * while the actual heading was set in 12px pill text. The kind is worth
- * colouring; the sentence after it is a heading and should read like one.
+ * while the actual heading was set in 12px tag text. The kind is worth
+ * marking; the sentence after it is a heading and should read like one.
  */
 function SectionHeading({ title }: { title: string }) {
   const [, kind, rest] = title.match(/^([A-Za-z]+):\s*(.+)$/) ?? [];
   const label = kind ?? title;
-  const color =
-    SECTION_STYLES[label.toLowerCase()] || "bg-white/10 text-white/70 border-white/20";
+  const color = SECTION_STYLES[label.toLowerCase()] || "text-ledger-ink/55";
 
   return (
     <h3 className="mt-10 mb-4 first:mt-0 flex flex-wrap items-baseline gap-x-3 gap-y-2">
       <span
-        className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${color}`}
+        className={`font-brand-mono text-xs font-medium uppercase tracking-[0.18em] ${color}`}
       >
         {label}
       </span>
       {rest && (
-        <span className="text-lg font-semibold text-white tracking-tight">
+        <span className="font-display text-lg font-semibold tracking-tight text-ledger-ink">
           {renderInline(rest)}
         </span>
       )}
@@ -165,7 +170,7 @@ function renderVersionContent(lines: string[]) {
       elements.push(
         <p
           key={key++}
-          className="text-white/70 text-[15px] leading-[1.75] mb-5 max-w-[68ch]"
+          className="mb-5 max-w-[68ch] text-[15px] leading-[1.75] text-ledger-ink/65"
         >
           {renderInline(paragraph.join(" "))}
         </p>
@@ -193,7 +198,7 @@ function renderVersionContent(lines: string[]) {
       elements.push(
         <h4
           key={key++}
-          className="text-base font-semibold text-white/90 mt-6 mb-2"
+          className="mt-6 mb-2 font-display text-base font-semibold text-ledger-ink/90"
         >
           {renderInline(h4[1])}
         </h4>
@@ -203,7 +208,7 @@ function renderVersionContent(lines: string[]) {
 
     if (line.trim() === "---") {
       flushAll();
-      elements.push(<hr key={key++} className="border-white/[0.06] my-8" />);
+      elements.push(<hr key={key++} className="my-8 border-ledger-ink/12" />);
       continue;
     }
 
@@ -212,9 +217,9 @@ function renderVersionContent(lines: string[]) {
       listItems.push(
         <li
           key={key++}
-          className="text-white/70 text-[15px] leading-[1.75] flex items-start gap-3"
+          className="flex items-start gap-3 text-[15px] leading-[1.75] text-ledger-ink/65"
         >
-          <span className="text-primary-500/70 mt-[10px] flex-shrink-0 w-1.5 h-1.5 rounded-full bg-current" />
+          <span className="mt-[10px] h-1.5 w-1.5 flex-shrink-0 rounded-[1px] bg-ledger-green" />
           <span>{renderInline(line.slice(2))}</span>
         </li>
       );
@@ -240,30 +245,21 @@ export default function ChangelogPage() {
   const versions = parseVersions(content);
 
   return (
-    /* No `overflow-hidden` on this wrapper: it makes the element the scroll
-       container for everything inside, which silently disables the sticky
-       version rail. The blurred blobs it was clipping sit in their own
-       `fixed inset-0 overflow-hidden` layer below, so they stay clipped. */
-    <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    /* No `overflow-hidden` anywhere on this page's wrappers: it makes the
+       element the scroll container for everything inside, which silently
+       disables the sticky version rail. */
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-12 px-6 relative">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-6">
+      <section className="px-6 pt-32 pb-12">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             What&apos;s New
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+          <h1 className="mb-4 font-display text-4xl font-semibold tracking-tight md:text-5xl">
             Changelog
           </h1>
-          <p className="text-lg text-white/50 max-w-xl mx-auto">
+          <p className="mx-auto max-w-xl text-lg text-ledger-ink/55">
             All notable changes to Aexy, documented.
           </p>
         </div>
@@ -274,46 +270,39 @@ export default function ChangelogPage() {
           The page is wide, the prose is not: paragraphs are capped at ~68
           characters because that is what stays readable, and the width buys a
           version rail beside the text instead of longer lines. On a long entry
-          the rail sticks, so you can always see which release you are reading. */}
-      <section className="pb-24 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-white/[0.06] hidden md:block" />
+          the rail sticks, so you can always see which release you are reading.
 
-            {versions.map((version, i) => (
-              <div key={version.version} className="relative mb-12 md:pl-12">
-                {/* Timeline dot */}
-                <div className="absolute left-[11px] top-2 w-[9px] h-[9px] rounded-full bg-primary-500/60 ring-4 ring-[#0a0a0f] hidden md:block" />
-
-                {/* Version card */}
-                <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.06] p-6 md:p-8 lg:p-10 hover:border-white/[0.12] transition-colors">
-                  <div className="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-10">
-                    <div className="mb-6 lg:mb-0">
-                      <div className="lg:sticky lg:top-28 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:block">
-                        <span className="text-2xl font-bold text-white tracking-tight lg:block">
-                          v{version.version}
-                        </span>
-                        <span className="text-sm text-white/40 lg:block lg:mt-1">
-                          {version.date}
-                        </span>
-                        {i === 0 && (
-                          <span className="px-2 py-0.5 text-[11px] font-medium bg-primary-500/20 text-primary-400 rounded-full border border-primary-500/30 lg:inline-block lg:mt-3">
-                            Latest
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="min-w-0">{renderVersionContent(version.lines)}</div>
-                  </div>
+          Releases are ruled off from each other with hairlines rather than
+          boxed into cards — a ledger is a list of entries, and the rules keep
+          the version numbers in one column the way a ledger keeps its dates. */}
+      <section className="px-6 pb-24">
+        <div className="mx-auto max-w-6xl border-t border-ledger-ink/12">
+          {versions.map((version, i) => (
+            <div
+              key={version.version}
+              className="border-b border-ledger-ink/12 py-10 md:py-12 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-10"
+            >
+              <div className="mb-6 lg:mb-0">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:sticky lg:top-28 lg:block">
+                  <span className="font-brand-mono text-2xl font-semibold tracking-tight text-ledger-ink lg:block">
+                    v{version.version}
+                  </span>
+                  <span className="font-brand-mono text-xs uppercase tracking-[0.14em] text-ledger-ink/50 lg:mt-2 lg:block">
+                    {version.date}
+                  </span>
+                  {i === 0 && (
+                    <span className="font-brand-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ledger-green lg:mt-3 lg:inline-block">
+                      Latest
+                    </span>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="min-w-0">{renderVersionContent(version.lines)}</div>
+            </div>
+          ))}
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

@@ -10,6 +10,7 @@ import {
   BugSeverity,
   BugPriority,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List bugs for a workspace
 export function useBugs(
@@ -56,7 +57,7 @@ export function useBugs(
   });
 
   return {
-    bugs: data?.items || [],
+    bugs: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,

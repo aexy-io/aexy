@@ -22,34 +22,29 @@ import {
   Settings,
   Github,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const features = [
   {
     icon: Palette,
     title: "Visual Email Builder",
     description: "Drag-and-drop email creation with 16+ block types. Hero sections, buttons, social links, and dynamic content.",
-    color: "from-sky-500 to-blue-500",
   },
   {
     icon: BarChart3,
     title: "Full Analytics",
     description: "Track opens, clicks, bounces, and conversions. Device breakdown, ISP metrics, and AI-powered send time optimization.",
-    color: "from-emerald-500 to-teal-500",
   },
   {
     icon: Globe,
     title: "Multi-Domain Sending",
     description: "Route emails through multiple domains and providers. Automatic failover and smart ISP-based routing.",
-    color: "from-purple-500 to-violet-500",
   },
   {
     icon: Zap,
     title: "IP Warming Automation",
     description: "AI-driven warming schedules. Conservative, moderate, or aggressive plans with automatic health monitoring.",
-    color: "from-amber-500 to-orange-500",
   },
 ];
 
@@ -67,114 +62,104 @@ const trackingFeatures = [
 ];
 
 export default function EmailMarketingProductPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-sky-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="px-6 pt-32 pb-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500/20 to-blue-500/20 border border-sky-500/30 rounded-full text-sky-400 text-sm mb-6">
+              <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Mail className="h-4 w-4" />
                 <span>Email Marketing</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="mb-6 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 Campaigns{" "}
-                <span className="bg-gradient-to-r from-sky-400 to-blue-400 bg-clip-text text-transparent">
-                  that convert
-                </span>
+                <span className="text-ledger-green">that convert</span>
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="mb-8 text-xl leading-relaxed text-ledger-ink/65">
                 Email marketing built for modern teams. Visual builder, full tracking,
                 multi-domain infrastructure, and AI-powered warming.
                 Enterprise-grade deliverability without the complexity.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <a
-                  href={googleLoginUrl}
-                  className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(14,165,233,0.3)]"
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
                 >
                   Start Sending Free
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Link>
                 <Link
-                  href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  href="/pricing"
+                  className="group inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-medium text-ledger-ink transition hover:border-ledger-ink/50"
                 >
-                  Learn More
+                  See pricing
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-ledger-ink/55">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-sky-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   Visual drag-and-drop
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-sky-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   Multi-provider routing
                 </span>
               </div>
             </div>
 
-            {/* Visual - Campaign Dashboard Preview */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-sky-500/20 to-blue-500/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-white font-medium">Recent Campaigns</h3>
-                  <button className="px-3 py-1 bg-sky-500/20 text-sky-400 text-xs rounded-full flex items-center gap-1">
-                    <Send className="h-3 w-3" />
-                    New Campaign
-                  </button>
-                </div>
+            {/* Visual - Campaign Dashboard Preview.
 
-                {/* Campaign List */}
-                <div className="space-y-3 mb-6">
-                  {campaignTypes.map((campaign, idx) => (
-                    <div key={idx} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 bg-gradient-to-br from-sky-500/30 to-blue-500/30 rounded-full flex items-center justify-center">
-                        <Mail className="h-5 w-5 text-sky-400" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-medium">{campaign.name}</p>
-                        <p className="text-white/40 text-xs">{campaign.sent} sent</p>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="text-emerald-400">{campaign.opens} opens</span>
-                        <span className="text-sky-400">{campaign.clicks} clicks</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                DARK PANE: a genuine product mockup — the campaign dashboard as
+                the app renders it — so it keeps the plate treatment used for
+                product UI on the paper page (see OsConsolePreview): ledger-pane
+                ground, white-opacity type, ledger-mint as the only accent. The
+                white/* utilities below are scoped to this pane on purpose. */}
+            <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7] shadow-[0_1px_0_rgba(16,25,19,0.08)]">
+              <div className="mb-6 flex items-center justify-between">
+                <h3 className="font-display font-medium">Recent Campaigns</h3>
+                <button className="flex items-center gap-1 rounded-[2px] border border-white/12 px-3 py-1 font-brand-mono text-[11px] uppercase tracking-[0.14em] text-ledger-mint">
+                  <Send className="h-3 w-3" />
+                  New Campaign
+                </button>
+              </div>
 
-                {/* Stats Bar */}
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Total Sent", value: "25.8K", color: "sky" },
-                    { label: "Avg Open Rate", value: "48.3%", color: "emerald" },
-                    { label: "Avg Click Rate", value: "16.1%", color: "purple" },
-                  ].map((stat, idx) => (
-                    <div key={idx} className={`p-3 bg-${stat.color}-500/10 rounded-xl text-center`}>
-                      <p className={`text-${stat.color}-400 text-lg font-bold`}>{stat.value}</p>
-                      <p className="text-white/40 text-xs">{stat.label}</p>
+              {/* Campaign List */}
+              <div className="mb-6 space-y-3">
+                {campaignTypes.map((campaign, idx) => (
+                  <div key={idx} className="flex cursor-pointer items-center gap-4 rounded-[2px] border border-white/12 p-3 transition-colors hover:bg-white/[0.03]">
+                    <Mail className="h-5 w-5 text-ledger-mint" />
+                    <div className="flex-1">
+                      <p className="text-[13px] font-medium text-white/85">{campaign.name}</p>
+                      <p className="font-brand-mono text-[11px] text-white/50">{campaign.sent} sent</p>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-4 font-brand-mono text-[11px]">
+                      <span className="text-ledger-mint">{campaign.opens} opens</span>
+                      <span className="text-white/60">{campaign.clicks} clicks</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Stats Bar */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Total Sent", value: "25.8K" },
+                  { label: "Avg Open Rate", value: "48.3%" },
+                  { label: "Avg Click Rate", value: "16.1%" },
+                ].map((stat, idx) => (
+                  <div key={idx} className="rounded-[2px] border border-white/12 p-3 text-center">
+                    <p className="font-brand-mono text-base text-white">{stat.value}</p>
+                    <p className="mt-1 font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/50">{stat.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -182,28 +167,26 @@ export default function EmailMarketingProductPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
               Everything you need to send at scale
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-lg text-ledger-ink/55">
               From visual design to deliverability infrastructure. Built for teams who care about results.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {features.map((feature, idx) => (
-              <div key={idx} className="group relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
-                </div>
+              <div
+                key={idx}
+                className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <feature.icon className="mb-6 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-3 font-display text-xl font-semibold">{feature.title}</h3>
+                <p className="text-ledger-ink/65">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -211,18 +194,18 @@ export default function EmailMarketingProductPage() {
       </section>
 
       {/* Visual Builder */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/20 rounded-full text-sky-400 text-xs mb-4">
+              <div className="mb-4 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Palette className="h-3 w-3" />
                 VISUAL BUILDER
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
                 Design emails without code
               </h2>
-              <p className="text-white/60 mb-6">
+              <p className="mb-6 text-ledger-ink/65">
                 Drag and drop blocks to create beautiful emails. 16+ block types including
                 headers, buttons, hero sections, and dynamic content with Jinja2 variables.
               </p>
@@ -233,17 +216,20 @@ export default function EmailMarketingProductPage() {
                   "Rich blocks: hero, footer, social, testimonials",
                   "Dynamic: variables, conditionals, loops",
                 ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-white/70">
-                    <CheckCircle2 className="h-5 w-5 text-sky-400" />
+                  <li key={idx} className="flex items-start gap-3 text-ledger-ink/75">
+                    <span className="font-brand-mono leading-6 text-ledger-green">+</span>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <div className="flex items-center gap-3 mb-4">
-                <Layers className="h-5 w-5 text-sky-400" />
-                <span className="text-white font-medium">Block Library</span>
+
+            {/* DARK PANE: the builder's block library as the app renders it —
+                a genuine product mockup, white/* utilities intentional. */}
+            <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7]">
+              <div className="mb-4 flex items-center gap-3">
+                <Layers className="h-5 w-5 text-ledger-mint" />
+                <span className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/55">Block Library</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -257,9 +243,9 @@ export default function EmailMarketingProductPage() {
                   { name: "Footer", icon: "©" },
                   { name: "Social", icon: "@" },
                 ].map((block, idx) => (
-                  <div key={idx} className="p-3 bg-white/5 rounded-lg text-center hover:bg-white/10 transition-colors cursor-pointer">
-                    <div className="text-sky-400 text-lg font-mono mb-1">{block.icon}</div>
-                    <p className="text-white/50 text-xs">{block.name}</p>
+                  <div key={idx} className="cursor-pointer rounded-[2px] border border-white/12 p-3 text-center transition-colors hover:bg-white/[0.03]">
+                    <div className="mb-1 font-brand-mono text-base text-ledger-mint">{block.icon}</div>
+                    <p className="font-brand-mono text-[11px] text-white/50">{block.name}</p>
                   </div>
                 ))}
               </div>
@@ -269,71 +255,68 @@ export default function EmailMarketingProductPage() {
       </section>
 
       {/* Tracking & Analytics */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-sky-500/10 to-blue-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <div className="text-center mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                  Full-funnel tracking & analytics
-                </h2>
-                <p className="text-white/60">
-                  Know exactly how your emails perform. From sends to conversions.
-                </p>
-              </div>
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12">
+            <div className="mb-10 text-center">
+              <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
+                Full-funnel tracking & analytics
+              </h2>
+              <p className="text-ledger-ink/65">
+                Know exactly how your emails perform. From sends to conversions.
+              </p>
+            </div>
 
-              <div className="grid md:grid-cols-4 gap-4">
-                {trackingFeatures.map((item, idx) => (
-                  <div key={idx} className="text-center p-6 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="w-12 h-12 bg-gradient-to-br from-sky-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <item.icon className="h-6 w-6 text-sky-400" />
-                    </div>
-                    <h3 className="text-white font-medium mb-1">{item.label}</h3>
-                    <p className="text-white/40 text-xs">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="grid gap-4 md:grid-cols-4">
+              {trackingFeatures.map((item, idx) => (
+                <div key={idx} className="rounded-[2px] border border-ledger-ink/12 bg-ledger-paper p-6 text-center">
+                  <item.icon className="mx-auto mb-3 h-5 w-5 text-ledger-green" />
+                  <h3 className="mb-1 font-display font-semibold">{item.label}</h3>
+                  <p className="font-brand-mono text-[11px] text-ledger-ink/55">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Infrastructure */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-              <div className="flex items-center gap-3 mb-4">
-                <Globe className="h-5 w-5 text-purple-400" />
-                <span className="text-white font-medium">Sending Infrastructure</span>
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid items-center gap-8 md:grid-cols-2">
+            {/* DARK PANE: the sending-infrastructure console as the app renders
+                it — a genuine product mockup, white/* utilities intentional. */}
+            <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7]">
+              <div className="mb-4 flex items-center gap-3">
+                <Globe className="h-5 w-5 text-ledger-mint" />
+                <span className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/55">Sending Infrastructure</span>
               </div>
               <div className="space-y-3">
                 {[
-                  { domain: "mail.example.com", status: "Active", health: "98%", color: "emerald" },
-                  { domain: "send.company.io", status: "Warming", health: "Day 7/14", color: "amber" },
-                  { domain: "notify.app.dev", status: "Active", health: "95%", color: "emerald" },
+                  { domain: "mail.example.com", status: "Active", health: "98%", dot: "bg-ledger-mint", tone: "text-ledger-mint" },
+                  { domain: "send.company.io", status: "Warming", health: "Day 7/14", dot: "bg-white/45", tone: "text-white/60" },
+                  { domain: "notify.app.dev", status: "Active", health: "95%", dot: "bg-ledger-mint", tone: "text-ledger-mint" },
                 ].map((domain, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full bg-${domain.color}-400`} />
+                  <div key={idx} className="flex items-center gap-4 rounded-[2px] border border-white/12 p-3">
+                    <div className={`h-2 w-2 rounded-full ${domain.dot}`} />
                     <div className="flex-1">
-                      <p className="text-white text-sm">{domain.domain}</p>
-                      <p className="text-white/40 text-xs">{domain.status}</p>
+                      <p className="font-brand-mono text-[13px] text-white/85">{domain.domain}</p>
+                      <p className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/50">{domain.status}</p>
                     </div>
-                    <span className={`text-${domain.color}-400 text-sm`}>{domain.health}</span>
+                    <span className={`font-brand-mono text-[13px] ${domain.tone}`}>{domain.health}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full text-purple-400 text-xs mb-4">
+              <div className="mb-4 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Settings className="h-3 w-3" />
                 INFRASTRUCTURE
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
                 Enterprise-grade deliverability
               </h2>
-              <p className="text-white/60 mb-6">
+              <p className="mb-6 text-ledger-ink/65">
                 Multi-domain sending with automatic warming, health monitoring, and smart routing.
                 Connect SES, SendGrid, Mailgun, or Postmark.
               </p>
@@ -344,8 +327,8 @@ export default function EmailMarketingProductPage() {
                   "ISP-specific routing (Gmail, Outlook, Yahoo)",
                   "Auto-pause on reputation issues",
                 ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3 text-white/70">
-                    <CheckCircle2 className="h-5 w-5 text-purple-400" />
+                  <li key={idx} className="flex items-start gap-3 text-ledger-ink/75">
+                    <span className="font-brand-mono leading-6 text-ledger-green">+</span>
                     {item}
                   </li>
                 ))}
@@ -356,26 +339,26 @@ export default function EmailMarketingProductPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Ready to send emails that get results?
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="mb-10 text-xl text-ledger-ink/55">
             Start with the visual builder. Scale with enterprise infrastructure.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               <Github className="h-5 w-5" />
               View on GitHub
@@ -384,7 +367,6 @@ export default function EmailMarketingProductPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

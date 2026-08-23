@@ -11,7 +11,10 @@ import {
   ShieldCheck,
   Terminal,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
+import { BreadcrumbJsonLd } from "@/components/marketing/StructuredData";
+import { ProductShot } from "@/components/marketing/ProductShot";
+import mcpShot from "../../../../public/marketing/products/mcp@2x.webp";
 import { McpChatPreview } from "@/components/landing/McpChatPreview";
 
 /**
@@ -90,66 +93,89 @@ export default async function McpProductPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#08090d] text-white">
+    <LedgerPage>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.15),transparent_32%),radial-gradient(circle_at_75%_10%,rgba(34,211,238,0.12),transparent_30%)]" />
-      <LandingHeader />
+      <BreadcrumbJsonLd trail={[{ name: "MCP", path: "/products/mcp" }]} />
 
-      <main className="relative">
+      <div className="relative">
         {/* Hero */}
         <section className="px-4 pb-20 pt-32 sm:px-6">
           <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_0.95fr]">
             <div>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm text-teal-200">
+              <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Plug className="h-4 w-4" />
                 {t("page.badge")}
               </div>
-              <h1 className="max-w-4xl text-5xl font-semibold leading-[1.04] tracking-tight sm:text-6xl">
+              <h1 className="max-w-4xl font-display text-5xl font-semibold leading-[1.04] tracking-tight sm:text-6xl">
                 {t("page.h1")}
               </h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-white/62">
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-ledger-ink/65">
                 {t("page.subhead")}
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 font-semibold text-black transition hover:bg-white/90"
+                  className="inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-7 py-4 font-semibold text-ledger-paper transition hover:bg-[#095A31]"
                 >
                   {t("page.ctaPrimary")}
                   <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link
                   href="/handbook/mcp"
-                  className="inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 font-semibold text-white transition hover:bg-white/[0.08]"
+                  className="inline-flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-7 py-4 font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
                 >
                   {t("page.ctaSecondary")}
                 </Link>
               </div>
             </div>
 
+            {/* Restyled into a framed dark plate by the .theme-ledger scope. */}
             <McpChatPreview />
           </div>
         </section>
 
+        {/* Real screenshot of the in-app MCP page, captured by
+            e2e/tools/capture-marketing-shots.ts. Copy lives in
+            messages/<locale>/marketingMcp.json like the rest of this page. */}
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-10 max-w-2xl">
+              <div className="mb-4 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
+                {t("shot.eyebrow")}
+              </div>
+              <h2 className="mb-4 font-display text-4xl font-semibold tracking-tight">
+                {t("shot.heading")}
+              </h2>
+              <p className="text-lg leading-8 text-ledger-ink/65">{t("shot.body")}</p>
+            </div>
+            <ProductShot
+              src={mcpShot}
+              alt={t("shot.alt")}
+              figure={t("shot.figure")}
+              caption={t("shot.caption")}
+            />
+          </div>
+        </section>
+
         {/* Prompts */}
-        <section className="px-4 py-20 sm:px-6">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <h2 className="max-w-3xl text-4xl font-semibold tracking-tight">
+            <h2 className="max-w-3xl font-display text-4xl font-semibold tracking-tight">
               {t("page.prompts.heading")}
             </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/58">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-ledger-ink/65">
               {t("page.prompts.body")}
             </p>
             <div className="mt-10 grid gap-3 md:grid-cols-2">
               {PROMPTS.map((key) => (
                 <div
                   key={key}
-                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-white/68"
+                  className="flex items-start gap-3 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-5 text-ledger-ink/70"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" />
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ledger-green" />
                   <span>{t(`page.prompts.${key}`)}</span>
                 </div>
               ))}
@@ -158,22 +184,22 @@ export default async function McpProductPage() {
         </section>
 
         {/* Capabilities */}
-        <section className="px-4 py-20 sm:px-6">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <h2 className="max-w-3xl text-4xl font-semibold tracking-tight">
+            <h2 className="max-w-3xl font-display text-4xl font-semibold tracking-tight">
               {t("page.capabilities.heading")}
             </h2>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {CAPABILITIES.map(({ key, icon: Icon }) => (
                 <div
                   key={key}
-                  className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"
+                  className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-5 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
                 >
-                  <Icon className="h-6 w-6 text-teal-300" />
-                  <h3 className="mt-5 text-xl font-semibold">
+                  <Icon className="h-5 w-5 text-ledger-green" />
+                  <h3 className="mt-5 font-display text-xl font-semibold">
                     {t(`page.capabilities.${key}.title`)}
                   </h3>
-                  <p className="mt-3 text-sm leading-6 text-white/55">
+                  <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                     {t(`page.capabilities.${key}.body`)}
                   </p>
                 </div>
@@ -183,47 +209,47 @@ export default async function McpProductPage() {
         </section>
 
         {/* Two ways to connect */}
-        <section className="px-4 py-20 sm:px-6">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-7xl">
-            <h2 className="max-w-3xl text-4xl font-semibold tracking-tight">
+            <h2 className="max-w-3xl font-display text-4xl font-semibold tracking-tight">
               {t("page.connect.heading")}
             </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/58">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-ledger-ink/65">
               {t("page.connect.body")}
             </p>
             <div className="mt-10 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-3xl border border-teal-400/25 bg-teal-400/[0.06] p-6 sm:p-8">
+              <div className="rounded-[2px] border border-ledger-green/40 bg-ledger-card p-6 sm:p-8">
                 <div className="mb-5 flex items-center gap-3">
-                  <Plug className="h-6 w-6 text-teal-300" />
-                  <span className="rounded-full bg-teal-400/15 px-3 py-1 text-xs font-medium text-teal-200">
+                  <Plug className="h-5 w-5 text-ledger-green" />
+                  <span className="rounded-[2px] bg-ledger-green/10 px-3 py-1 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-green">
                     {t("page.connect.remote.tag")}
                   </span>
                 </div>
-                <h3 className="text-2xl font-semibold">
+                <h3 className="font-display text-2xl font-semibold">
                   {t("page.connect.remote.title")}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-white/60">
+                <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                   {t("page.connect.remote.body")}
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6 sm:p-8">
+              <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6 sm:p-8">
                 <div className="mb-5 flex items-center gap-3">
-                  <Terminal className="h-6 w-6 text-white/72" />
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/60">
+                  <Terminal className="h-5 w-5 text-ledger-ink/70" />
+                  <span className="rounded-[2px] border border-ledger-ink/20 px-3 py-1 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-ink/60">
                     {t("page.connect.local.tag")}
                   </span>
                 </div>
-                <h3 className="text-2xl font-semibold">
+                <h3 className="font-display text-2xl font-semibold">
                   {t("page.connect.local.title")}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-white/60">
+                <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                   {t("page.connect.local.body")}
                 </p>
               </div>
             </div>
             <Link
               href="/handbook/mcp"
-              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-teal-300 transition hover:text-teal-200"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ledger-green transition hover:text-ledger-ink"
             >
               <BookOpen className="h-4 w-4" />
               {t("page.connect.guide")}
@@ -233,19 +259,19 @@ export default async function McpProductPage() {
         </section>
 
         {/* Security */}
-        <section className="px-4 py-20 sm:px-6">
-          <div className="mx-auto grid max-w-7xl gap-10 rounded-3xl border border-white/10 bg-white/[0.035] p-6 sm:p-10 lg:grid-cols-[0.8fr_1fr]">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-10 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6 sm:p-10 lg:grid-cols-[0.8fr_1fr]">
             <div>
-              <ShieldCheck className="h-10 w-10 text-teal-300" />
-              <h2 className="mt-6 text-4xl font-semibold tracking-tight">
+              <ShieldCheck className="h-10 w-10 text-ledger-green" />
+              <h2 className="mt-6 font-display text-4xl font-semibold tracking-tight">
                 {t("page.security.heading")}
               </h2>
-              <p className="mt-5 text-lg leading-8 text-white/58">
+              <p className="mt-5 text-lg leading-8 text-ledger-ink/65">
                 {t("page.security.body")}
               </p>
               <Link
                 href="/security"
-                className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-teal-300 transition hover:text-teal-200"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ledger-green transition hover:text-ledger-ink"
               >
                 Security at Aexy
                 <ArrowRight className="h-4 w-4" />
@@ -255,7 +281,7 @@ export default async function McpProductPage() {
               {SECURITY_POINTS.map((key) => (
                 <div
                   key={key}
-                  className="rounded-2xl border border-white/10 bg-black/20 p-5 text-white/68"
+                  className="rounded-[2px] border border-ledger-ink/12 bg-ledger-paper p-5 text-ledger-ink/70"
                 >
                   {t(`page.security.points.${key}`)}
                 </div>
@@ -265,19 +291,19 @@ export default async function McpProductPage() {
         </section>
 
         {/* FAQ */}
-        <section className="px-4 py-20 sm:px-6">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-center text-4xl font-semibold tracking-tight">
+            <h2 className="text-center font-display text-4xl font-semibold tracking-tight">
               {t("page.faq.heading")}
             </h2>
             <div className="mt-10 space-y-4">
               {FAQ_KEYS.map((key) => (
                 <div
                   key={key}
-                  className="rounded-2xl border border-white/10 bg-white/[0.035] p-6"
+                  className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6"
                 >
                   <h3 className="text-lg font-semibold">{t(`page.faq.${key}.q`)}</h3>
-                  <p className="mt-3 text-sm leading-6 text-white/58">
+                  <p className="mt-3 text-sm leading-6 text-ledger-ink/60">
                     {t(`page.faq.${key}.a`)}
                   </p>
                 </div>
@@ -287,34 +313,33 @@ export default async function McpProductPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="px-4 py-20 sm:px-6 sm:py-28">
+        <section className="border-t border-ledger-ink/12 px-4 py-20 sm:px-6 sm:py-28">
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h2 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
               {t("page.finalCta.heading")}
             </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/56">
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-ledger-ink/65">
               {t("page.finalCta.body")}
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 font-semibold text-black transition hover:bg-white/90"
+                className="inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-7 py-4 font-semibold text-ledger-paper transition hover:bg-[#095A31]"
               >
                 {t("page.ctaPrimary")}
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <Link
                 href="/handbook/mcp"
-                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 font-semibold text-white transition hover:bg-white/[0.08]"
+                className="inline-flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-7 py-4 font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
               >
                 {t("page.ctaSecondary")}
               </Link>
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

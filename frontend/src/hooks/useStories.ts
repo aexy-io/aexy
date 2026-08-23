@@ -9,6 +9,7 @@ import {
   StoryStatus,
   StoryPriority,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List stories for a workspace
 export function useStories(
@@ -50,7 +51,7 @@ export function useStories(
   });
 
   return {
-    stories: data?.items || [],
+    stories: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -151,7 +152,7 @@ export function useStoryTasks(workspaceId: string | null, storyId: string | null
   });
 
   return {
-    tasks: data?.items || [],
+    tasks: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,

@@ -12,6 +12,7 @@ import {
   EpicStatus,
   EpicPriority,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List epics for a workspace
 export function useEpics(
@@ -53,7 +54,7 @@ export function useEpics(
   });
 
   return {
-    epics: epics || [],
+    epics: epics ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

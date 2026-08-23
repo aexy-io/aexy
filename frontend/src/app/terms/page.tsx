@@ -1,44 +1,52 @@
 "use client";
 
 import { FileText } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
+
+// "Open Ledger" long-form treatment. Clause numbers stay part of the heading
+// text (unchanged copy) but render in the mono face so the document scans
+// like a numbered ledger; hairline rules separate the clauses.
 
 const LAST_UPDATED = "April 2026";
 
+const linkClass =
+  "text-ledger-green underline decoration-ledger-green/30 underline-offset-4 transition hover:decoration-ledger-green";
+
+const headingClass = "mb-3 font-display text-2xl font-semibold tracking-tight";
+const clauseNumberClass = "font-brand-mono text-xl text-ledger-green";
+
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
+    <LedgerPage>
 
-      <LandingHeader />
-
-      <section className="pt-32 pb-12 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-6">
+      <section className="relative px-6 pb-12 pt-32">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-5 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             <FileText className="h-4 w-4" />
             Terms
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+          <h1 className="mb-4 font-display text-4xl font-semibold leading-[1.06] tracking-tight md:text-5xl">
             Terms of Service
           </h1>
-          <p className="text-white/40 text-sm">Last updated: {LAST_UPDATED}</p>
+          <p className="font-brand-mono text-xs uppercase tracking-[0.18em] text-ledger-ink/55">
+            Last updated: {LAST_UPDATED}
+          </p>
         </div>
       </section>
 
-      <section className="pb-24 px-6 relative">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 mb-12 text-amber-200/80 text-sm">
-            <strong className="text-amber-300">Notice:</strong> These are starter terms.
+      <section className="relative px-6 pb-24">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-12 rounded-[2px] border border-ledger-ink/20 bg-ledger-card p-6 text-sm leading-6 text-ledger-ink/70">
+            <strong className="font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">Notice:</strong> These are starter terms.
             Before relying on them in production, please have them reviewed by qualified
             legal counsel for your jurisdiction.
           </div>
 
-          <div className="prose prose-invert prose-lg max-w-none space-y-8 text-white/70 leading-relaxed">
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">1. Acceptance</h2>
+          <div className="max-w-none divide-y divide-ledger-ink/12 border-y border-ledger-ink/12 text-base leading-7 text-ledger-ink/75">
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>1.</span> Acceptance
+              </h2>
               <p>
                 By signing up for or using Aexy&apos;s cloud service (&quot;the Service&quot;),
                 you agree to these Terms. If you&apos;re using the Service on behalf of an
@@ -46,8 +54,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">2. The Service</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>2.</span> The Service
+              </h2>
               <p>
                 Aexy provides a hosted engineering operations platform. The core open-source
                 code is available under the license in our public repository. The cloud
@@ -56,8 +66,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">3. Your account</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>3.</span> Your account
+              </h2>
               <p>
                 You&apos;re responsible for the activity under your account, for keeping
                 credentials secure, and for the conduct of users you invite to your workspace.
@@ -65,8 +77,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">4. Your content</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>4.</span> Your content
+              </h2>
               <p>
                 You retain all rights to the data, code, and content you put into Aexy
                 (&quot;Customer Data&quot;). You grant us a limited license to store, transmit,
@@ -75,10 +89,12 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">5. Acceptable use</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>5.</span> Acceptable use
+              </h2>
               <p>You agree not to:</p>
-              <ul className="list-disc pl-6 space-y-2 mt-3">
+              <ul className="mt-3 list-disc space-y-2 pl-6 marker:text-ledger-ink/40">
                 <li>Use the Service to violate any law or third-party rights.</li>
                 <li>Attempt to bypass rate limits, security controls, or billing.</li>
                 <li>
@@ -89,8 +105,10 @@ export default function TermsPage() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">6. Fees</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>6.</span> Fees
+              </h2>
               <p>
                 Paid plans are billed in advance and are non-refundable except where required
                 by law. We may change prices on 30 days&apos; notice for the next billing
@@ -99,8 +117,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">7. Termination</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>7.</span> Termination
+              </h2>
               <p>
                 You can cancel anytime from your account settings. We may suspend or terminate
                 accounts that materially breach these Terms or that pose a security risk to
@@ -109,8 +129,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">8. Warranties &amp; liability</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>8.</span> Warranties &amp; liability
+              </h2>
               <p>
                 The Service is provided &quot;as is&quot; without warranties of any kind, to
                 the maximum extent permitted by law. To the extent permitted by law, neither
@@ -120,8 +142,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">9. Changes</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>9.</span> Changes
+              </h2>
               <p>
                 We may update these Terms occasionally. If a change is material, we&apos;ll
                 notify you by email or in-product. Continued use of the Service after a change
@@ -129,11 +153,13 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-white mb-3">10. Contact</h2>
+            <section className="py-8">
+              <h2 className={headingClass}>
+                <span className={clauseNumberClass}>10.</span> Contact
+              </h2>
               <p>
                 Questions about these Terms:{" "}
-                <a href="mailto:legal@aexy.io" className="text-primary-400 hover:text-primary-300 transition">
+                <a href="mailto:legal@aexy.io" className={linkClass}>
                   legal@aexy.io
                 </a>
                 .
@@ -143,7 +169,6 @@ export default function TermsPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

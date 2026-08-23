@@ -15,6 +15,7 @@ import {
   ComplianceFolderCreate,
   ComplianceFolderUpdate,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==========================================
 // Document Hooks
@@ -86,7 +87,7 @@ export function useComplianceDocuments(
   });
 
   return {
-    documents: data?.items || [],
+    documents: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     pageSize: data?.page_size || 20,
@@ -159,8 +160,8 @@ export function useComplianceFolders(workspaceId: string | null) {
   });
 
   return {
-    folders: folders || [],
-    tree: tree || [],
+    folders: folders ?? EMPTY_ARRAY,
+    tree: tree ?? EMPTY_ARRAY,
     isLoading,
     treeLoading,
     createFolder: createMutation.mutateAsync,
@@ -202,7 +203,7 @@ export function useComplianceTags(workspaceId: string | null) {
   });
 
   return {
-    tags: data?.tags || [],
+    tags: data?.tags ?? EMPTY_ARRAY,
     isLoading,
     addTags: addTagsMutation.mutateAsync,
     removeTag: removeTagMutation.mutateAsync,
@@ -243,7 +244,7 @@ export function useComplianceDocumentLinks(workspaceId: string | null, documentI
   });
 
   return {
-    links: links || [],
+    links: links ?? EMPTY_ARRAY,
     isLoading,
     linkDocument: linkMutation.mutateAsync,
     unlinkDocument: unlinkMutation.mutateAsync,
@@ -262,8 +263,8 @@ export function useEntityDocuments(
   });
 
   return {
-    documents: data?.documents || [],
-    links: data?.links || [],
+    documents: data?.documents ?? EMPTY_ARRAY,
+    links: data?.links ?? EMPTY_ARRAY,
     isLoading,
   };
 }

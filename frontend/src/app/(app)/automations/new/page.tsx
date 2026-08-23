@@ -303,7 +303,7 @@ export default function NewAutomationPage() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
+      <div className="animate-pulse">
         <div className="h-[calc(100vh-64px)] flex flex-col">
           <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50">
             <div className="flex items-center gap-4">
@@ -354,7 +354,7 @@ export default function NewAutomationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 py-3 border-b border-border bg-muted/50 relative z-10">

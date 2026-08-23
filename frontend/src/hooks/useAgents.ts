@@ -15,6 +15,7 @@ import {
   WritingStyle,
   GeneratedEmail,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Agent Hooks ====================
 
@@ -159,7 +160,7 @@ export function useAgents(
   });
 
   return {
-    agents: agents || [],
+    agents: agents ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -347,7 +348,7 @@ export function useAgentTools(workspaceId: string | null) {
   });
 
   return {
-    tools: tools || [],
+    tools: tools ?? EMPTY_ARRAY,
     isLoading,
     error,
   };
@@ -383,7 +384,7 @@ export function useAgentExecutions(
   });
 
   return {
-    executions: executions || [],
+    executions: executions ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

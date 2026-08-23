@@ -16,6 +16,7 @@ import {
   AutomationRun,
   AutomationModule,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // Re-export types for convenience
 export type { Automation, AutomationRun, AutomationModule };
@@ -180,7 +181,7 @@ export function useAutomations(
   });
 
   return {
-    automations: automations || [],
+    automations: automations ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -222,7 +223,7 @@ export function useAutomationRuns(
   });
 
   return {
-    runs: runs || [],
+    runs: runs ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

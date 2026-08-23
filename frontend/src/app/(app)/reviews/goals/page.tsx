@@ -195,8 +195,8 @@ export default function GoalsPage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
-        <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center gap-2 text-sm mb-6">
             <div className="h-4 w-16 bg-accent rounded" />
             <div className="h-4 w-4 bg-accent rounded" />
@@ -230,7 +230,7 @@ export default function GoalsPage() {
               </div>
             ))}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -240,8 +240,8 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
           <Link href="/reviews" className="text-muted-foreground hover:text-foreground transition flex items-center gap-1">
@@ -351,7 +351,7 @@ export default function GoalsPage() {
             }
           }}
         />
-      </main>
+      </div>
     </div>
   );
 }

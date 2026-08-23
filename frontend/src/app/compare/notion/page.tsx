@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs Notion",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs Notion" },
   description: "Compare Aexy and Notion for teams that need docs connected to CRM, GTM, engineering work, workflows, and governed AI agents.",
+  alternates: { canonical: "/compare/notion" },
 };
 
 export default function NotionComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/notion"
       competitor="Notion"
       eyebrow="Aexy vs Notion"
       title="A Notion alternative when docs need to become operational."

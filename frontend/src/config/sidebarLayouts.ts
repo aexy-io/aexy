@@ -72,6 +72,8 @@ import {
     Workflow,
     CalendarRange,
     ListTodo,
+    Search,
+    Handshake,
 } from "lucide-react";
 
 export type SidebarLayoutType = "grouped" | "flat";
@@ -86,6 +88,19 @@ export interface SidebarItemConfig {
      *  `useSidebarBadges` — the config says what to show, not where the
      *  number comes from, so navigation stays free of data fetching. */
     badge?: SidebarBadgeKey;
+    /**
+     * Destination outside the app shell — opens in a new tab, with an
+     * indicator.
+     *
+     * Exactly one item needs this today, and it needed it badly. "Community"
+     * pointed at `/community`, which is a **public** route: it lives at
+     * `src/app/community/`, not under `(app)`, so following it replaced the
+     * whole application — no sidebar, no topbar, no way back but the browser's
+     * own button. It could not be fixed by adding an in-app twin, because two
+     * pages cannot resolve to one path. The forum is genuinely a public
+     * surface; the honest fix is to stop pretending it is a page of the app.
+     */
+    external?: boolean;
 }
 
 export interface SidebarSectionConfig {
@@ -184,7 +199,7 @@ const uptimeItems: SidebarItemConfig[] = [
 const operationsItems: SidebarItemConfig[] = [
     { href: "/operations", label: "Overview", icon: Workflow },
     { href: "/agents", label: "Agents", icon: Bot },
-    { href: "/automations", label: "Workflows", icon: Zap },
+    { href: "/automations", label: "Automations", icon: Zap },
     { href: "/mcp", label: "MCP", icon: Plug },
 ];
 
@@ -199,6 +214,20 @@ const leaveItems: SidebarItemConfig[] = [
     { href: "/leave", label: "My Leaves", icon: Palmtree },
     { href: "/leave?tab=approvals", label: "Approvals", icon: CheckSquare },
     { href: "/leave?tab=settings", label: "Settings", icon: Settings },
+];
+
+/**
+ * Learning had one rail entry — the root — and five pages. `/learning/analytics`
+ * and `/learning/integrations` were unreachable from anywhere in the product;
+ * the manager and compliance views were reachable only from inside the root
+ * page.
+ */
+const learningItems: SidebarItemConfig[] = [
+    { href: "/learning", label: "My Learning", icon: GraduationCap },
+    { href: "/learning/manager", label: "Team", icon: Users },
+    { href: "/learning/compliance", label: "Compliance", icon: ShieldCheck },
+    { href: "/learning/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/learning/integrations", label: "Integrations", icon: Plug },
 ];
 
 const reportsItems: SidebarItemConfig[] = [
@@ -232,6 +261,14 @@ const gtmItems: SidebarItemConfig[] = [
     { href: "/gtm/alerts", label: "Alerts", icon: Bell },
     { href: "/gtm/compliance", label: "Compliance", icon: ShieldCheck },
     { href: "/gtm/providers", label: "Providers", icon: Plug },
+    // Four built features that shipped with no way in. GTM has 22 pages and
+    // this rail listed 14 of them; SEO audits, content-gap analysis, expansion
+    // playbooks and engineering→GTM handoffs were maintained, type-checked and
+    // deployed with nothing in the product linking to any of them.
+    { href: "/gtm/seo", label: "SEO Audits", icon: Search },
+    { href: "/gtm/content-gap", label: "Content Gaps", icon: FileSearch },
+    { href: "/gtm/expansion", label: "Expansion", icon: TrendingUp },
+    { href: "/gtm/handoffs", label: "Handoffs", icon: Handshake },
 ];
 
 /**
@@ -250,11 +287,11 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                 // Home is the personal work list — tasks, bugs, stories and
                 // tickets assigned to you. The widget dashboard it replaced is
                 // still here as Insights, one item down.
-                { href: "/dashboard", label: "Home", icon: ListTodo },
+                { href: "/dashboard", label: "Dashboard", icon: ListTodo },
                 { href: "/dashboard/overview", label: "Insights", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
                 { href: "/chat", label: "Chat", icon: MessageCircle },
-                { href: "/community", label: "Community", icon: Globe },
+                { href: "/community", label: "Community", icon: Globe, external: true },
             ],
         },
         {
@@ -284,7 +321,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                 },
                 {
                     href: "/sprints",
-                    label: "Planning",
+                    label: "Sprints",
                     icon: Calendar,
                     items: planningItems,
                     personas: ["developer", "manager", "product", "admin"],
@@ -351,7 +388,12 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                     icon: Palmtree,
                     items: leaveItems,
                 },
-                { href: "/learning", label: "Learning", icon: GraduationCap },
+                {
+                    href: "/learning",
+                    label: "Learning",
+                    icon: GraduationCap,
+                    items: learningItems,
+                },
             ],
         },
         {
@@ -398,6 +440,7 @@ export const GROUPED_LAYOUT: SidebarLayoutConfig = {
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/review", label: "Review", icon: GitMerge, badge: "review" },
                 { href: "/docs/drive", label: "Drive", icon: HardDrive },
+                { href: "/docs/knowledge-graph", label: "Knowledge Graph", icon: Network },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 {
@@ -427,11 +470,11 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 // Home is the personal work list — tasks, bugs, stories and
                 // tickets assigned to you. The widget dashboard it replaced is
                 // still here as Insights, one item down.
-                { href: "/dashboard", label: "Home", icon: ListTodo },
+                { href: "/dashboard", label: "Dashboard", icon: ListTodo },
                 { href: "/dashboard/overview", label: "Insights", icon: LayoutDashboard },
                 { href: "/activity", label: "Activity", icon: Activity },
                 { href: "/chat", label: "Chat", icon: MessageCircle },
-                { href: "/community", label: "Community", icon: Globe },
+                { href: "/community", label: "Community", icon: Globe, external: true },
                 {
                     href: "/tracking",
                     label: "Tracking",
@@ -441,7 +484,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 },
                 {
                     href: "/sprints",
-                    label: "Planning",
+                    label: "Sprints",
                     icon: Calendar,
                     items: planningItems,
                     personas: ["developer", "manager", "product", "admin"],
@@ -518,7 +561,12 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                     items: insightsItems,
                     personas: ["manager", "admin"],
                 },
-                { href: "/learning", label: "Learning", icon: GraduationCap },
+                {
+                    href: "/learning",
+                    label: "Learning",
+                    icon: GraduationCap,
+                    items: learningItems,
+                },
                 {
                     href: "/leave",
                     label: "Leave",
@@ -528,6 +576,7 @@ export const FLAT_LAYOUT: SidebarLayoutConfig = {
                 { href: "/docs", label: "Docs", icon: FileText },
                 { href: "/review", label: "Review", icon: GitMerge, badge: "review" },
                 { href: "/docs/drive", label: "Drive", icon: HardDrive },
+                { href: "/docs/knowledge-graph", label: "Knowledge Graph", icon: Network },
                 { href: "/tables", label: "Tables", icon: Table2 },
                 { href: "/forms", label: "Forms", icon: FormInput },
                 {

@@ -4,6 +4,7 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Open Source Company OS",
   description: "Aexy is an open-source, self-hostable company OS for teams that want CRM, GTM, engineering, docs, workflows, and AI agents in one governed workspace.",
+  alternates: { canonical: "/open-source-company-os" },
 };
 
 const faqs: Array<[string, string]> = [
@@ -15,6 +16,7 @@ const faqs: Array<[string, string]> = [
 export default function OpenSourceCompanyOsPage() {
   return (
     <SeoLandingPage
+      path="/open-source-company-os"
       eyebrow="Open-source company OS"
       title="Run company work on an inspectable operating layer."
       description="Aexy gives technical teams a self-hostable company OS that connects execution, customers, knowledge, workflows, and governed AI agents without forcing every team into a closed SaaS stack."

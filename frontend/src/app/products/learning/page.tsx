@@ -19,232 +19,151 @@ import {
   Zap,
   Github,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const features = [
   {
     icon: Target,
     title: "Skill Gap Analysis",
     description: "AI identifies skill gaps by comparing your team's capabilities with project requirements and industry standards.",
-    color: "from-rose-500 to-pink-500",
   },
   {
     icon: BookOpen,
     title: "Personalized Learning Paths",
     description: "Curated learning resources tailored to each developer's current skills and growth goals.",
-    color: "from-purple-500 to-violet-500",
   },
   {
     icon: Trophy,
     title: "Gamified Progress",
     description: "Achievement badges, skill levels, and leaderboards that make learning engaging and visible.",
-    color: "from-amber-500 to-orange-500",
   },
   {
     icon: TrendingUp,
     title: "Career Growth Tracking",
     description: "Visualize skill development over time. Connect learning to promotions and career milestones.",
-    color: "from-emerald-500 to-teal-500",
   },
 ];
 
 const skills = [
-  { name: "TypeScript", level: 85, color: "from-blue-500 to-cyan-500" },
-  { name: "React", level: 78, color: "from-cyan-500 to-teal-500" },
-  { name: "Node.js", level: 72, color: "from-green-500 to-emerald-500" },
-  { name: "Python", level: 45, color: "from-yellow-500 to-amber-500", gap: true },
-  { name: "Kubernetes", level: 30, color: "from-purple-500 to-violet-500", gap: true },
+  { name: "TypeScript", level: 85 },
+  { name: "React", level: 78 },
+  { name: "Node.js", level: 72 },
+  { name: "Python", level: 45, gap: true },
+  { name: "Kubernetes", level: 30, gap: true },
 ];
 
 export default function LearningProductPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-rose-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="px-6 pt-32 pb-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-500/20 to-pink-500/20 border border-rose-500/30 rounded-full text-rose-400 text-sm mb-6">
+              <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <GraduationCap className="h-4 w-4" />
                 <span>Learning & Development</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="mb-6 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 Grow your team&apos;s{" "}
-                <span className="bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">
-                  skills
-                </span>
+                <span className="text-ledger-green">skills</span>
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="mb-8 text-xl leading-relaxed text-ledger-ink/65">
                 AI-powered skill gap analysis and personalized learning paths.
                 Track growth, celebrate achievements, and build a culture of continuous learning.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <a
-                  href={googleLoginUrl}
-                  className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(244,63,94,0.3)]"
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
                 >
                   Start Learning Free
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Link>
                 <Link
-                  href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  href="/pricing"
+                  className="group inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-medium text-ledger-ink transition hover:border-ledger-ink/50"
                 >
-                  Learn More
+                  See pricing
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-ledger-ink/55">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-rose-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   AI skill analysis
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-rose-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   Gamified progress
                 </span>
               </div>
             </div>
 
-            {/* Visual - Skills Dashboard */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
-                      JD
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Jane Developer</p>
-                      <p className="text-white/40 text-sm">Level 12 · Senior Engineer</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-amber-400" />
-                    <span className="text-amber-400 font-medium">2,450 XP</span>
-                  </div>
-                </div>
+            {/* Visual - Skills Dashboard.
 
-                {/* Skills */}
-                <div className="space-y-4 mb-6">
-                  <div className="text-white/40 text-xs font-semibold tracking-wider">SKILL PROGRESS</div>
-                  {skills.map((skill, idx) => (
-                    <div key={idx}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-white text-sm">{skill.name}</span>
-                        <div className="flex items-center gap-2">
-                          {skill.gap && (
-                            <span className="text-xs text-rose-400 px-2 py-0.5 bg-rose-500/20 rounded">Gap</span>
-                          )}
-                          <span className="text-white/40 text-sm">{skill.level}%</span>
-                        </div>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full bg-gradient-to-r ${skill.color} rounded-full transition-all`}
-                          style={{ width: `${skill.level}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Achievements */}
+                DARK PANE: a genuine product mockup — the developer's skill
+                dashboard as the app renders it — so it keeps the plate treatment
+                used for product UI on the paper page (see OsConsolePreview):
+                ledger-pane ground, white-opacity type, ledger-mint as the only
+                accent. The white/* utilities below are scoped to this pane. */}
+            <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7] shadow-[0_1px_0_rgba(16,25,19,0.08)]">
+              <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="text-white/40 text-xs">Recent:</div>
-                  {[
-                    { icon: Code2, color: "from-blue-500 to-cyan-500" },
-                    { icon: Star, color: "from-amber-500 to-orange-500" },
-                    { icon: Rocket, color: "from-purple-500 to-violet-500" },
-                  ].map((badge, idx) => (
-                    <div key={idx} className={`w-8 h-8 bg-gradient-to-br ${badge.color} rounded-lg flex items-center justify-center`}>
-                      <badge.icon className="h-4 w-4 text-white" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Learning that actually sticks
-            </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Move beyond random tutorials to structured, personalized growth.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {features.map((feature, idx) => (
-              <div key={idx} className="group relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[2px] border border-white/12 font-brand-mono text-[11px] text-white/70">
+                    JD
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
+                  <div>
+                    <p className="font-display font-medium">Jane Developer</p>
+                    <p className="font-brand-mono text-[11px] text-white/50">Level 12 · Senior Engineer</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-ledger-mint" />
+                  <span className="font-brand-mono text-[13px] text-ledger-mint">2,450 XP</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              How learning paths work
-            </h2>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-white/10">
-              <div className="grid md:grid-cols-4 gap-6">
-                {[
-                  { step: "1", title: "Analyze Skills", desc: "AI scans your code contributions to identify strengths and gaps", icon: Sparkles },
-                  { step: "2", title: "Set Goals", desc: "Choose what you want to learn based on career aspirations", icon: Target },
-                  { step: "3", title: "Learn & Practice", desc: "Follow curated resources and apply skills in real projects", icon: BookOpen },
-                  { step: "4", title: "Level Up", desc: "Earn badges, track progress, and celebrate achievements", icon: Trophy },
-                ].map((item, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="relative w-14 h-14 mx-auto mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl" />
-                      <div className="absolute inset-0 flex items-center justify-center text-white">
-                        <item.icon className="h-6 w-6" />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-white text-black rounded-full flex items-center justify-center text-xs font-bold">
-                        {item.step}
+              {/* Skills */}
+              <div className="mb-6 space-y-4">
+                <div className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/50">SKILL PROGRESS</div>
+                {skills.map((skill, idx) => (
+                  <div key={idx}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[13px] text-white/85">{skill.name}</span>
+                      <div className="flex items-center gap-2">
+                        {skill.gap && (
+                          <span className="rounded-[2px] border border-white/20 px-2 py-0.5 font-brand-mono text-[10px] uppercase tracking-[0.14em] text-white/60">Gap</span>
+                        )}
+                        <span className="font-brand-mono text-[11px] text-white/50">{skill.level}%</span>
                       </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                    <p className="text-white/50 text-sm">{item.desc}</p>
+                    <div className="h-2 overflow-hidden rounded-[2px] bg-white/10">
+                      <div
+                        className="h-full rounded-[2px] bg-ledger-mint transition-all"
+                        style={{ width: `${skill.level}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Achievements */}
+              <div className="flex items-center gap-3">
+                <div className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-white/50">Recent:</div>
+                {[
+                  { icon: Code2 },
+                  { icon: Star },
+                  { icon: Rocket },
+                ].map((badge, idx) => (
+                  <div key={idx} className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-white/12">
+                    <badge.icon className="h-4 w-4 text-ledger-mint" />
                   </div>
                 ))}
               </div>
@@ -253,27 +172,87 @@ export default function LearningProductPage() {
         </div>
       </section>
 
+      {/* Features */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+              Learning that actually sticks
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg text-ledger-ink/55">
+              Move beyond random tutorials to structured, personalized growth.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {features.map((feature, idx) => (
+              <div
+                key={idx}
+                className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <feature.icon className="mb-6 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-3 font-display text-xl font-semibold">{feature.title}</h3>
+                <p className="text-ledger-ink/65">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+              How learning paths work
+            </h2>
+          </div>
+
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 md:p-12">
+            <div className="grid gap-6 md:grid-cols-4">
+              {[
+                { step: "1", title: "Analyze Skills", desc: "AI scans your code contributions to identify strengths and gaps", icon: Sparkles },
+                { step: "2", title: "Set Goals", desc: "Choose what you want to learn based on career aspirations", icon: Target },
+                { step: "3", title: "Learn & Practice", desc: "Follow curated resources and apply skills in real projects", icon: BookOpen },
+                { step: "4", title: "Level Up", desc: "Earn badges, track progress, and celebrate achievements", icon: Trophy },
+              ].map((item, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[2px] border border-ledger-ink/15 bg-ledger-paper">
+                    <item.icon className="h-6 w-6 text-ledger-green" />
+                  </div>
+                  <div className="mb-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-ink/50">
+                    {item.step}
+                  </div>
+                  <h3 className="mb-2 font-display text-lg font-semibold">{item.title}</h3>
+                  <p className="text-sm text-ledger-ink/60">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Start growing your team today
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="mb-10 text-xl text-ledger-ink/55">
             Personalized learning paths for every developer.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               <Github className="h-5 w-5" />
               View on GitHub
@@ -282,7 +261,6 @@ export default function LearningProductPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

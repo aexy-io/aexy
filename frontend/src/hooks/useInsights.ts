@@ -15,6 +15,7 @@ import {
   RepositoryDetailResponse,
   SyncStatusResponse,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useDeveloperInsights(
   workspaceId: string | null,
@@ -55,7 +56,7 @@ export function useDeveloperTrends(
     enabled: !!workspaceId && !!developerId,
   });
 
-  return { trends: trends || [], isLoading, error };
+  return { trends: trends ?? EMPTY_ARRAY, isLoading, error };
 }
 
 export function useTeamInsights(
@@ -211,7 +212,7 @@ export function useAlertRules(workspaceId: string | null, activeOnly?: boolean) 
   });
 
   return {
-    rules: rules || [],
+    rules: rules ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -247,7 +248,7 @@ export function useAlertHistory(
   });
 
   return {
-    history: history || [],
+    history: history ?? EMPTY_ARRAY,
     isLoading,
     error,
     acknowledgeAlert: acknowledgeAlert.mutateAsync,

@@ -16,6 +16,7 @@ import {
   StatusMapping,
   FieldMapping,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // Surface the actual sync outcome instead of a blanket "sync started" toast.
 // A sync can return success=false (e.g. no project/team mappings configured) or
@@ -161,7 +162,7 @@ export function useJiraStatuses(workspaceId: string | null, enabled: boolean = t
   });
 
   return {
-    statuses: statuses || [],
+    statuses: statuses ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -181,7 +182,7 @@ export function useJiraFields(workspaceId: string | null, enabled: boolean = tru
   });
 
   return {
-    fields: fields || [],
+    fields: fields ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -201,7 +202,7 @@ export function useJiraProjects(workspaceId: string | null, enabled: boolean = t
   });
 
   return {
-    projects: projects || [],
+    projects: projects ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -318,7 +319,7 @@ export function useLinearStates(workspaceId: string | null, enabled: boolean = t
   });
 
   return {
-    states: states || [],
+    states: states ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -338,7 +339,7 @@ export function useLinearTeams(workspaceId: string | null, enabled: boolean = tr
   });
 
   return {
-    teams: teams || [],
+    teams: teams ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -358,7 +359,7 @@ export function useLinearFields(workspaceId: string | null, enabled: boolean = t
   });
 
   return {
-    fields: fields || [],
+    fields: fields ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

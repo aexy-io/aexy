@@ -15,11 +15,6 @@ export default function ServiceDeskDigestSettingsPage() {
     <SettingsPage
       title={t("digest.title")}
       description={t("digest.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("digest.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

@@ -101,7 +101,7 @@ export default function NewReviewCyclePage() {
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
@@ -119,8 +119,8 @@ export default function NewReviewCyclePage() {
 
   if (!hasWorkspaces || !currentWorkspaceId) {
     return (
-      <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-10 h-10 text-muted-foreground" />
@@ -137,14 +137,14 @@ export default function NewReviewCyclePage() {
               Manage Workspaces
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -524,7 +524,7 @@ export default function NewReviewCyclePage() {
             </span>
           </div>
         </form>
-      </main>
+      </div>
     </div>
   );
 }

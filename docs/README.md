@@ -43,13 +43,19 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Slack](./slack.md) - Bot install, slash commands, OAuth
 - [Stripe](./stripe.md) - Billing & subscriptions
 - [MCP (Model Context Protocol)](./mcp.md) - Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy
+- [OpenObserve](./integrations/openobserve.md) - Log and trace shipping
 
 ### Modules — Work & planning
 - [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
 - [Tickets & projects](./tickets-and-projects.md) - Tickets, sprint tasks, projects, templates, ticket forms
+- [Service Desk](./service-desk.md) - Email intake, pending-with handoffs, the breach clock, master data
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
 - [Tracking](./tracking.md) - Standups, time entries, blockers, entity activity
 - [Aexy Tracker](./aexy-tracker.md) - macOS work tracker + AI auto-attribution (timesheet, journals, insights)
+
+### Modules — Core
+- [Dashboard](./dashboard.md) - My Work, the widget grid, presets
+- [Organization](./organization.md) - Departments, teams, the org chart, access profiles
 
 ### Modules — People
 - [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths
@@ -68,10 +74,13 @@ We're on a mission to bring positive change by building world-class tools actual
 - [AI Agents](./ai-agents.md) - LangGraph-based agents with CRM/email tools
 - [Workflows & automations](./workflows-and-automations.md) - Automation triggers/actions + visual workflows + agent policies
 - [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Docs, file browser, AI metadata pipeline, MCP
+- [Drive](./drive.md) - Files, folders, smart views, quota
 
 ### Modules — Observability
 - [Analytics, insights & reports](./analytics.md) - Dashboards, snapshots, custom reports, predictions, intelligence
 - [Uptime Monitoring](./uptime.md) - Endpoint monitoring & incident management
+- [Reports](./reports.md) - Custom report builder, templates, schedules, exports
+- [On-Call](./oncall.md) - Team rotations, schedules, swaps, overrides
 
 ### Modules — Communication
 - [Notifications & chat](./notifications-and-chat.md) - In-app/web push/email/Slack delivery, chat, onboarding, profile

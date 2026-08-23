@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorMessage } from "@/lib/utils";
+import { BOARD_COLUMN } from "@/lib/boardLayout";
 import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -291,7 +292,7 @@ function KanbanColumn({ column, tasks, onDelete, onAssign, onTaskClick, suggesti
 
   return (
     <div
-      className={`flex-1 min-w-[280px] rounded-xl p-3 ${!column.customColor ? column.bgColor : ''}`}
+      className={`${BOARD_COLUMN} rounded-xl p-3 ${!column.customColor ? column.bgColor : ''}`}
       style={bgStyle}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
@@ -1280,7 +1281,7 @@ export default function SprintBoardPage({
 
   if (authLoading || currentWorkspaceLoading || sprintLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading sprint...</p>
@@ -1295,7 +1296,7 @@ export default function SprintBoardPage({
 
   if (!sprint) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Sprint Not Found</h2>
@@ -1312,7 +1313,7 @@ export default function SprintBoardPage({
     : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-[1600px] mx-auto px-4 py-4">
@@ -1477,7 +1478,7 @@ export default function SprintBoardPage({
       )}
 
       {/* Kanban Board */}
-      <main className="max-w-[1600px] mx-auto px-4 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 py-6">
         {tasksLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
@@ -1515,7 +1516,7 @@ export default function SprintBoardPage({
             </DragOverlay>
           </DndContext>
         )}
-      </main>
+      </div>
 
       {/* Add Task Modal */}
       {showAddTask && (

@@ -19,7 +19,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -33,8 +33,8 @@ export default function ProfilePage() {
   const workPatterns = user?.work_patterns;
 
   return (
-    <div className="min-h-screen bg-background">
-<main className="max-w-4xl mx-auto px-4 py-8">
+    <div>
+<div className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-foreground mb-8">My Profile</h1>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -187,7 +187,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

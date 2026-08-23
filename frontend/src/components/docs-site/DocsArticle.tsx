@@ -43,7 +43,7 @@ export function DocsArticle({ content }: DocsArticleProps) {
           h1: ({ children, id }) => (
             <h1
               id={id}
-              className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4 mt-0"
+              className="font-display text-4xl md:text-5xl font-bold text-ledger-ink tracking-tight mb-4 mt-0"
             >
               {children}
             </h1>
@@ -51,7 +51,7 @@ export function DocsArticle({ content }: DocsArticleProps) {
           h2: ({ children, id }) => (
             <h2
               id={id}
-              className="group text-2xl font-semibold text-white tracking-tight mt-12 mb-4 pb-2 border-b border-white/[0.06] scroll-mt-24"
+              className="group font-display text-2xl font-semibold text-ledger-ink tracking-tight mt-12 mb-4 pb-2 border-b border-ledger-ink/12 scroll-mt-24"
             >
               {children}
             </h2>
@@ -59,7 +59,7 @@ export function DocsArticle({ content }: DocsArticleProps) {
           h3: ({ children, id }) => (
             <h3
               id={id}
-              className="group text-lg font-semibold text-white/95 mt-8 mb-3 scroll-mt-24"
+              className="group font-display text-lg font-semibold text-ledger-ink/95 mt-8 mb-3 scroll-mt-24"
             >
               {children}
             </h3>
@@ -67,13 +67,13 @@ export function DocsArticle({ content }: DocsArticleProps) {
           h4: ({ children, id }) => (
             <h4
               id={id}
-              className="text-base font-semibold text-white/90 mt-6 mb-2 scroll-mt-24"
+              className="text-base font-semibold text-ledger-ink/90 mt-6 mb-2 scroll-mt-24"
             >
               {children}
             </h4>
           ),
           p: ({ children }) => (
-            <p className="text-white/65 leading-relaxed my-4 text-[15px]">{children}</p>
+            <p className="text-ledger-ink/70 leading-relaxed my-4 text-[15px]">{children}</p>
           ),
           a: ({ href, children, ...props }) => {
             const url = rewriteInternalLink(href || "");
@@ -84,7 +84,7 @@ export function DocsArticle({ content }: DocsArticleProps) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary-400 hover:text-primary-300 underline underline-offset-4 decoration-primary-400/30 hover:decoration-primary-400/60 transition"
+                  className="text-ledger-green hover:text-[#095A31] underline underline-offset-4 decoration-ledger-green/30 hover:decoration-ledger-green/60 transition"
                 >
                   {children}
                 </a>
@@ -93,54 +93,54 @@ export function DocsArticle({ content }: DocsArticleProps) {
             return (
               <Link
                 href={url}
-                className="text-primary-400 hover:text-primary-300 underline underline-offset-4 decoration-primary-400/30 hover:decoration-primary-400/60 transition"
+                className="text-ledger-green hover:text-[#095A31] underline underline-offset-4 decoration-ledger-green/30 hover:decoration-ledger-green/60 transition"
               >
                 {children}
               </Link>
             );
           },
           ul: ({ children }) => (
-            <ul className="my-4 space-y-2 ml-6 list-disc marker:text-primary-500/50 text-[15px] text-white/65">
+            <ul className="my-4 space-y-2 ml-6 list-disc marker:text-ledger-green/60 text-[15px] text-ledger-ink/70">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-4 space-y-2 ml-6 list-decimal marker:text-white/40 text-[15px] text-white/65">
+            <ol className="my-4 space-y-2 ml-6 list-decimal marker:text-ledger-ink/50 text-[15px] text-ledger-ink/70">
               {children}
             </ol>
           ),
           li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="my-6 border-l-2 border-primary-500/50 bg-primary-500/5 pl-5 pr-4 py-3 rounded-r-lg text-white/75 italic">
+            <blockquote className="my-6 border-l-2 border-ledger-green bg-ledger-green/5 pl-5 pr-4 py-3 text-ledger-ink/75 italic">
               {children}
             </blockquote>
           ),
-          hr: () => <hr className="my-10 border-white/[0.06]" />,
+          hr: () => <hr className="my-10 border-ledger-ink/12" />,
           table: ({ children }) => (
-            <div className="my-6 overflow-x-auto rounded-xl border border-white/[0.08]">
+            <div className="my-6 overflow-x-auto rounded-[2px] border border-ledger-ink/12">
               <table className="w-full text-sm border-collapse">{children}</table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="bg-white/[0.04] border-b border-white/[0.08]">{children}</thead>
+            <thead className="bg-ledger-ink/[0.04] border-b border-ledger-ink/12">{children}</thead>
           ),
           tbody: ({ children }) => (
-            <tbody className="divide-y divide-white/[0.04]">{children}</tbody>
+            <tbody className="divide-y divide-ledger-ink/[0.08]">{children}</tbody>
           ),
-          tr: ({ children }) => <tr className="hover:bg-white/[0.02] transition-colors">{children}</tr>,
+          tr: ({ children }) => <tr className="hover:bg-ledger-ink/[0.02] transition-colors">{children}</tr>,
           th: ({ children }) => (
-            <th className="px-4 py-3 text-left font-semibold text-white/85 text-[13px] uppercase tracking-wider">
+            <th className="px-4 py-3 text-left font-brand-mono font-medium text-ledger-ink/70 text-[12px] uppercase tracking-wider">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-4 py-3 text-white/65 align-top">{children}</td>
+            <td className="px-4 py-3 text-ledger-ink/70 align-top">{children}</td>
           ),
           code: ({ children, className }) => {
             const isInline = !className;
             if (isInline) {
               return (
-                <code className="px-1.5 py-0.5 rounded-md bg-white/[0.08] border border-white/[0.06] text-primary-300 text-[0.875em] font-mono">
+                <code className="px-1.5 py-0.5 rounded-[2px] bg-ledger-ink/[0.06] border border-ledger-ink/12 text-ledger-green text-[0.875em] font-mono">
                   {children}
                 </code>
               );
@@ -148,7 +148,7 @@ export function DocsArticle({ content }: DocsArticleProps) {
             return <code className={className}>{children}</code>;
           },
           pre: ({ children }) => (
-            <pre className="my-6 overflow-x-auto rounded-xl border border-white/[0.08] bg-[#0d1117]/80 p-4 text-[13px] leading-relaxed font-mono">
+            <pre className="my-6 overflow-x-auto rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-4 text-[13px] leading-relaxed font-mono text-[#E6EDE7]">
               {children}
             </pre>
           ),
@@ -158,13 +158,13 @@ export function DocsArticle({ content }: DocsArticleProps) {
             <img
               src={src || ""}
               alt={alt || ""}
-              className="my-6 rounded-xl border border-white/[0.08] max-w-full"
+              className="my-6 rounded-[2px] border border-ledger-ink/12 max-w-full"
             />
           ),
           strong: ({ children }) => (
-            <strong className="text-white font-semibold">{children}</strong>
+            <strong className="text-ledger-ink font-semibold">{children}</strong>
           ),
-          em: ({ children }) => <em className="text-white/80 italic">{children}</em>,
+          em: ({ children }) => <em className="text-ledger-ink/80 italic">{children}</em>,
         }}
       >
         {content}

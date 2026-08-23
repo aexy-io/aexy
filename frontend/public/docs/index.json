@@ -172,6 +172,12 @@
           "slug": "mcp",
           "path": "mcp.md",
           "description": "Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy"
+        },
+        {
+          "title": "OpenObserve",
+          "slug": "integrations/openobserve",
+          "path": "integrations/openobserve.md",
+          "description": "Log and trace shipping"
         }
       ]
     },
@@ -191,6 +197,12 @@
           "description": "Tickets, sprint tasks, projects, templates, ticket forms"
         },
         {
+          "title": "Service Desk",
+          "slug": "service-desk",
+          "path": "service-desk.md",
+          "description": "Email intake, pending-with handoffs, the breach clock, master data"
+        },
+        {
           "title": "Booking",
           "slug": "booking",
           "path": "booking.md",
@@ -207,6 +219,23 @@
           "slug": "aexy-tracker",
           "path": "aexy-tracker.md",
           "description": "macOS work tracker + AI auto-attribution (timesheet, journals, insights)"
+        }
+      ]
+    },
+    {
+      "title": "Modules — Core",
+      "items": [
+        {
+          "title": "Dashboard",
+          "slug": "dashboard",
+          "path": "dashboard.md",
+          "description": "My Work, the widget grid, presets"
+        },
+        {
+          "title": "Organization",
+          "slug": "organization",
+          "path": "organization.md",
+          "description": "Departments, teams, the org chart, access profiles"
         }
       ]
     },
@@ -294,6 +323,12 @@
           "slug": "documents-and-drive",
           "path": "documents-and-drive.md",
           "description": "Docs, file browser, AI metadata pipeline, MCP"
+        },
+        {
+          "title": "Drive",
+          "slug": "drive",
+          "path": "drive.md",
+          "description": "Files, folders, smart views, quota"
         }
       ]
     },
@@ -311,6 +346,18 @@
           "slug": "uptime",
           "path": "uptime.md",
           "description": "Endpoint monitoring & incident management"
+        },
+        {
+          "title": "Reports",
+          "slug": "reports",
+          "path": "reports.md",
+          "description": "Custom report builder, templates, schedules, exports"
+        },
+        {
+          "title": "On-Call",
+          "slug": "oncall",
+          "path": "oncall.md",
+          "description": "Team rotations, schedules, swaps, overrides"
         }
       ]
     },
@@ -333,46 +380,6 @@
           "slug": "testing/testing-strategy",
           "path": "testing/testing-strategy.md",
           "description": "Overall testing approach"
-        }
-      ]
-    },
-    {
-      "title": "Modules",
-      "items": [
-        {
-          "title": "MCP_COVERAGE_PLAN",
-          "slug": "MCP_COVERAGE_PLAN",
-          "path": "MCP_COVERAGE_PLAN.md",
-          "description": ""
-        },
-        {
-          "title": "TEAM_INBOX_PLAN",
-          "slug": "TEAM_INBOX_PLAN",
-          "path": "TEAM_INBOX_PLAN.md",
-          "description": ""
-        },
-        {
-          "title": "UNIFIED_EMAIL_PLAN",
-          "slug": "UNIFIED_EMAIL_PLAN",
-          "path": "UNIFIED_EMAIL_PLAN.md",
-          "description": ""
-        }
-      ]
-    },
-    {
-      "title": "Other",
-      "items": [
-        {
-          "title": "Openobserve",
-          "slug": "integrations/openobserve",
-          "path": "integrations/openobserve.md",
-          "description": ""
-        },
-        {
-          "title": "Docs From Code Ux",
-          "slug": "plans/docs-from-code-ux",
-          "path": "plans/docs-from-code-ux.md",
-          "description": ""
         }
       ]
     }
@@ -528,6 +535,12 @@
       "description": "Connect Claude Code, Claude Desktop, Codex, Cursor & VS Code to Aexy",
       "path": "mcp.md"
     },
+    "integrations/openobserve": {
+      "title": "OpenObserve",
+      "section": "Provider setup",
+      "description": "Log and trace shipping",
+      "path": "integrations/openobserve.md"
+    },
     "sprints": {
       "title": "Sprints & planning",
       "section": "Modules — Work & planning",
@@ -539,6 +552,12 @@
       "section": "Modules — Work & planning",
       "description": "Tickets, sprint tasks, projects, templates, ticket forms",
       "path": "tickets-and-projects.md"
+    },
+    "service-desk": {
+      "title": "Service Desk",
+      "section": "Modules — Work & planning",
+      "description": "Email intake, pending-with handoffs, the breach clock, master data",
+      "path": "service-desk.md"
     },
     "booking": {
       "title": "Booking",
@@ -557,6 +576,18 @@
       "section": "Modules — Work & planning",
       "description": "macOS work tracker + AI auto-attribution (timesheet, journals, insights)",
       "path": "aexy-tracker.md"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "section": "Modules — Core",
+      "description": "My Work, the widget grid, presets",
+      "path": "dashboard.md"
+    },
+    "organization": {
+      "title": "Organization",
+      "section": "Modules — Core",
+      "description": "Departments, teams, the org chart, access profiles",
+      "path": "organization.md"
     },
     "reviews-and-people": {
       "title": "Reviews, hiring & learning",
@@ -630,6 +661,12 @@
       "description": "Docs, file browser, AI metadata pipeline, MCP",
       "path": "documents-and-drive.md"
     },
+    "drive": {
+      "title": "Drive",
+      "section": "Modules — AI & knowledge",
+      "description": "Files, folders, smart views, quota",
+      "path": "drive.md"
+    },
     "analytics": {
       "title": "Analytics, insights & reports",
       "section": "Modules — Observability",
@@ -642,6 +679,18 @@
       "description": "Endpoint monitoring & incident management",
       "path": "uptime.md"
     },
+    "reports": {
+      "title": "Reports",
+      "section": "Modules — Observability",
+      "description": "Custom report builder, templates, schedules, exports",
+      "path": "reports.md"
+    },
+    "oncall": {
+      "title": "On-Call",
+      "section": "Modules — Observability",
+      "description": "Team rotations, schedules, swaps, overrides",
+      "path": "oncall.md"
+    },
     "notifications-and-chat": {
       "title": "Notifications & chat",
       "section": "Modules — Communication",
@@ -653,36 +702,6 @@
       "section": "Testing",
       "description": "Overall testing approach",
       "path": "testing/testing-strategy.md"
-    },
-    "MCP_COVERAGE_PLAN": {
-      "title": "MCP_COVERAGE_PLAN",
-      "section": "Modules",
-      "description": "",
-      "path": "MCP_COVERAGE_PLAN.md"
-    },
-    "TEAM_INBOX_PLAN": {
-      "title": "TEAM_INBOX_PLAN",
-      "section": "Modules",
-      "description": "",
-      "path": "TEAM_INBOX_PLAN.md"
-    },
-    "UNIFIED_EMAIL_PLAN": {
-      "title": "UNIFIED_EMAIL_PLAN",
-      "section": "Modules",
-      "description": "",
-      "path": "UNIFIED_EMAIL_PLAN.md"
-    },
-    "integrations/openobserve": {
-      "title": "Openobserve",
-      "section": "Other",
-      "description": "",
-      "path": "integrations/openobserve.md"
-    },
-    "plans/docs-from-code-ux": {
-      "title": "Docs From Code Ux",
-      "section": "Other",
-      "description": "",
-      "path": "plans/docs-from-code-ux.md"
     }
   },
   "pager": {
@@ -929,14 +948,24 @@
         "slug": "stripe"
       },
       "next": {
+        "title": "OpenObserve",
+        "slug": "integrations/openobserve"
+      }
+    },
+    "integrations/openobserve": {
+      "prev": {
+        "title": "MCP (Model Context Protocol)",
+        "slug": "mcp"
+      },
+      "next": {
         "title": "Sprints & planning",
         "slug": "sprints"
       }
     },
     "sprints": {
       "prev": {
-        "title": "MCP (Model Context Protocol)",
-        "slug": "mcp"
+        "title": "OpenObserve",
+        "slug": "integrations/openobserve"
       },
       "next": {
         "title": "Tickets & projects",
@@ -949,14 +978,24 @@
         "slug": "sprints"
       },
       "next": {
+        "title": "Service Desk",
+        "slug": "service-desk"
+      }
+    },
+    "service-desk": {
+      "prev": {
+        "title": "Tickets & projects",
+        "slug": "tickets-and-projects"
+      },
+      "next": {
         "title": "Booking",
         "slug": "booking"
       }
     },
     "booking": {
       "prev": {
-        "title": "Tickets & projects",
-        "slug": "tickets-and-projects"
+        "title": "Service Desk",
+        "slug": "service-desk"
       },
       "next": {
         "title": "Tracking",
@@ -979,14 +1018,34 @@
         "slug": "tracking"
       },
       "next": {
+        "title": "Dashboard",
+        "slug": "dashboard"
+      }
+    },
+    "dashboard": {
+      "prev": {
+        "title": "Aexy Tracker",
+        "slug": "aexy-tracker"
+      },
+      "next": {
+        "title": "Organization",
+        "slug": "organization"
+      }
+    },
+    "organization": {
+      "prev": {
+        "title": "Dashboard",
+        "slug": "dashboard"
+      },
+      "next": {
         "title": "Reviews, hiring & learning",
         "slug": "reviews-and-people"
       }
     },
     "reviews-and-people": {
       "prev": {
-        "title": "Aexy Tracker",
-        "slug": "aexy-tracker"
+        "title": "Organization",
+        "slug": "organization"
       },
       "next": {
         "title": "Compliance",
@@ -1099,14 +1158,24 @@
         "slug": "workflows-and-automations"
       },
       "next": {
+        "title": "Drive",
+        "slug": "drive"
+      }
+    },
+    "drive": {
+      "prev": {
+        "title": "Documents, Drive & Knowledge Graph",
+        "slug": "documents-and-drive"
+      },
+      "next": {
         "title": "Analytics, insights & reports",
         "slug": "analytics"
       }
     },
     "analytics": {
       "prev": {
-        "title": "Documents, Drive & Knowledge Graph",
-        "slug": "documents-and-drive"
+        "title": "Drive",
+        "slug": "drive"
       },
       "next": {
         "title": "Uptime Monitoring",
@@ -1119,14 +1188,34 @@
         "slug": "analytics"
       },
       "next": {
+        "title": "Reports",
+        "slug": "reports"
+      }
+    },
+    "reports": {
+      "prev": {
+        "title": "Uptime Monitoring",
+        "slug": "uptime"
+      },
+      "next": {
+        "title": "On-Call",
+        "slug": "oncall"
+      }
+    },
+    "oncall": {
+      "prev": {
+        "title": "Reports",
+        "slug": "reports"
+      },
+      "next": {
         "title": "Notifications & chat",
         "slug": "notifications-and-chat"
       }
     },
     "notifications-and-chat": {
       "prev": {
-        "title": "Uptime Monitoring",
-        "slug": "uptime"
+        "title": "On-Call",
+        "slug": "oncall"
       },
       "next": {
         "title": "Testing Strategy",
@@ -1137,56 +1226,6 @@
       "prev": {
         "title": "Notifications & chat",
         "slug": "notifications-and-chat"
-      },
-      "next": {
-        "title": "MCP_COVERAGE_PLAN",
-        "slug": "MCP_COVERAGE_PLAN"
-      }
-    },
-    "MCP_COVERAGE_PLAN": {
-      "prev": {
-        "title": "Testing Strategy",
-        "slug": "testing/testing-strategy"
-      },
-      "next": {
-        "title": "TEAM_INBOX_PLAN",
-        "slug": "TEAM_INBOX_PLAN"
-      }
-    },
-    "TEAM_INBOX_PLAN": {
-      "prev": {
-        "title": "MCP_COVERAGE_PLAN",
-        "slug": "MCP_COVERAGE_PLAN"
-      },
-      "next": {
-        "title": "UNIFIED_EMAIL_PLAN",
-        "slug": "UNIFIED_EMAIL_PLAN"
-      }
-    },
-    "UNIFIED_EMAIL_PLAN": {
-      "prev": {
-        "title": "TEAM_INBOX_PLAN",
-        "slug": "TEAM_INBOX_PLAN"
-      },
-      "next": {
-        "title": "Openobserve",
-        "slug": "integrations/openobserve"
-      }
-    },
-    "integrations/openobserve": {
-      "prev": {
-        "title": "UNIFIED_EMAIL_PLAN",
-        "slug": "UNIFIED_EMAIL_PLAN"
-      },
-      "next": {
-        "title": "Docs From Code Ux",
-        "slug": "plans/docs-from-code-ux"
-      }
-    },
-    "plans/docs-from-code-ux": {
-      "prev": {
-        "title": "Openobserve",
-        "slug": "integrations/openobserve"
       },
       "next": null
     }

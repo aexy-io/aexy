@@ -12,6 +12,7 @@ import {
   PermissionInfo,
   PermissionCategory,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 /**
  * Hook for managing workspace roles
@@ -88,7 +89,7 @@ export function useRoles(workspaceId: string | null, includeInactive = false) {
   });
 
   return {
-    roles: data?.roles || [],
+    roles: data?.roles ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -161,7 +162,7 @@ export function useRoleTemplates(workspaceId: string | null) {
   });
 
   return {
-    templates: data?.templates || [],
+    templates: data?.templates ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -197,8 +198,8 @@ export function usePermissionCatalog(workspaceId: string | null) {
   }, {} as Record<PermissionCategory, PermissionInfo[]>) || {};
 
   return {
-    permissions: data?.permissions || [],
-    categories: data?.categories || [],
+    permissions: data?.permissions ?? EMPTY_ARRAY,
+    categories: data?.categories ?? EMPTY_ARRAY,
     permissionsByCategory,
     isLoading,
     error,

@@ -40,6 +40,7 @@ import { TableFilterPanel, FilterRule, matchesFilters } from "@/components/table
 import { FIELD_TYPE_OPTIONS } from "@/config/fieldTypes";
 import { registerCustomFieldTypes, getAllCustomFieldTypes } from "@/components/fields";
 import { useCustomFieldTypes } from "@/hooks/useTables";
+import { cn } from "@/lib/utils";
 import type { CRMAttribute, CRMRecord, CRMAttributeType, TableSavedView, ColumnDisplayConfig, WorkspaceFieldType } from "@/lib/api";
 
 function AddFieldPanel({
@@ -637,9 +638,12 @@ export default function TableDetailPage() {
   const availableViews: ViewMode[] = hasStatusField ? ["table", "board"] : ["table"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="p-8">
-        <div className="max-w-7xl mx-auto">
+        {/* Same as the CRM pipeline: the board is the widest surface this page
+            has, and a centred 1280 column clipped its last stage on screens
+            with room for all of them. */}
+        <div className={cn("mx-auto", viewMode === "board" ? "max-w-none" : "max-w-7xl")}>
           <Breadcrumb
             items={[
               { label: "Tables", href: "/tables" },

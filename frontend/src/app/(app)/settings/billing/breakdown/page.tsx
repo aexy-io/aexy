@@ -32,10 +32,6 @@ export default function BillingBreakdownPage() {
       title={t("title")}
       description={t("subtitle")}
       width="wide"
-      breadcrumbs={[
-        { label: "Billing", href: "/settings/billing" },
-        { label: t("title") },
-      ]}
     >
       {breakdown.isLoading || history.isLoading ? (
         <SettingsSkeleton rows={2} />

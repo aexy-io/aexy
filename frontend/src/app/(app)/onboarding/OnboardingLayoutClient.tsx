@@ -40,7 +40,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -57,11 +57,11 @@ export default function OnboardingLayoutClient({
   return (
     <OnboardingProvider>
       <OnboardingGuard>
-        <div className="min-h-screen bg-background">
+        <div>
           {/* Main Content */}
-          <main className="flex-1">
+          <div className="flex-1">
             {children}
-          </main>
+          </div>
         </div>
       </OnboardingGuard>
     </OnboardingProvider>

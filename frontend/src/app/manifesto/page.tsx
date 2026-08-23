@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowRight,
   Github,
@@ -19,94 +20,83 @@ import {
   Zap,
   BarChart3,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+// "Open Ledger" brand: paper page, ink text, ledger-green as the only accent.
+// The one dark plate is "Our Belief" near the end, used the way the homepage
+// uses product panes — a single inked page in an otherwise paper document.
 export default function ManifestoPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-8">
+      <section className="relative px-6 pb-20 pt-32">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="mb-8 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             <Sparkles className="h-4 w-4" />
             <span>Category Manifesto</span>
-          </div>
+          </p>
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 tracking-tight">
+          <h1 className="mb-8 font-display text-5xl font-semibold leading-[1.03] tracking-tight text-ledger-ink md:text-6xl lg:text-7xl">
             The{" "}
-            <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
+            <span className="text-ledger-green">
               Engineering OS
             </span>
           </h1>
 
-          <p className="text-2xl md:text-3xl text-white/70 max-w-3xl mx-auto leading-relaxed font-light">
+          <p className="mx-auto max-w-3xl text-2xl leading-relaxed text-ledger-ink/65 md:text-3xl">
             Software companies don&apos;t fail because of a lack of tools.
             <br />
-            <span className="text-white font-medium">They fail because their tools don&apos;t agree on reality.</span>
+            <span className="font-medium text-ledger-ink">They fail because their tools don&apos;t agree on reality.</span>
           </p>
         </div>
       </section>
 
       {/* The Problem */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-8">The Problem</h2>
-              <p className="text-xl text-white/70 mb-8 leading-relaxed">
-                Modern engineering organizations run on fragments:
-              </p>
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { label: "Code in GitHub", icon: Code2 },
-                  { label: "Work in Jira", icon: Layers },
-                  { label: "Docs in Notion", icon: Eye },
-                  { label: "Reviews in spreadsheets", icon: BarChart3 },
-                  { label: "Hiring in ATS tools", icon: Users },
-                  { label: "Customers in CRMs", icon: Heart },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10"
-                  >
-                    <item.icon className="h-5 w-5 text-white/40" />
-                    <span className="text-white/70">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-10 space-y-4 text-lg text-white/60">
-                <p>Each tool tells a different story.</p>
-                <p>Leaders are forced to guess.</p>
-                <p>Engineers are forced to explain themselves.</p>
-                <p className="text-white font-medium">Trust erodes.</p>
-              </div>
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12">
+            <h2 className="mb-8 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">The Problem</h2>
+            <p className="mb-8 text-xl leading-8 text-ledger-ink/65">
+              Modern engineering organizations run on fragments:
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                { label: "Code in GitHub", icon: Code2 },
+                { label: "Work in Jira", icon: Layers },
+                { label: "Docs in Notion", icon: Eye },
+                { label: "Reviews in spreadsheets", icon: BarChart3 },
+                { label: "Hiring in ATS tools", icon: Users },
+                { label: "Customers in CRMs", icon: Heart },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-paper p-4"
+                >
+                  <item.icon className="h-5 w-5 text-ledger-green" />
+                  <span className="text-ledger-ink/70">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 space-y-3 text-lg text-ledger-ink/60">
+              <p>Each tool tells a different story.</p>
+              <p>Leaders are forced to guess.</p>
+              <p>Engineers are forced to explain themselves.</p>
+              <p className="font-medium text-ledger-ink">Trust erodes.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* The Lie We've Accepted */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-8 text-center font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             The Lie We&apos;ve Accepted
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-4 md:grid-cols-2">
             {[
               "Planning is separate from execution",
               "Performance is separate from work",
@@ -115,133 +105,119 @@ export default function ManifestoPage() {
             ].map((lie, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-4 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10"
+                className="flex items-start gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6"
               >
-                <XCircle className="h-6 w-6 text-red-400 flex-shrink-0 mt-0.5" />
-                <span className="text-white/70 text-lg">{lie}</span>
+                <XCircle className="mt-0.5 h-6 w-6 flex-shrink-0 text-ledger-red" />
+                <span className="text-lg text-ledger-ink/70">{lie}</span>
               </div>
             ))}
           </div>
-          <p className="text-center text-xl text-white/50 mt-10">
+          <p className="mt-10 text-center text-xl text-ledger-ink/55">
             This fragmentation is not normal.
             <br />
-            <span className="text-white/70">It&apos;s historical accident.</span>
+            <span className="text-ledger-ink/75">It&apos;s historical accident.</span>
           </p>
         </div>
       </section>
 
       {/* The Insight */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 via-purple-500/20 to-emerald-500/20 rounded-3xl blur-2xl" />
-            <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-16 border border-white/10 text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500/20 rounded-full text-primary-400 text-sm mb-8">
-                <Zap className="h-4 w-4" />
-                The Insight
-              </div>
+      <section className="border-t border-ledger-ink/12 px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 text-center md:p-16">
+            <p className="mb-8 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
+              <Zap className="h-4 w-4" />
+              The Insight
+            </p>
 
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
-                Code is the most honest data
-                <br />
-                an engineering organization produces.
-              </h2>
+            <h2 className="mb-8 font-display text-3xl font-semibold leading-[1.08] tracking-tight text-ledger-ink md:text-4xl lg:text-5xl">
+              Code is the most honest data
+              <br />
+              an engineering organization produces.
+            </h2>
 
-              <div className="grid md:grid-cols-5 gap-4 mt-12">
-                {[
-                  { label: "What was actually built", icon: Code2 },
-                  { label: "Who worked on it", icon: Users },
-                  { label: "How teams collaborate", icon: Heart },
-                  { label: "Where systems fail", icon: Target },
-                  { label: "What skills truly exist", icon: Sparkles },
-                ].map((item, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <item.icon className="h-5 w-5 text-primary-400" />
-                    </div>
-                    <p className="text-white/60 text-sm">{item.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xl text-white/50 mt-12">
-                Any system that ignores this truth is incomplete.
-              </p>
+            <div className="mt-12 grid gap-4 md:grid-cols-5">
+              {[
+                { label: "What was actually built", icon: Code2 },
+                { label: "Who worked on it", icon: Users },
+                { label: "How teams collaborate", icon: Heart },
+                { label: "Where systems fail", icon: Target },
+                { label: "What skills truly exist", icon: Sparkles },
+              ].map((item, idx) => (
+                <div key={idx} className="text-center">
+                  <item.icon className="mx-auto mb-3 h-5 w-5 text-ledger-green" />
+                  <p className="text-sm leading-6 text-ledger-ink/60">{item.label}</p>
+                </div>
+              ))}
             </div>
+
+            <p className="mt-12 text-xl text-ledger-ink/55">
+              Any system that ignores this truth is incomplete.
+            </p>
           </div>
         </div>
       </section>
 
       {/* The Engineering OS */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
               The Engineering OS
             </h2>
-            <p className="text-xl text-white/50">A new category.</p>
+            <p className="font-brand-mono text-xs uppercase tracking-[0.18em] text-ledger-green">A new category.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 mb-16">
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 text-center">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Layers className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">System of Record</h3>
-              <p className="text-white/50 text-sm">Not a reporting tool</p>
+          <div className="mb-16 grid gap-4 md:grid-cols-3">
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 text-center transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]">
+              <Layers className="mx-auto mb-4 h-5 w-5 text-ledger-green" />
+              <h3 className="mb-2 font-display text-lg font-semibold text-ledger-ink">System of Record</h3>
+              <p className="text-sm leading-6 text-ledger-ink/55">Not a reporting tool</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 text-center">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <GitBranch className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Platform</h3>
-              <p className="text-white/50 text-sm">Not a point solution</p>
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 text-center transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]">
+              <GitBranch className="mx-auto mb-4 h-5 w-5 text-ledger-green" />
+              <h3 className="mb-2 font-display text-lg font-semibold text-ledger-ink">Platform</h3>
+              <p className="text-sm leading-6 text-ledger-ink/55">Not a point solution</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 text-center">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Shared Reality</h3>
-              <p className="text-white/50 text-sm">For engineering, people, and leadership</p>
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 text-center transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]">
+              <Users className="mx-auto mb-4 h-5 w-5 text-ledger-green" />
+              <h3 className="mb-2 font-display text-lg font-semibold text-ledger-ink">Shared Reality</h3>
+              <p className="text-sm leading-6 text-ledger-ink/55">For engineering, people, and leadership</p>
             </div>
           </div>
 
           {/* Connections */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 to-emerald-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 md:p-10 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-8 text-center">It connects:</h3>
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-2">
-                {[
-                  { label: "Code", color: "from-blue-500 to-cyan-500" },
-                  { label: "Planning", color: "from-purple-500 to-pink-500" },
-                  { label: "People", color: "from-emerald-500 to-teal-500" },
-                  { label: "Growth", color: "from-amber-500 to-orange-500" },
-                  { label: "Customers", color: "from-rose-500 to-red-500" },
-                ].map((item, idx, arr) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <div className={`px-4 py-2 bg-gradient-to-r ${item.color} rounded-full text-white font-medium`}>
-                      {item.label}
-                    </div>
-                    {idx < arr.length - 1 && (
-                      <ArrowRight className="h-5 w-5 text-white/30 hidden md:block" />
-                    )}
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 md:p-10">
+            <h3 className="mb-8 text-center font-display text-xl font-semibold text-ledger-ink">It connects:</h3>
+            <div className="flex flex-col items-center justify-center gap-4 md:flex-row md:gap-2">
+              {[
+                { label: "Code" },
+                { label: "Planning" },
+                { label: "People" },
+                { label: "Growth" },
+                { label: "Customers" },
+              ].map((item, idx, arr) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="rounded-[2px] border border-ledger-ink/20 bg-ledger-paper px-4 py-2 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-ink/75">
+                    {item.label}
                   </div>
-                ))}
-              </div>
-              <p className="text-center text-white/50 mt-8">All in one place.</p>
+                  {idx < arr.length - 1 && (
+                    <ArrowRight className="hidden h-5 w-5 text-ledger-ink/35 md:block" />
+                  )}
+                </div>
+              ))}
             </div>
+            <p className="mt-8 text-center text-ledger-ink/55">All in one place.</p>
           </div>
         </div>
       </section>
 
       {/* What the Engineering OS Is Not */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-10 text-center">
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-10 text-center font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             What the Engineering OS Is Not
           </h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             {[
               "Not surveillance software",
               "Not a ticketing tool with dashboards",
@@ -250,77 +226,74 @@ export default function ManifestoPage() {
             ].map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-4 p-5 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10"
+                className="flex items-center gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-5"
               >
-                <XCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                <span className="text-white/70">{item}</span>
+                <XCircle className="h-5 w-5 flex-shrink-0 text-ledger-red" />
+                <span className="text-ledger-ink/70">{item}</span>
               </div>
             ))}
           </div>
-          <p className="text-center text-xl text-white mt-10">
+          <p className="mt-10 text-center text-xl text-ledger-ink">
             The Engineering OS is built on{" "}
-            <span className="text-primary-400 font-medium">trust</span>,{" "}
-            <span className="text-purple-400 font-medium">transparency</span>, and{" "}
-            <span className="text-emerald-400 font-medium">truth</span>.
+            <span className="font-medium text-ledger-green">trust</span>,{" "}
+            <span className="font-medium text-ledger-green">transparency</span>, and{" "}
+            <span className="font-medium text-ledger-green">truth</span>.
           </p>
         </div>
       </section>
 
       {/* Why Open Source Matters */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <div className="flex items-center gap-3 mb-6">
-                <Github className="h-8 w-8 text-emerald-400" />
-                <h2 className="text-3xl md:text-4xl font-bold text-white">
-                  Why Open Source Matters
-                </h2>
-              </div>
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12">
+            <div className="mb-6 flex items-center gap-3">
+              <Github className="h-7 w-7 text-ledger-green" />
+              <h2 className="font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
+                Why Open Source Matters
+              </h2>
+            </div>
 
-              <p className="text-xl text-white/70 mb-10">
-                Engineering organizations don&apos;t trust black boxes - and they shouldn&apos;t.
+            <p className="mb-10 text-xl leading-8 text-ledger-ink/70">
+              Engineering organizations don&apos;t trust black boxes - and they shouldn&apos;t.
+            </p>
+
+            <p className="mb-8 font-brand-mono text-xs uppercase tracking-[0.18em] text-ledger-green">
+              That&apos;s why the Engineering OS must be:
+            </p>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                { label: "Auditable", icon: Eye },
+                { label: "Forkable", icon: GitFork },
+                { label: "Self-hostable", icon: Server },
+                { label: "Community-driven", icon: Users },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-paper p-5"
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0 text-ledger-green" />
+                  <span className="font-medium text-ledger-ink">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 rounded-[2px] border border-ledger-green/30 bg-ledger-green/5 p-6">
+              <p className="text-center text-lg font-medium text-ledger-green">
+                Trust is not a feature. It&apos;s the foundation.
               </p>
-
-              <p className="text-lg text-white/50 mb-8">
-                That&apos;s why the Engineering OS must be:
-              </p>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { label: "Auditable", icon: Eye, color: "text-blue-600 dark:text-blue-400" },
-                  { label: "Forkable", icon: GitFork, color: "text-purple-600 dark:text-purple-400" },
-                  { label: "Self-hostable", icon: Server, color: "text-emerald-600 dark:text-emerald-400" },
-                  { label: "Community-driven", icon: Users, color: "text-amber-600 dark:text-amber-400" },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-4 p-5 bg-white/5 rounded-xl border border-white/10"
-                  >
-                    <item.icon className={`h-5 w-5 ${item.color} flex-shrink-0`} />
-                    <span className="text-white font-medium">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-10 p-6 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                <p className="text-emerald-400 text-lg font-medium text-center">
-                  Trust is not a feature. It&apos;s the foundation.
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* The Outcome */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-10 text-center">
+      <section className="border-t border-ledger-ink/12 px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-10 text-center font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             The Outcome
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[
               "Planning reflects reality",
               "Reviews feel fair",
@@ -331,70 +304,67 @@ export default function ManifestoPage() {
             ].map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-4 p-5 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10"
+                className="flex items-center gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-5"
               >
-                <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />
-                <span className="text-white/80 text-lg">{item}</span>
+                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-ledger-green" />
+                <span className="text-lg text-ledger-ink/75">{item}</span>
               </div>
             ))}
           </div>
-          <div className="mt-12 text-center space-y-2">
-            <p className="text-xl text-white/60">Less guesswork.</p>
-            <p className="text-xl text-white/60">Less politics.</p>
-            <p className="text-2xl text-white font-medium">More progress.</p>
+          <div className="mt-12 space-y-2 text-center">
+            <p className="text-xl text-ledger-ink/60">Less guesswork.</p>
+            <p className="text-xl text-ledger-ink/60">Less politics.</p>
+            <p className="text-2xl font-medium text-ledger-ink">More progress.</p>
           </div>
         </div>
       </section>
 
-      {/* Our Belief */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/30 via-purple-500/30 to-emerald-500/30 rounded-3xl blur-2xl" />
-            <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-12 md:p-16 border border-white/10 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-8">Our Belief</h2>
-              <blockquote className="text-2xl md:text-3xl text-white font-medium leading-relaxed mb-8">
-                &ldquo;Every modern software company will eventually run on an Engineering OS.&rdquo;
-              </blockquote>
-              <p className="text-white/60 text-lg">
-                We&apos;re building Aexy to be that system - openly, transparently, and with the community.
-              </p>
-            </div>
+      {/* Our Belief. The one deliberately dark plate on this page — the
+          manifesto's closing statement, set like an inked page. */}
+      <section className="border-t border-ledger-ink/12 px-6 py-24">
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-12 text-center md:p-16">
+            <h2 className="mb-8 font-display text-3xl font-semibold tracking-tight text-[#E6EDE7] md:text-4xl">Our Belief</h2>
+            <blockquote className="mb-8 font-display text-2xl font-medium leading-relaxed text-[#E6EDE7] md:text-3xl">
+              &ldquo;Every modern software company will eventually run on an Engineering OS.&rdquo;
+            </blockquote>
+            <p className="text-lg leading-8 text-white/60">
+              We&apos;re building Aexy to be that system - openly, transparently, and with the community.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="border-t border-ledger-ink/12 px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight text-ledger-ink md:text-4xl">
             Welcome to the Engineering OS.
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="mb-10 text-xl leading-8 text-ledger-ink/65">
             Start with open source. Build with clarity.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               <Github className="h-5 w-5" />
               View on GitHub
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+              <Star className="h-4 w-4 fill-ledger-green text-ledger-green" />
             </a>
           </div>
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

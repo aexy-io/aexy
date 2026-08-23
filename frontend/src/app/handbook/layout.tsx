@@ -1,6 +1,7 @@
 import "highlight.js/styles/github-dark-dimmed.css";
 import "./docs.css";
 import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { displayFont, brandMonoFont } from "@/lib/fonts";
 import { DocsSidebar } from "@/components/docs-site/DocsSidebar";
 import { DocsSearch } from "@/components/docs-site/DocsSearch";
 import { DocsMobileNav } from "@/components/docs-site/DocsMobileNav";
@@ -11,13 +12,9 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   const searchEntries = getSearchIndex();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 left-1/4 w-[600px] h-[600px] bg-primary-500/[0.08] rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/[0.06] rounded-full blur-[120px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
+    <div
+      className={`theme-ledger ${displayFont.variable} ${brandMonoFont.variable} min-h-screen bg-ledger-paper text-ledger-ink antialiased`}
+    >
       <LandingHeader />
 
       <DocsMobileNav sections={sections} searchEntries={searchEntries} />

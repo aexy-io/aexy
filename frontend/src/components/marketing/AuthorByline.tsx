@@ -54,27 +54,27 @@ export function personJsonLd(author: Author = defaultAuthor) {
 
 export function AuthorByline({ author = defaultAuthor }: { author?: Author }) {
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:flex-row sm:items-center">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4 rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-5 sm:flex-row sm:items-center">
       {/* eslint-disable-next-line @next/next/no-img-element -- external GitHub avatar, not worth allowlisting */}
       <img
         src={author.avatarUrl}
         alt={author.name}
-        className="h-12 w-12 shrink-0 rounded-full border border-white/15"
+        className="h-12 w-12 shrink-0 rounded-full border border-ledger-ink/15"
         loading="lazy"
       />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-sm font-semibold text-white">{author.name}</span>
-          <span className="text-xs text-white/45">{author.role}</span>
+          <span className="text-sm font-semibold text-ledger-ink">{author.name}</span>
+          <span className="font-brand-mono text-xs text-ledger-ink/55">{author.role}</span>
         </div>
-        <p className="mt-1 text-xs leading-5 text-white/50">{author.bio}</p>
+        <p className="mt-1 text-xs leading-5 text-ledger-ink/55">{author.bio}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <a href={author.githubUrl} className="text-white/45 transition hover:text-white" aria-label={`${author.name} on GitHub`}>
+        <a href={author.githubUrl} className="text-ledger-ink/50 transition hover:text-ledger-green" aria-label={`${author.name} on GitHub`}>
           <SiGithub className="h-4 w-4" />
         </a>
         {author.websiteUrl && (
-          <a href={author.websiteUrl} className="text-white/45 transition hover:text-white" aria-label={`${author.name}'s website`}>
+          <a href={author.websiteUrl} className="text-ledger-ink/50 transition hover:text-ledger-green" aria-label={`${author.name}'s website`}>
             <Globe className="h-4 w-4" />
           </a>
         )}

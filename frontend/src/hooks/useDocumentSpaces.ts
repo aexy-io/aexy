@@ -11,6 +11,7 @@ import {
   DocumentSpaceMember,
   DocumentSpaceRole,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 /**
  * Hook for managing document spaces within a workspace
@@ -98,7 +99,7 @@ export function useDocumentSpaces(workspaceId: string | null) {
 
   return {
     // Data
-    spaces: spaces || [],
+    spaces: spaces ?? EMPTY_ARRAY,
     currentSpace,
     currentSpaceId: currentSpace?.id || null,
 
@@ -192,7 +193,7 @@ export function useSpaceMembers(workspaceId: string | null, spaceId: string | nu
   });
 
   return {
-    members: members || [],
+    members: members ?? EMPTY_ARRAY,
     isLoading,
     error,
 

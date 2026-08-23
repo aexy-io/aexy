@@ -969,6 +969,24 @@
     ]
   },
   {
+    "slug": "integrations/openobserve",
+    "title": "OpenObserve",
+    "section": "Provider setup",
+    "description": "Log and trace shipping",
+    "headings": [
+      "OpenObserve → Aexy Tickets",
+      "How it works",
+      "Setup",
+      "1. Create the integration in Aexy",
+      "2. Add a Destination in OpenObserve",
+      "3. Use this alert Template",
+      "4. Test it",
+      "Populated ticket fields",
+      "Automations",
+      "Tuning"
+    ]
+  },
+  {
     "slug": "sprints",
     "title": "Sprints & planning",
     "section": "Modules — Work & planning",
@@ -1006,6 +1024,22 @@
       "Custom statuses & fields",
       "Visual builder (forms)",
       "Projects",
+      "Frontend",
+      "Common pitfalls"
+    ]
+  },
+  {
+    "slug": "service-desk",
+    "title": "Service Desk",
+    "section": "Modules — Work & planning",
+    "description": "Email intake, pending-with handoffs, the breach clock, master data",
+    "headings": [
+      "Service Desk",
+      "Mental model",
+      "Intake",
+      "The breach clock",
+      "Splitting",
+      "API",
       "Frontend",
       "Common pitfalls"
     ]
@@ -1113,6 +1147,34 @@
       "macOS client (`aexy-mac/`)",
       "Browser sign-in (RFC 8252 loopback)",
       "Related"
+    ]
+  },
+  {
+    "slug": "dashboard",
+    "title": "Dashboard",
+    "section": "Modules — Core",
+    "description": "My Work, the widget grid, presets",
+    "headings": [
+      "Dashboard",
+      "The widget grid",
+      "Presets",
+      "Adding a widget",
+      "Common pitfalls"
+    ]
+  },
+  {
+    "slug": "organization",
+    "title": "Organization",
+    "section": "Modules — Core",
+    "description": "Departments, teams, the org chart, access profiles",
+    "headings": [
+      "Organization",
+      "Departments are not teams",
+      "Access profiles",
+      "The org chart",
+      "Positions",
+      "Directory",
+      "Common pitfalls"
     ]
   },
   {
@@ -1516,6 +1578,20 @@
     ]
   },
   {
+    "slug": "drive",
+    "title": "Drive",
+    "section": "Modules — AI & knowledge",
+    "description": "Files, folders, smart views, quota",
+    "headings": [
+      "Drive",
+      "Mental model",
+      "API",
+      "Quota",
+      "Search",
+      "Common pitfalls"
+    ]
+  },
+  {
     "slug": "analytics",
     "title": "Analytics, insights & reports",
     "section": "Modules — Observability",
@@ -1612,6 +1688,33 @@
     ]
   },
   {
+    "slug": "reports",
+    "title": "Reports",
+    "section": "Modules — Observability",
+    "description": "Custom report builder, templates, schedules, exports",
+    "headings": [
+      "Reports",
+      "Mental model",
+      "API",
+      "The monthly engineering report",
+      "Exports",
+      "Common pitfalls"
+    ]
+  },
+  {
+    "slug": "oncall",
+    "title": "On-Call",
+    "section": "Modules — Observability",
+    "description": "Team rotations, schedules, swaps, overrides",
+    "headings": [
+      "On-Call",
+      "Mental model",
+      "Everything is team-scoped",
+      "Google Calendar",
+      "Common pitfalls"
+    ]
+  },
+  {
     "slug": "notifications-and-chat",
     "title": "Notifications & chat",
     "section": "Modules — Communication",
@@ -1696,155 +1799,6 @@
       "Drop into Debugger",
       "Show Locals on Failure",
       "Test Documentation"
-    ]
-  },
-  {
-    "slug": "MCP_COVERAGE_PLAN",
-    "title": "MCP_COVERAGE_PLAN",
-    "section": "Modules",
-    "description": "[mcpservers.aexy]",
-    "headings": [
-      "MCP Coverage, Access Control & Skill Marketplace — Plan",
-      "1. Where we actually are",
-      "1.1 The security finding, stated plainly",
-      "1.2 Setup instructions — every client is wrong or missing",
-      "2. Decisions taken",
-      "3. Workstreams",
-      "WS1 — Tool manifest and parity (kills the drift)",
-      "WS2 — Remote transport + OAuth 2.1 (unblocks ChatGPT, Claude Desktop, Claude web)",
-      "WS3 — Access as org access, with a real Temporal flag",
-      "backend/src/aexy/models/app_definitions.py:429",
-      "WS4 — Client setup, correct and complete",
-      "Claude Code — remote, one line",
-      "Codex — ~/.codex/config.toml",
-      "WS5 — Documentation",
-      "WS6 — Tool coverage",
-      "WS7 — `/aexy_skill load` and `/aexy_skill search`",
-      "WS8 — Marketplace curation from the internet",
-      "4. Sequencing",
-      "5. Risks"
-    ]
-  },
-  {
-    "slug": "TEAM_INBOX_PLAN",
-    "title": "TEAM_INBOX_PLAN",
-    "section": "Modules",
-    "description": "Status: proposed",
-    "headings": [
-      "Team Inbox — Plan",
-      "1. What this is",
-      "2. Where we actually are",
-      "2.1 The thing worth noticing",
-      "3. Decisions",
-      "D1 — Shared mailboxes, not personal. First.",
-      "D2 — Build on Service Desk, not the CRM inbox.",
-      "D3 — The ticket is attached to a conversation, not the other way round.",
-      "D7 — The conversation view is a shared module with three hosts.",
-      "D4 — Collision detection copies the collaboration pattern.",
-      "D5 — True threading needs `gmail_sync`; webhook mailboxes are second-class here.",
-      "D6 — Sent mail: no new sync work for this plan.",
-      "D8 — Filter by client, not by domain string.",
-      "D8.1 — The filter must not become a way to read colleagues' mail",
-      "4. Open questions",
-      "5. Phases",
-      "Phase 1 — The conversation module, and one host",
-      "Phase 2 — The second writing host",
-      "Phase 3 — The thread adapter and the CRM hosts",
-      "Phase 4 — The context panel",
-      "Phase 5 — Volume tooling",
-      "Phase 6 — Then reconsider personal mailboxes",
-      "6. Risks",
-      "7. Non-goals"
-    ]
-  },
-  {
-    "slug": "UNIFIED_EMAIL_PLAN",
-    "title": "UNIFIED_EMAIL_PLAN",
-    "section": "Modules",
-    "description": "Status: proposed — partly superseded by TEAMINBOXPLAN.md",
-    "headings": [
-      "Unified Email — Plan",
-      "1. Where we actually are",
-      "1.1 The structural problem, stated plainly",
-      "1.2 The account-mixing problem",
-      "1.3 What \"unified\" should not mean",
-      "2. The three asks, sized honestly",
-      "2.1 Unified access — ticket, task, CRM from one place",
-      "2.2 An agent that manages labels",
-      "2.3 Auto spam",
-      "3. Phases",
-      "Phase 1 — Make the inbox honest (foundation, no new features)",
-      "Phase 2 — The context panel and the three links",
-      "Phase 3 — The email agent",
-      "Phase 4 — Triage and rules",
-      "4. What could go wrong",
-      "5. Sizing"
-    ]
-  },
-  {
-    "slug": "integrations/openobserve",
-    "title": "Openobserve",
-    "section": "Other",
-    "description": "Route alerts from OpenObserve (and other observability platforms) into Aexy's",
-    "headings": [
-      "OpenObserve → Aexy Tickets",
-      "How it works",
-      "Setup",
-      "1. Create the integration in Aexy",
-      "2. Add a Destination in OpenObserve",
-      "3. Use this alert Template",
-      "4. Test it",
-      "Populated ticket fields",
-      "Automations",
-      "Tuning"
-    ]
-  },
-  {
-    "slug": "plans/docs-from-code-ux",
-    "title": "Docs From Code Ux",
-    "section": "Other",
-    "description": "Scope: the generation experience, multi-file and whole-repository generation, and the",
-    "headings": [
-      "Docs from code — UX review and plan",
-      "The chain, and where it is cut",
-      "Findings",
-      "F1 — Generation discards the link (break 1)",
-      "F2 — \"Whole repository\" today reads one directory level",
-      "F3 — Source code travels in the URL query string",
-      "F4 — In repo mode, most controls are inert",
-      "F5 — Errors are destroyed at the boundary",
-      "F6 — Blocking request, no progress, no cancel, no recovery",
-      "F7 — No preview before the document exists",
-      "F8 — The review UI shows raw TipTap JSON",
-      "F9 — Nothing checks the generated content is a TipTap document",
-      "F10 — Dead better implementations, and smaller things",
-      "F11 — The pipeline authenticates and bills as a person, and people leave",
-      "F12 — Every code change triggers a full rewrite, from scratch",
-      "F13 — Two GitHub relationships, no shared plumbing",
-      "F14 — MCP writes are permission-checked but ungoverned",
-      "The split",
-      "Two gates, one inbox",
-      "Plan",
-      "Stage 1 — The review gate **(built — `b1cad54d`, `de035aa1`)**",
-      "Decision: `ProposedChange` — argued against, then built (`9b29ce49`)",
-      "Stage 1b — One inbox, and a UI for held actions **(built — `9b29ce49`, `ed9acb0e`)**",
-      "Stage 2 — The docs write contract over MCP **(built — `9e516800`)**",
-      "Stage 3 — Linked by construction **(built — `c1632d81`)**",
-      "Stage 4 — Detection, and ownership that survives departure **(built — `82b06df3`)**",
-      "Stage 5 — Cheap precision **(built — `8fa10db2`)**",
-      "Stage 6 — Make \"in sync / behind\" visible **(built — `1b45f2a1`, `de035aa1`)**",
-      "Stage 7 — Whole-repository generation **(built — `aeb455bb`)**",
-      "Stage 8 — One GitHub relationship per document **(built — `6e8c8ddd`, `876a83c7`)**",
-      "Stage 9 — Discovery and language **(built — `876a83c7`)**",
-      "Hazards to name",
-      "Owed",
-      "Out of scope",
-      "Verification",
-      "Appendix — where else the split applies",
-      "Agent-side generation",
-      "Server-side, and staying there",
-      "What every module gains regardless",
-      "Precondition"
     ]
   }
 ]

@@ -20,7 +20,7 @@ import {
   Check,
   User,
   UserX,
-  Download,
+  MoreHorizontal,
   FileSpreadsheet,
   FileJson,
   FileType,
@@ -72,6 +72,7 @@ import { TaskDescriptionEditor, TaskDescriptionEditorRef, MentionUser } from "@/
 import { EditTaskModal } from "@/components/sprints/EditTaskModal";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { BOARD_COLUMN } from "@/lib/boardLayout";
 import { toast } from "sonner";
 import { Badge, PremiumCard, Skeleton } from "@/components/ui/premium-card";
 import { X, Loader2, FileText, Zap } from "lucide-react";
@@ -130,7 +131,8 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] rounded-xl transition-all duration-200",
+        "flex flex-col rounded-xl transition-all duration-200",
+        BOARD_COLUMN,
         bgColor,
         (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20",
         isOverWipLimit && "ring-2 ring-red-500/50",
@@ -160,7 +162,13 @@ function KanbanColumn({
 
       {/* Tasks */}
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="p-2 space-y-2 min-h-[200px]" data-column-id={id}>
+        {/* min-h-0 is what lets this shrink inside the flex column; without it
+            a flex item refuses to go below its content height and the scroll
+            never engages. */}
+        <div
+          className="min-h-[200px] flex-1 space-y-2 overflow-y-auto p-2 md:min-h-0"
+          data-column-id={id}
+        >
           <AnimatePresence mode="popLayout">
             {tasks.map((task, index) => (
               <TaskCardPremium
@@ -223,8 +231,8 @@ function SprintColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 rounded-xl bg-muted/50 border border-border/50 transition-all duration-200",
-        isCollapsed ? "w-[60px]" : "w-[320px]",
+        "flex flex-col rounded-xl bg-muted/50 border border-border/50 transition-all duration-200",
+        isCollapsed ? "w-[60px] shrink-0" : BOARD_COLUMN,
         (isOver || isDropOver) && "ring-2 ring-primary-500/50 bg-primary-900/20"
       )}
     >
@@ -281,7 +289,10 @@ function SprintColumn({
       {/* Tasks */}
       {!isCollapsed && (
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="p-2 space-y-2 min-h-[200px] max-h-[calc(100vh-280px)] overflow-y-auto" data-column-id={sprint.id}>
+          <div
+            className="min-h-[200px] flex-1 space-y-2 overflow-y-auto p-2 md:min-h-0"
+            data-column-id={sprint.id}
+          >
             <AnimatePresence mode="popLayout">
               {tasks.map((task) => (
                 <TaskCardPremium
@@ -1239,7 +1250,7 @@ export default function ProjectBoardPage({
   const [showSprintDropdown, setShowSprintDropdown] = useState(false);
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
   const [showBulkMoveProject, setShowBulkMoveProject] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showPlanningPoker, setShowPlanningPoker] = useState(false);
@@ -1327,6 +1338,18 @@ export default function ProjectBoardPage({
     },
   });
 
+  // The dropdowns on this page close by click-through on a `fixed inset-0`
+  // backdrop, which loses to anything that establishes a higher stacking
+  // context — a board card, for one. Escape always works.
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowMoreMenu(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showMoreMenu]);
+
   // Export handler
   const handleExport = useCallback(async (format: 'csv' | 'xlsx' | 'pdf' | 'json') => {
     // Get the active sprint or first non-completed sprint
@@ -1337,7 +1360,7 @@ export default function ProjectBoardPage({
     }
 
     setIsExporting(true);
-    setShowExportDropdown(false);
+    setShowMoreMenu(false);
 
     try {
       const blob = await sprintApi.exportTasks(activeSprint.id, format);
@@ -1554,7 +1577,7 @@ export default function ProjectBoardPage({
 
   if (authLoading || currentWorkspaceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading...</p>
@@ -1568,7 +1591,16 @@ export default function ProjectBoardPage({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    /*
+      `flex-1` is load-bearing, and only works because AppShell's <main> and
+      ProjectLayoutClient are flex columns too. The board region below is
+      `flex-1 overflow-hidden`, which did nothing while this root had no height
+      of its own: the page grew to fit its tallest column and left the rest of the
+      viewport as dead grey space under the board. With a height to divide, the
+      board fills the screen and each column scrolls its own tasks — which is
+      also why the columns above had to become flex containers.
+    */
+    <div className="flex flex-1 flex-col">
       {/* Command Palette */}
       <CommandPalette
         workspaceId={currentWorkspaceId}
@@ -1579,8 +1611,19 @@ export default function ProjectBoardPage({
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="px-4 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-col gap-2">
+          {/*
+            Eleven controls sat in one non-wrapping row next to an unconstrained
+            title. The row overflowed its container by 34px at a 1600px viewport
+            with `overflow: visible`, so the last toggle was clipped off the
+            page — not scrolled, clipped — while the squeeze pushed the <h1> down
+            to 62px and wrapped the words "Project Board" onto three lines.
+
+            The title now truncates instead of wrapping, and the toolbar wraps
+            instead of overflowing, so neither can ever cut the other off. Four
+            secondary actions moved behind "More" — see the menu below.
+          */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-2">
               <Breadcrumb
                 items={[
                   { label: "Sprints", href: "/sprints" },
@@ -1589,15 +1632,21 @@ export default function ProjectBoardPage({
                 ]}
                 className="mb-0"
               />
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Project Board</h1>
+              {/* The project's name, not the word "Board". The topbar crumb
+                  already says Board; what it does not say at a glance is which
+                  project you are looking at. */}
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-semibold text-foreground">
+                  {project?.name || "Project Board"}
+                </h1>
                 <p className="text-xs text-muted-foreground">
-                  {filteredTasks.length} tasks across {sprints.length} sprints
+                  {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"} across{" "}
+                  {sprints.length} {sprints.length === 1 ? "sprint" : "sprints"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
               {/* View Mode Toggle */}
               <SavedViewSwitcher
                 views={savedViews}
@@ -1641,20 +1690,6 @@ export default function ProjectBoardPage({
                     Status
                   </button>
                 </div>
-              )}
-
-              {/* Import Tasks */}
-              {boardView === "active" && activeSprint && (
-                <button
-                  onClick={() => {
-                    setImportTargetSprint({ id: activeSprint.id, name: activeSprint.name });
-                    setShowImportTasks(true);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition"
-                >
-                  <ArrowRightLeft className="h-4 w-4" />
-                  Import
-                </button>
               )}
 
               {/* Columns — links to the project's statuses settings page.
@@ -1763,80 +1798,105 @@ export default function ProjectBoardPage({
                 )}
               </div>
 
-              {/* Templates */}
-              <Link
-                href={`/sprints/${projectId}/templates`}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition"
-                title="Task Templates"
-              >
-                <FileText className="h-4 w-4" />
-                Templates
-              </Link>
-
-              {/* Export Dropdown */}
+              {/*
+                Import, Templates, Export and Keyboard shortcuts are things you
+                reach for occasionally, and they were taking four of the eleven
+                slots in a row that had room for about seven. Folded into one
+                overflow menu — nothing removed, and the actions you use on
+                every visit (Add task, the two view toggles, Planning) stay one
+                click away.
+              */}
               <div className="relative">
                 <button
-                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
                   disabled={isExporting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-sm transition disabled:opacity-50"
-                  title="Export Tasks"
+                  aria-haspopup="menu"
+                  aria-expanded={showMoreMenu}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  title="More actions"
                 >
                   {isExporting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Download className="h-4 w-4" />
+                    <MoreHorizontal className="h-4 w-4" />
                   )}
-                  Export
+                  More
                   <ChevronDown className="h-3 w-3" />
                 </button>
-                {showExportDropdown && (
+                {showMoreMenu && (
                   <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
                     <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowExportDropdown(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-muted border border-border rounded-lg shadow-xl py-1 z-20">
-                      <button
-                        onClick={() => handleExport("csv")}
-                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
+                      role="menu"
+                      className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-border bg-muted py-1 shadow-xl"
+                    >
+                      {boardView === "active" && activeSprint && (
+                        <button
+                          role="menuitem"
+                          onClick={() => {
+                            setImportTargetSprint({ id: activeSprint.id, name: activeSprint.name });
+                            setShowImportTasks(true);
+                            setShowMoreMenu(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                        >
+                          <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+                          Import tasks
+                        </button>
+                      )}
+                      <Link
+                        role="menuitem"
+                        href={`/sprints/${projectId}/templates`}
+                        onClick={() => setShowMoreMenu(false)}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
                       >
-                        <FileSpreadsheet className="h-4 w-4 text-green-400" />
-                        Export as CSV
-                      </button>
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        Task templates
+                      </Link>
+
+                      <div className="my-1 border-t border-border" />
+                      <p className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Export
+                      </p>
+                      {([
+                        ["csv", "CSV", FileSpreadsheet],
+                        ["xlsx", "Excel", FileSpreadsheet],
+                        ["pdf", "PDF", FileType],
+                        ["json", "JSON", FileJson],
+                      ] as const).map(([format, label, Icon]) => (
+                        <button
+                          key={format}
+                          role="menuitem"
+                          onClick={() => {
+                            handleExport(format);
+                            setShowMoreMenu(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                        >
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {label}
+                        </button>
+                      ))}
+
+                      <div className="my-1 border-t border-border" />
                       <button
-                        onClick={() => handleExport("xlsx")}
-                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowKeyboardShortcuts(true);
+                          setShowMoreMenu(false);
+                        }}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
                       >
-                        <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
-                        Export as Excel
-                      </button>
-                      <button
-                        onClick={() => handleExport("pdf")}
-                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
-                      >
-                        <FileType className="h-4 w-4 text-red-400" />
-                        Export as PDF
-                      </button>
-                      <button
-                        onClick={() => handleExport("json")}
-                        className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent flex items-center gap-2"
-                      >
-                        <FileJson className="h-4 w-4 text-yellow-400" />
-                        Export as JSON
+                        <span className="flex items-center gap-2">
+                          <Keyboard className="h-4 w-4 text-muted-foreground" />
+                          Keyboard shortcuts
+                        </span>
+                        <kbd className="rounded border border-border px-1 text-xs text-muted-foreground">?</kbd>
                       </button>
                     </div>
                   </>
                 )}
               </div>
-
-              {/* Keyboard Shortcuts */}
-              <button
-                onClick={() => setShowKeyboardShortcuts(true)}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition"
-                title="Keyboard shortcuts (?)"
-              >
-                <Keyboard className="h-5 w-5" />
-              </button>
 
               {/* Active vs Archived toggle */}
               <div className="flex items-center bg-muted border border-border rounded-lg p-0.5 text-sm">
@@ -2132,8 +2192,10 @@ export default function ProjectBoardPage({
         )}
       </AnimatePresence>
 
-      {/* Board Content */}
-      <main className="flex-1 overflow-hidden">
+      {/* Board Content. A flex column so the row below can claim the height
+          with `flex-1`; `h-full` does not resolve here, because this div's own
+          height comes from the flex algorithm rather than a computed value. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {boardView === "archived" ? (
           <div className="p-4 overflow-y-auto h-full">
             {archivedLoading ? (
@@ -2171,7 +2233,7 @@ export default function ProjectBoardPage({
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-[300px] bg-muted/30 rounded-xl p-3"
+                className={cn("bg-muted/30 rounded-xl p-3", BOARD_COLUMN)}
               >
                 <div className="flex items-center gap-2 mb-3">
                   <Skeleton variant="text" className="h-5 w-24" />
@@ -2204,7 +2266,7 @@ export default function ProjectBoardPage({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-4 p-4 overflow-x-auto h-full">
+            <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto p-4">
               {viewMode === "sprint" ? (
                 // Sprint View - columns are sprints
                 <>
@@ -2313,7 +2375,7 @@ export default function ProjectBoardPage({
             </DragOverlay>
           </DndContext>
         )}
-      </main>
+      </div>
 
       {/* Keyboard shortcuts hint */}
       <div className="flex-shrink-0 border-t border-border bg-muted/30 px-4 py-2">

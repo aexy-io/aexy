@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAllDocSlugs } from "@/lib/docs";
 
 const BASE_URL = "https://aexy.io";
 
@@ -10,18 +11,31 @@ type ChangeFrequency = MetadataRoute.Sitemap[number]["changeFrequency"];
 // their own, so only their resolving children are listed.
 const productSlugs = [
   "ai-agents",
+  "analytics",
+  "automations",
   "booking",
+  "chat",
+  "community",
+  "compliance",
   "crm",
+  "dashboard",
   "docs",
+  "drive",
   "email-marketing",
   "forms",
   "gtm-intelligence",
   "hiring",
   "learning",
+  "leave",
   "mcp",
+  "oncall",
+  "organization",
   "planning",
   "reminders",
+  "reports",
   "reviews",
+  "service-desk",
+  "tables",
   "tickets",
   "tracking",
   "uptime",
@@ -89,10 +103,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/gtm-intelligence-platform", 0.8, "monthly"),
     entry("/open-source-company-os", 0.8, "monthly"),
     entry("/handbook", 0.7, "weekly"),
+    // The ~50 handbook pages are the deepest content on the site and were
+    // absent here entirely — reachable only by crawling links from /handbook.
+    // Read from the same index the pages render from, so a new doc is listed
+    // the moment it exists rather than when someone remembers to edit this file.
+    ...getAllDocSlugs().map((slug) => entry(`/handbook/${slug}`, 0.5, "monthly")),
     entry("/blog", 0.7, "weekly"),
     entry("/changelog", 0.6, "weekly"),
     entry("/careers", 0.6, "weekly"),
     ...guideSlugs.map((slug) => entry(`/guides/${slug}`, 0.8, "monthly")),
+    // The catalogue index. Higher priority than any single product page.
+    entry("/products", 0.8, "monthly"),
     ...productSlugs.map((slug) => entry(`/products/${slug}`, 0.7, "monthly")),
     ...useCaseSlugs.map((slug) => entry(`/use-cases/${slug}`, 0.6, "monthly")),
     ...compareSlugs.map((slug) => entry(`/compare/${slug}`, 0.6, "monthly")),

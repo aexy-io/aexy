@@ -12,19 +12,17 @@ import {
   Users,
   Building2,
   Star,
-  CheckCircle2,
   X,
   AlertCircle,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { billingApi } from "@/lib/api";
 import { STRIPE_ENABLED, buildSalesMailto } from "@/lib/billingMode";
 import { BillingToggle } from "@/components/billing/BillingToggle";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const plans = [
   {
@@ -171,7 +169,6 @@ function PricingContent() {
     (searchParams.get("billing") as "monthly" | "annual") || "monthly"
   );
 
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   // Update URL when billing period changes
   useEffect(() => {
@@ -224,14 +221,8 @@ function PricingContent() {
   };
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#08090d] text-white">
+    <LedgerPage className="overflow-hidden">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_78%_8%,rgba(168,85,247,0.11),transparent_34%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
 
       {/* Error Modal */}
       <AnimatePresence>
@@ -243,34 +234,32 @@ function PricingContent() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-ledger-ink/40"
               onClick={() => setError(null)}
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-[#12121a] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="relative bg-ledger-card border border-ledger-ink/12 rounded-[2px] p-6 max-w-md w-full"
             >
               <button
                 onClick={() => setError(null)}
-                className="absolute top-4 right-4 text-white/55 hover:text-white transition"
+                className="absolute top-4 right-4 text-ledger-ink/55 hover:text-ledger-ink transition"
               >
                 <X className="h-5 w-5" />
               </button>
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-red-500/20 rounded-xl">
-                  <AlertCircle className="h-6 w-6 text-red-400" />
-                </div>
+                <AlertCircle className="h-6 w-6 flex-shrink-0 text-ledger-red" />
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Checkout Error</h3>
-                  <p className="text-white/55">{error}</p>
+                  <h3 className="font-display text-lg font-semibold mb-2">Checkout Error</h3>
+                  <p className="text-ledger-ink/65">{error}</p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setError(null)}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg transition"
+                  className="px-4 py-2 rounded-[2px] border border-ledger-ink/25 text-ledger-ink hover:border-ledger-ink/50 transition"
                 >
                   Close
                 </button>
@@ -287,12 +276,12 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-300 mb-6"
+            className="inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green mb-6"
           >
             <Github className="h-4 w-4" />
             <span>Open Source</span>
-            <span className="text-white/40">·</span>
-            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+            <span className="text-ledger-ink/25">·</span>
+            <Star className="h-4 w-4" />
             <span>Self-host free</span>
           </motion.div>
 
@@ -300,25 +289,17 @@ function PricingContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white mb-6 tracking-tight leading-[1.04]"
+            className="font-display text-4xl md:text-5xl lg:text-6xl font-semibold mb-6 tracking-tight leading-[1.04]"
           >
             Pricing for an open{" "}
-            <motion.span
-              animate={{
-                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-              }}
-              transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-              className="bg-gradient-to-r from-primary-400 via-purple-400 to-emerald-400 bg-[length:200%_auto] bg-clip-text text-transparent"
-            >
-              AI company OS
-            </motion.span>
+<span className="text-ledger-green">AI company OS</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-lg leading-8 text-white/62 max-w-2xl mx-auto mb-4"
+            className="text-lg leading-8 text-ledger-ink/65 max-w-2xl mx-auto mb-4"
           >
             Start self-hosted. Move to cloud when speed matters. Use enterprise controls when your company OS becomes critical infrastructure.
           </motion.p>
@@ -334,24 +315,24 @@ function PricingContent() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="grid gap-4 md:grid-cols-3"
           >
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
-              <Github className="h-6 w-6 text-emerald-300" />
-              <h2 className="mt-5 text-xl font-semibold text-white">Self-host free</h2>
-              <p className="mt-3 text-sm leading-6 text-white/58">
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6">
+              <Github className="h-5 w-5 text-ledger-green" />
+              <h2 className="mt-5 font-display text-xl font-semibold">Self-host free</h2>
+              <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                 Evaluate the core company OS, audit the code, and keep control of your operating data.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
-              <Users className="h-6 w-6 text-cyan-300" />
-              <h2 className="mt-5 text-xl font-semibold text-white">Cloud for speed</h2>
-              <p className="mt-3 text-sm leading-6 text-white/58">
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6">
+              <Users className="h-5 w-5 text-ledger-green" />
+              <h2 className="mt-5 font-display text-xl font-semibold">Cloud for speed</h2>
+              <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                 Let Aexy handle hosting, updates, integrations, and team workflows while you scale.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
-              <Shield className="h-6 w-6 text-violet-300" />
-              <h2 className="mt-5 text-xl font-semibold text-white">Enterprise control</h2>
-              <p className="mt-3 text-sm leading-6 text-white/58">
+            <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6">
+              <Shield className="h-5 w-5 text-ledger-green" />
+              <h2 className="mt-5 font-display text-xl font-semibold">Enterprise control</h2>
+              <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                 Add SSO, audit logs, retention controls, and private deployment options for critical work.
               </p>
             </div>
@@ -393,7 +374,7 @@ function PricingContent() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", delay: 0.7 }}
-                      className="px-4 py-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-medium rounded-full shadow-lg shadow-primary-500/25"
+                      className="px-4 py-1 bg-ledger-green text-ledger-paper font-brand-mono text-xs font-medium uppercase tracking-[0.14em] rounded-[2px]"
                     >
                       Most Popular
                     </motion.div>
@@ -406,84 +387,74 @@ function PricingContent() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", delay: 0.7 }}
-                      className="px-4 py-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium rounded-full shadow-lg shadow-emerald-500/25"
+                      className="px-4 py-1 bg-ledger-green text-ledger-paper font-brand-mono text-xs font-medium uppercase tracking-[0.14em] rounded-[2px]"
                     >
                       Current Plan
                     </motion.div>
                   </div>
                 )}
 
-                <motion.div
-                  whileHover={{ y: -4 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className={`absolute inset-0 bg-gradient-to-br ${plan.color} rounded-2xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500`}
-                />
-
                 <div
-                  className={`relative h-full bg-white/5 backdrop-blur-sm border ${
+                  className={`relative h-full bg-ledger-card border ${
                     isCurrentPlan
-                      ? "border-emerald-500/50"
+                      ? "border-ledger-green/50"
                       : plan.popular
-                      ? "border-primary-500/50"
-                      : "border-white/10"
-                  } rounded-2xl p-8 hover:border-white/20 transition-all ${
-                    plan.popular || isCurrentPlan ? "shadow-xl shadow-primary-500/10" : ""
+                      ? "border-ledger-ink/25"
+                      : "border-ledger-ink/12"
+                  } rounded-[2px] p-8 transition ${
+                    plan.popular || isCurrentPlan
+                      ? "shadow-[inset_0_2px_0_0_#0B6B3A]"
+                      : "hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
                   }`}
                 >
                   {/* Plan Header */}
                   <div className="flex items-center gap-3 mb-2">
-                    <motion.div
-                      whileHover={{ rotate: [0, -10, 10, 0] }}
-                      transition={{ duration: 0.5 }}
-                      className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}
-                    >
-                      <Icon className="h-6 w-6 text-white" />
-                    </motion.div>
+                    <Icon className="h-5 w-5 text-ledger-green" />
                     <div>
-                      <span className={`text-xs font-semibold tracking-wider ${plan.textColor}`}>
+                      <span className="font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                         {plan.tagline.toUpperCase()}
                       </span>
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-white/50 text-sm mb-6">{plan.description}</p>
+                  <h3 className="font-display text-2xl font-semibold mb-2">{plan.name}</h3>
+                  <p className="text-ledger-ink/55 text-sm mb-6">{plan.description}</p>
 
                   {/* Price */}
                   <div className="mb-6 h-16">
                     {isCustomPrice ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-bold text-white">Custom</span>
+                        <span className="font-display text-5xl font-semibold">Custom</span>
                       </div>
                     ) : (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-white/50 text-2xl">$</span>
+                        <span className="text-ledger-ink/50 text-2xl">$</span>
                         <motion.span
                           key={displayPrice}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-5xl font-bold text-white"
+                          className="font-display text-5xl font-semibold"
                         >
                           {displayPrice}
                         </motion.span>
                       </div>
                     )}
-                    <span className="text-white/40 text-sm">{plan.priceLabel}</span>
+                    <span className="text-ledger-ink/50 text-sm">{plan.priceLabel}</span>
                   </div>
 
                   {/* CTA Button */}
                   <button
                     onClick={() => handleSubscribe(plan.tier)}
                     disabled={loading === plan.tier || isCurrentPlan}
-                    className={`w-full py-3.5 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                    className={`w-full py-3.5 px-4 rounded-[2px] font-semibold transition-all flex items-center justify-center gap-2 ${
                       isCurrentPlan
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
+                        ? "border border-ledger-green/40 bg-ledger-green/10 text-ledger-green cursor-default"
                         : plan.popular
-                        ? "bg-white text-black hover:bg-white/90 hover:shadow-lg hover:shadow-white/10"
+                        ? "bg-ledger-green text-ledger-paper hover:bg-[#095A31]"
                         : plan.tier === "enterprise"
-                        ? "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
-                        : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                        ? "border border-ledger-ink/25 text-ledger-ink hover:border-ledger-ink/50"
+                        : "border border-ledger-ink/25 text-ledger-ink hover:border-ledger-ink/50"
                     } disabled:opacity-50`}
                   >
                     {loading === plan.tier ? (
@@ -500,7 +471,7 @@ function PricingContent() {
 
                   {/* Features */}
                   <div className="mt-8 space-y-3">
-                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-4">WHAT YOU GET</div>
+                    <div className="font-brand-mono text-ledger-ink/50 text-xs font-medium uppercase tracking-[0.14em] mb-4">WHAT YOU GET</div>
                     {plan.features.map((feature, idx) => (
                       <motion.div
                         key={idx}
@@ -509,20 +480,20 @@ function PricingContent() {
                         transition={{ duration: 0.3, delay: 0.6 + idx * 0.05 }}
                         className="flex items-start gap-3"
                       >
-                        <CheckCircle2 className={`h-5 w-5 ${plan.textColor} flex-shrink-0 mt-0.5`} />
-                        <span className="text-white/70 text-sm">{feature}</span>
+                        <span className="font-brand-mono text-ledger-green flex-shrink-0">+</span>
+                        <span className="text-ledger-ink/70 text-sm">{feature}</span>
                       </motion.div>
                     ))}
                   </div>
 
                   {/* Best For */}
-                  <div className="mt-8 pt-6 border-t border-white/10">
-                    <div className="text-white/40 text-xs font-semibold tracking-wider mb-3">BEST FOR</div>
+                  <div className="mt-8 pt-6 border-t border-ledger-ink/12">
+                    <div className="font-brand-mono text-ledger-ink/50 text-xs font-medium uppercase tracking-[0.14em] mb-3">BEST FOR</div>
                     <div className="flex flex-wrap gap-2">
                       {plan.bestFor.map((item, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 text-xs"
+                          className="px-3 py-1 bg-ledger-paper border border-ledger-ink/12 rounded-[2px] text-ledger-ink/60 text-xs"
                         >
                           {item}
                         </span>
@@ -546,7 +517,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-semibold mb-4">
               Replace tool sprawl, not just one tool
             </h2>
           </motion.div>
@@ -558,13 +529,12 @@ function PricingContent() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/10 to-emerald-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 overflow-hidden">
+            <div className="relative bg-ledger-card rounded-[2px] border border-ledger-ink/12 overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-4 px-6 text-white/40 text-sm font-medium">You need</th>
-                    <th className="text-left py-4 px-6 text-primary-400 text-sm font-medium">With Aexy</th>
+                  <tr className="border-b border-ledger-ink/12">
+                    <th className="text-left py-4 px-6 font-brand-mono text-ledger-ink/50 text-xs font-medium uppercase tracking-[0.14em]">You need</th>
+                    <th className="text-left py-4 px-6 font-brand-mono text-ledger-green text-xs font-medium uppercase tracking-[0.14em]">With Aexy</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -575,11 +545,11 @@ function PricingContent() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.3, delay: idx * 0.1 }}
-                      className={idx !== comparisonItems.length - 1 ? "border-b border-white/5" : ""}
+                      className={idx !== comparisonItems.length - 1 ? "border-b border-ledger-ink/12" : ""}
                     >
-                      <td className="py-4 px-6 text-white/60">{item.need}</td>
+                      <td className="py-4 px-6 text-ledger-ink/65">{item.need}</td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center gap-2 text-emerald-400 font-medium">
+                        <span className="inline-flex items-center gap-2 text-ledger-green font-medium">
                           <Check className="h-4 w-4" />
                           {item.aexy}
                         </span>
@@ -603,7 +573,7 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-semibold mb-4">
               Frequently Asked Questions
             </h2>
           </motion.div>
@@ -616,18 +586,18 @@ function PricingContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.3, delay: idx * 0.05 }}
-                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden"
+                className="bg-ledger-card rounded-[2px] border border-ledger-ink/12 overflow-hidden"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between p-6 text-left"
                 >
-                  <h3 className="text-lg font-medium text-white pr-4">{faq.q}</h3>
+                  <h3 className="font-display text-lg font-medium pr-4">{faq.q}</h3>
                   <motion.div
                     animate={{ rotate: openFaq === idx ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ChevronDown className="h-5 w-5 text-white/40 flex-shrink-0" />
+                    <ChevronDown className="h-5 w-5 text-ledger-ink/50 flex-shrink-0" />
                   </motion.div>
                 </button>
                 <AnimatePresence>
@@ -640,7 +610,7 @@ function PricingContent() {
                       className="overflow-hidden"
                     >
                       <div className="px-6 pb-6 -mt-2">
-                        <p className="text-white/60">{faq.a}</p>
+                        <p className="text-ledger-ink/65">{faq.a}</p>
                       </div>
                     </motion.div>
                   )}
@@ -661,16 +631,12 @@ function PricingContent() {
             transition={{ duration: 0.5 }}
             className="relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-500/30 via-purple-500/30 to-emerald-500/30 rounded-3xl blur-2xl" />
-            <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10 text-center overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/20 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
-
+            <div className="relative bg-ledger-card rounded-[2px] p-12 border border-ledger-ink/12 text-center overflow-hidden">
               <div className="relative">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                <h2 className="font-display text-3xl md:text-4xl font-semibold mb-4">
                   Start with open source. Grow into your company OS.
                 </h2>
-                <p className="text-white/50 text-lg mb-10 max-w-2xl mx-auto">
+                <p className="text-ledger-ink/65 text-lg mb-10 max-w-2xl mx-auto">
                   Bring engineering, GTM, people, knowledge, and AI agents into one operating system.
                 </p>
 
@@ -678,8 +644,8 @@ function PricingContent() {
                   <motion.a
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
-                    href={googleLoginUrl}
-                    className="group inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full text-lg font-semibold transition-all hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    href="/login"
+                    className="group inline-flex items-center justify-center gap-3 bg-ledger-green text-ledger-paper px-8 py-4 rounded-[2px] text-lg font-semibold transition-all hover:bg-[#095A31]"
                   >
                     Get Started Free
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -688,7 +654,7 @@ function PricingContent() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
                     href="https://github.com/aexy-io/aexy"
-                    className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+                    className="group px-8 py-4 rounded-[2px] text-lg font-semibold transition-all border border-ledger-ink/25 text-ledger-ink hover:border-ledger-ink/50 flex items-center justify-center gap-3"
                   >
                     <Github className="h-5 w-5" />
                     View on GitHub
@@ -700,8 +666,7 @@ function PricingContent() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }
 
@@ -709,8 +674,8 @@ export default function PricingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+        <div className="min-h-screen bg-ledger-paper flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-ledger-green/30 border-t-ledger-green rounded-full animate-spin" />
         </div>
       }
     >

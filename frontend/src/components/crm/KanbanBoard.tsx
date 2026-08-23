@@ -232,7 +232,7 @@ export function KanbanBoard({
 
         {/* Add stage button */}
         {onAddStage && (
-          <div className="flex-shrink-0 w-[300px] flex items-start">
+          <div className="flex shrink-0 items-start">
             <button
               className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
               onClick={onAddStage}
@@ -244,10 +244,13 @@ export function KanbanBoard({
         )}
       </div>
 
-      {/* Drag overlay */}
+      {/* Drag overlay. The ghost is `w-full`, not a pixel width: DragOverlay
+          sizes its wrapper to the card actually being dragged, and now that
+          columns flex, a hard 284px ghost no longer matches the card it came
+          from. */}
       <DragOverlay dropAnimation={null}>
         {activeRecord && (
-          <div className="w-[284px] rotate-3 shadow-2xl opacity-90 bg-muted border border-border rounded-lg p-3 cursor-grabbing">
+          <div className="w-full rotate-3 shadow-2xl opacity-90 bg-muted border border-border rounded-lg p-3 cursor-grabbing">
             <KanbanCardBody
               record={activeRecord}
               attributes={attributes}

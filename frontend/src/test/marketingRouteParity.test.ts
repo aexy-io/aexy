@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(__dirname, "..", "..");
@@ -71,6 +71,30 @@ describe("marketing product route parity", () => {
     expect(broken, "products dropdown links to a route that does not exist").toEqual([]);
   });
 
+  /*
+    The direction that was missing, and the one that actually bit: a page can
+    exist and be crawlable and still be linked from nowhere. Booking, Reminders
+    and Uptime each shipped that way — in `productSlugs`, absent from
+    `productLinks` — so Google could find them and a visitor could not.
+  */
+  it("links every product page on disk from the footer catalogue", () => {
+    const dir = join(ROOT, "src", "app", "products");
+    const onDisk = readdirSync(dir).filter(
+      (slug) => slug !== "page.tsx" && existsSync(join(dir, slug, "page.tsx")),
+    );
+    // Reachable from the footer's curated dozen *or* from the /products index,
+    // which lists all of them grouped. Either counts; neither is the bug.
+    const linked = new Set(productHrefsFromHeader());
+    const index = readFileSync(join(ROOT, "src", "app", "products", "page.tsx"), "utf8");
+    const unlinked = onDisk.filter(
+      (slug) => !linked.has(slug) && !new RegExp(`"${slug}"`).test(index),
+    );
+    expect(
+      unlinked,
+      "product pages nothing links to — add them to /products, or to productLinks in LandingHeader.tsx",
+    ).toEqual([]);
+  });
+
   it("links the MCP product page from nav, footer and sitemap", () => {
     // Named explicitly rather than left to the generic checks: this is the page
     // the whole MCP push points at, and a broken link to it is the failure that
@@ -78,7 +102,12 @@ describe("marketing product route parity", () => {
     const header = readFileSync(HEADER, "utf8");
     expect(productSlugsFromSitemap()).toContain("mcp");
     expect(productHrefsFromHeader()).toContain("mcp");
-    // Footer and mobile sheet are separate hand-maintained lists in the same file.
-    expect(header.match(/href="\/products\/mcp"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // The footer renders the product catalogue by mapping productLinks (the
+    // Open Ledger header keeps nav minimal, so there are no hand-maintained
+    // duplicate lists anymore). Assert the wiring that makes the mcp link
+    // actually reach the page: the footer maps the same constant the checks
+    // above validated.
+    expect(header).toMatch(/links=\{\[\s*\.\.\.productLinks/);
+    expect(header).toMatch(/<FooterColumn title="Solutions" links=\{solutionLinks\}/);
   });
 });

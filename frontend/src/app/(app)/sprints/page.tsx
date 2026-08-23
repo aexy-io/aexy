@@ -83,6 +83,14 @@ function ProjectCard({
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="relative bg-background/80 backdrop-blur-sm rounded-2xl border border-border/80 overflow-hidden hover:border-border/80 transition-all duration-300">
+        {/* Stretched link: the whole card opens the project (same target as
+            the footer's "Open"), as a real <a> so middle-click / cmd-click
+            work. Inner links sit above it via `relative z-10`. */}
+        <Link
+          href={`/sprints/${project.id}/board`}
+          aria-label={`Open ${project.name}`}
+          className="absolute inset-0"
+        />
         {/* Header */}
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between mb-4">
@@ -102,7 +110,7 @@ function ProjectCard({
                     </div>
                     {project.is_public && (
 
-                    <Link href={`/p/${project.public_slug}`}>
+                    <Link href={`/p/${project.public_slug}`} className="relative z-10">
                     <Link2 className="h-3 w-3" />
                     </Link>
                     )}
@@ -125,7 +133,7 @@ function ProjectCard({
               {activeSprint ? (
                 <Link
                   href={`/sprints/${project.id}/board`}
-                  className="block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
+                  className="relative z-10 block bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4 mb-4 hover:from-green-500/15 hover:to-emerald-500/15 transition-all"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                     <div className="flex items-center gap-2">
@@ -184,7 +192,7 @@ function ProjectCard({
               ) : planningSprints.length > 0 ? (
                 <Link
                   href={`/sprints/${project.id}/board`}
-                  className="block bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 hover:from-blue-500/15 hover:to-indigo-500/15 transition-all"
+                  className="relative z-10 block bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 hover:from-blue-500/15 hover:to-indigo-500/15 transition-all"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-blue-400" />
@@ -216,7 +224,7 @@ function ProjectCard({
                   </p>
                   <Link
                     href={`/sprints/${project.id}`}
-                    className="text-primary-400 text-sm hover:text-primary-300 font-medium"
+                    className="relative z-10 text-primary-400 text-sm hover:text-primary-300 font-medium"
                   >
                     Create a sprint →
                   </Link>
@@ -255,7 +263,7 @@ function ProjectCard({
         </div>
 
         {/* Quick Actions Footer */}
-        <div className="border-t border-border/80 px-4 py-3 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative z-10 border-t border-border/80 px-4 py-3 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Link
               href={`/sprints/${project.id}/board`}
@@ -487,7 +495,7 @@ function SprintsPageContent() {
   // Deep link in flight: forwarding to the task's project board.
   if (openingTask) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+      <div className="min-h-full flex flex-col items-center justify-center gap-4">
         <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
         <p className="text-sm text-muted-foreground">Opening task…</p>
       </div>
@@ -496,7 +504,7 @@ function SprintsPageContent() {
 
   if (taskNotFound) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="min-h-full flex flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center">
           <ListTodo className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -518,8 +526,18 @@ function SprintsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div>
+      {/* The board is the widest thing this page renders: five columns that
+          need ~1400px. Boxing it into a centred 1280 column left the last
+          status sliced in half on a 1600px screen while 256px of viewport sat
+          empty beside it. Only the board tab opts out — Projects and Epics are
+          card grids that read better at a bounded measure. */}
+      <div
+        className={cn(
+          "mx-auto px-4 py-8",
+          activeTab === "tasks" ? "max-w-none" : "max-w-7xl",
+        )}
+      >
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -643,7 +661,7 @@ function SprintsPageContent() {
             hasWorkspaces={hasWorkspaces}
           />
         )}
-      </main>
+      </div>
 
       {showCreateProject && (
         <CreateProjectModal
@@ -660,7 +678,7 @@ export default function SprintsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-full flex items-center justify-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
         </div>
       }

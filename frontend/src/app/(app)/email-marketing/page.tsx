@@ -132,7 +132,7 @@ export default function EmailMarketingPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">No Workspace Selected</h2>
@@ -143,7 +143,7 @@ export default function EmailMarketingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <div className="border-b border-border bg-background/50">
         <div className="max-w-7xl mx-auto px-6 py-6">

@@ -15,6 +15,7 @@ import {
   DeleteQuestionResponse,
   BulkDeleteResponse,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Questions List Hook ====================
 
@@ -67,7 +68,7 @@ export function useQuestions(filters: QuestionListFilters) {
   });
 
   return {
-    questions: data?.questions || [],
+    questions: data?.questions ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 20,
@@ -176,7 +177,7 @@ export function useQuestionSubmissions(
   });
 
   return {
-    submissions: data?.submissions || [],
+    submissions: data?.submissions ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     perPage: data?.per_page || 20,

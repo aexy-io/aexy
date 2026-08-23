@@ -117,7 +117,7 @@ export default function AgentChatPage() {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-medium text-foreground mb-2">Agent Not Found</h2>

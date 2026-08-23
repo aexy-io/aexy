@@ -42,7 +42,7 @@ export default function AssessmentPublishSuccessPage() {
 
   if (authLoading || workspacesLoading || assessmentLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -50,7 +50,7 @@ export default function AssessmentPublishSuccessPage() {
 
   if (!assessment) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-foreground mb-2">Assessment not found</h2>
           <Link href="/hiring/assessments" className="text-primary hover:text-primary/80">
@@ -65,8 +65,8 @@ export default function AssessmentPublishSuccessPage() {
   const totalDuration = assessment.total_duration_minutes || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-<main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div>
+<div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Breadcrumb
           items={[
             { label: "Hiring", href: "/hiring" },
@@ -216,7 +216,7 @@ export default function AssessmentPublishSuccessPage() {
             Back to Assessments
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

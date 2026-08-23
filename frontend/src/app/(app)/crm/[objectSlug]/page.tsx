@@ -29,6 +29,7 @@ import { KanbanBoard } from "@/components/crm/KanbanBoard";
 import { PipelineBoard } from "@/components/crm/PipelineBoard";
 import { ColumnVisibilityMenu } from "@/components/crm/ColumnSelector";
 import { FieldEditor } from "@/components/fields";
+import { cn } from "@/lib/utils";
 
 const objectTypeIcons: Record<CRMObjectType, React.ReactNode> = {
   company: <Building2 className="h-5 w-5" />,
@@ -435,7 +436,7 @@ export default function RecordsPage() {
 
   if (!currentObject && !isLoadingObjects) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="text-center py-16">
@@ -460,9 +461,13 @@ export default function RecordsPage() {
   const availableViews: ViewMode[] = ["table", "board"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
-        <div className="max-w-7xl mx-auto">
+        {/* A pipeline is as wide as it has stages — seven of them need
+            ~2200px. Centring the board in a 1280 column hid 916px of it at a
+            1600px viewport, so the table view keeps the bounded measure and
+            the board takes the room it has. */}
+        <div className={cn("mx-auto", viewMode === "board" ? "max-w-none" : "max-w-7xl")}>
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button

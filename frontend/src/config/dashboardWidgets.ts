@@ -232,7 +232,7 @@ export const DASHBOARD_WIDGETS: Record<string, WidgetDefinition> = {
     name: 'Upcoming Deadlines',
     category: 'planning',
     personas: ['all'],
-    defaultSize: 'small',
+    defaultSize: 'large',
     icon: 'Clock',
     description: 'Tasks due soon',
     requiredPermissions: ['can_view_tasks'],

@@ -201,7 +201,7 @@ export default function ActivitiesPage() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 64px)' }}>
           <div className="text-muted-foreground">Loading workspace...</div>
         </div>
@@ -210,7 +210,7 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-6">
         {/* Header */}
         <div className="border-b border-border px-6 py-4">

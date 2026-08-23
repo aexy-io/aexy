@@ -179,7 +179,7 @@ export default function CandidateDetailPage() {
 
   if (isLoading || workspacesLoading) {
     return (
-      <main className="w-full px-6 py-6 animate-pulse">
+      <div className="w-full px-6 py-6 animate-pulse">
         <div className="h-4 w-32 bg-accent rounded mb-6" />
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -203,7 +203,7 @@ export default function CandidateDetailPage() {
             <div className="bg-muted border border-border rounded-xl p-6 h-48" />
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -218,7 +218,7 @@ export default function CandidateDetailPage() {
   const stageConfig = STAGE_CONFIG[candidate.stage];
 
   return (
-    <main className="w-full px-6 py-6">
+    <div className="w-full px-6 py-6">
         <Breadcrumb
           items={[
             { label: "Hiring", href: "/hiring" },
@@ -545,6 +545,6 @@ export default function CandidateDetailPage() {
             </div>
           </div>
         </div>
-    </main>
+    </div>
   );
 }

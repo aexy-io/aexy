@@ -116,14 +116,14 @@ export default function CRMSequenceDetailPage() {
 
   if (!sequence) {
     return (
-      <div className="min-h-screen bg-background p-6">
+      <div className="p-6">
         <div className="max-w-4xl mx-auto text-muted-foreground text-sm">Loading sequence…</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="p-6">
       <div className="max-w-4xl mx-auto">
         <Link
           href="/crm/sequences"

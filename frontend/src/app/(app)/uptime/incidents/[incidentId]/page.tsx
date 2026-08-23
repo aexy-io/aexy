@@ -137,7 +137,7 @@ export default function IncidentDetailPage() {
 
   if (!incident) {
     return (
-      <div className="min-h-screen bg-background p-8 text-center">
+      <div className="p-8 text-center">
         <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
         <p className="text-foreground">Incident not found.</p>
         <Link href="/uptime/incidents" className="text-emerald-400 hover:underline mt-2 inline-block">
@@ -151,8 +151,8 @@ export default function IncidentDetailPage() {
   const Icon = incident.monitor ? CHECK_TYPE_ICONS[incident.monitor.check_type] : Globe;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <Breadcrumb
@@ -355,7 +355,7 @@ export default function IncidentDetailPage() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -28,6 +28,7 @@ import {
   SubscriberImportRequest,
   SubscriberImportResponse,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Templates Hooks ====================
 
@@ -76,7 +77,7 @@ export function useEmailTemplates(workspaceId: string | null, params?: { templat
   });
 
   return {
-    templates: templates || [],
+    templates: templates ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -189,7 +190,7 @@ export function useEmailCampaigns(
   });
 
   return {
-    campaigns: data?.items || [],
+    campaigns: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -332,7 +333,7 @@ export function useSendingDomains(workspaceId: string | null) {
   });
 
   return {
-    domains: domains || [],
+    domains: domains ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -404,7 +405,7 @@ export function useEmailProviders(workspaceId: string | null) {
   });
 
   return {
-    providers: providers || [],
+    providers: providers ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -442,7 +443,7 @@ export function useVisualBlocks(workspaceId: string | null) {
   });
 
   return {
-    blocks: blocks || [],
+    blocks: blocks ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -497,7 +498,7 @@ export function useSavedDesigns(workspaceId: string | null) {
   });
 
   return {
-    designs: designs || [],
+    designs: designs ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -643,7 +644,7 @@ export function useSubscriptionCategories(workspaceId: string | null) {
   });
 
   return {
-    categories: categories || [],
+    categories: categories ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -695,7 +696,7 @@ export function useSubscribers(workspaceId: string | null, params?: { status?: S
   });
 
   return {
-    subscribers: subscribers || [],
+    subscribers: subscribers ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -818,7 +819,7 @@ export function useSendingPools(workspaceId: string | null) {
   });
 
   return {
-    pools: pools || [],
+    pools: pools ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

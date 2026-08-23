@@ -8,6 +8,7 @@ import {
   EmailEnableResponse,
   InboxActionResponse,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Agent Inbox Hooks ====================
 
@@ -118,7 +119,7 @@ export function useAgentInbox(
   });
 
   return {
-    messages: messages || [],
+    messages: messages ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -209,7 +210,7 @@ export function useEmailDomains(workspaceId: string | null) {
   });
 
   return {
-    domains: data?.domains || [],
+    domains: data?.domains ?? EMPTY_ARRAY,
     defaultDomain: data?.default_domain || "",
     isLoading,
     error,
@@ -292,7 +293,7 @@ export function useRoutingRules(workspaceId: string | null, agentId: string | nu
   });
 
   return {
-    rules: rules || [],
+    rules: rules ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

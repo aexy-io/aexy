@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, GitBranch } from "lucide-react";
+import { ArrowLeft, GitBranch, Loader2, Terminal } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
-import { safeInternalPath, stashPostLoginRedirect } from "@/lib/oauth";
+import {
+  consumePostLoginRedirect,
+  safeInternalPath,
+  stashPostLoginRedirect,
+} from "@/lib/oauth";
+import { LedgerPage } from "@/components/landing/LedgerPage";
+import { authApi } from "@/lib/api";
+import { setAuthPresenceCookie } from "@/lib/authCookie";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+// The documented default from AEXY_DEMO_PASSWORD, prefilled so the common case
+// is one click. An operator who changed it types theirs instead — the backend
+// never sends the configured password back, so we cannot fill that in for them.
+const DEFAULT_DEMO_PASSWORD = "aexy-demo";
 
 const providers = [
   { name: "Google", href: `${API_BASE_URL}/auth/google/login`, icon: <GoogleIcon /> },
@@ -17,6 +29,10 @@ const providers = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const [demoEmail, setDemoEmail] = useState<string | null>(null);
+  const [demoPassword, setDemoPassword] = useState(DEFAULT_DEMO_PASSWORD);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
 
   useEffect(() => {
     // Same contract as the homepage: honour ?next= deep links by stashing
@@ -29,19 +45,59 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  return (
-    <main className="relative flex min-h-screen flex-col bg-[#08090d] text-white">
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.14),transparent_32%),radial-gradient(circle_at_75%_15%,rgba(168,85,247,0.13),transparent_30%)]" />
+  useEffect(() => {
+    // Ask whether this deployment offers demo sign-in before advertising it.
+    // Cloud says no, so nothing below renders there; a self-hosted install
+    // with AEXY_DEMO_LOGIN=true says yes, and it is the only way in until the
+    // operator registers an OAuth app.
+    let cancelled = false;
+    authApi
+      .getDemoStatus()
+      .then((status) => {
+        if (!cancelled && status.enabled && status.email) setDemoEmail(status.email);
+      })
+      .catch(() => {
+        // A 404 is the expected answer on a deployment with demo login off.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
+  const signInToDemo = async () => {
+    if (!demoEmail) return;
+    setDemoBusy(true);
+    setDemoError(null);
+    try {
+      const { access_token } = await authApi.demoLogin(demoEmail, demoPassword);
+      localStorage.setItem("token", access_token);
+      setAuthPresenceCookie();
+      // A hard navigation, not router.push. Every OAuth provider returns
+      // through a full page load, so this is the only sign-in that happens
+      // inside a live React tree — and a soft push would carry the previous
+      // session's React Query cache and workspace store into the new one. That
+      // showed up as the demo user landing on the last account's sidebar and
+      // being told to request access to CRM it actually owns.
+      window.location.assign(consumePostLoginRedirect() ?? "/dashboard");
+    } catch {
+      setDemoError(
+        "That password was rejected. It is whatever AEXY_DEMO_PASSWORD is set to on the backend."
+      );
+      setDemoBusy(false);
+    }
+  };
+
+  return (
+    <LedgerPage chrome={false} className="relative flex flex-col">
       <header className="relative px-4 py-5 sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="rounded-xl bg-white p-2 text-black">
+            <div className="rounded-[2px] bg-ledger-ink p-2 text-ledger-paper">
               <GitBranch className="h-5 w-5" />
             </div>
-            <span className="text-xl font-semibold tracking-tight">Aexy</span>
+            <span className="font-display text-xl font-semibold tracking-tight">Aexy</span>
           </Link>
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/55 transition hover:text-white">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-ledger-ink/55 transition hover:text-ledger-ink">
             <ArrowLeft className="h-4 w-4" />
             Back to site
           </Link>
@@ -50,9 +106,9 @@ export default function LoginPage() {
 
       <div className="relative flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
         <div className="w-full max-w-md">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-8 sm:p-10">
-            <h1 className="text-3xl font-semibold tracking-tight">Get started with Aexy</h1>
-            <p className="mt-3 text-sm leading-6 text-white/55">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 sm:p-10">
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Get started with Aexy</h1>
+            <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
               Sign in or create your workspace — same flow either way. Pick a provider to continue.
             </p>
 
@@ -61,7 +117,7 @@ export default function LoginPage() {
                 <a
                   key={name}
                   href={href}
-                  className="flex w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+                  className="flex w-full items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-6 py-3.5 text-sm font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
                 >
                   {icon}
                   Continue with {name}
@@ -69,22 +125,83 @@ export default function LoginPage() {
               ))}
             </div>
 
-            <p className="mt-8 text-center text-xs leading-5 text-white/38">
+            {demoEmail && (
+              <div className="mt-8 border-t border-ledger-ink/12 pt-8">
+                <p className="flex items-center gap-2 font-brand-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ledger-green">
+                  <Terminal className="h-3.5 w-3.5" />
+                  <span>Self-hosted demo</span>
+                </p>
+                <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
+                  This install has demo sign-in switched on. One shared workspace, no
+                  OAuth app to register. Email sending and AI are switched off, so
+                  nothing here can mail anyone or spend tokens.
+                </p>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-ledger-ink/55" htmlFor="demo-email">
+                      Email
+                    </label>
+                    <input
+                      id="demo-email"
+                      type="email"
+                      value={demoEmail}
+                      readOnly
+                      className="mt-1.5 w-full rounded-[2px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2.5 font-brand-mono text-sm text-ledger-ink/70"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-ledger-ink/55" htmlFor="demo-password">
+                      Password <span className="text-ledger-ink/40">(AEXY_DEMO_PASSWORD)</span>
+                    </label>
+                    <input
+                      id="demo-password"
+                      type="password"
+                      value={demoPassword}
+                      onChange={(e) => setDemoPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void signInToDemo();
+                      }}
+                      className="mt-1.5 w-full rounded-[2px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2.5 font-brand-mono text-sm text-ledger-ink focus:border-ledger-ink/40 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                {demoError && (
+                  <p className="mt-3 text-sm leading-6 text-red-700">{demoError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={signInToDemo}
+                  disabled={demoBusy}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-[2px] bg-ledger-ink px-6 py-3.5 text-sm font-semibold text-ledger-paper transition hover:bg-ledger-ink/85 disabled:opacity-60"
+                >
+                  {demoBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {demoBusy ? "Signing in…" : "Open the demo workspace"}
+                </button>
+                <p className="mt-3 text-xs leading-5 text-ledger-ink/50">
+                  Empty workspace? Run{" "}
+                  <code className="font-brand-mono text-ledger-ink/70">
+                    docker compose exec backend python scripts/seed_demo_workspace.py
+                  </code>
+                </p>
+              </div>
+            )}
+
+            <p className="mt-8 text-center text-xs leading-5 text-ledger-ink/50">
               By continuing, you agree to Aexy&apos;s{" "}
-              <Link href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</Link> and{" "}
-              <Link href="/privacy" className="underline underline-offset-2 hover:text-white/70">Privacy Policy</Link>.
+              <Link href="/terms" className="underline underline-offset-2 hover:text-ledger-ink">Terms</Link> and{" "}
+              <Link href="/privacy" className="underline underline-offset-2 hover:text-ledger-ink">Privacy Policy</Link>.
             </p>
           </div>
 
-          <p className="mt-6 text-center text-sm text-white/45">
+          <p className="mt-6 text-center text-sm text-ledger-ink/55">
             Prefer to self-host?{" "}
-            <a href="https://github.com/aexy-io/aexy" className="font-semibold text-white/70 transition hover:text-white">
+            <a href="https://github.com/aexy-io/aexy" className="font-semibold text-ledger-green transition hover:text-ledger-ink">
               Get the code on GitHub
             </a>
           </p>
         </div>
       </div>
-    </main>
+    </LedgerPage>
   );
 }
 

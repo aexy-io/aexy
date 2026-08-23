@@ -8,6 +8,7 @@ import {
   DocumentAncestor,
   DocumentCreate,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 /**
  * Hook for managing Notion-like document organization
@@ -102,9 +103,9 @@ export function useNotionDocs(workspaceId: string | null) {
 
   return {
     // Data
-    privateTree: privateTree || [],
-    sharedTree: sharedTree || [],
-    favorites: favorites || [],
+    privateTree: privateTree ?? EMPTY_ARRAY,
+    sharedTree: sharedTree ?? EMPTY_ARRAY,
+    favorites: favorites ?? EMPTY_ARRAY,
 
     // Loading states
     isLoading: privateLoading || sharedLoading || favoritesLoading,
@@ -152,7 +153,7 @@ export function useSpaceDocuments(workspaceId: string | null, spaceId: string | 
   });
 
   return {
-    documents: documents || [],
+    documents: documents ?? EMPTY_ARRAY,
     isLoading,
   };
 }
@@ -172,7 +173,7 @@ export function useDocumentBreadcrumbs(
   });
 
   return {
-    ancestors: ancestors || [],
+    ancestors: ancestors ?? EMPTY_ARRAY,
     isLoading,
   };
 }

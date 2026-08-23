@@ -25,6 +25,7 @@ import {
   AlertCircle,
   RefreshCw,
   ArrowUpRight,
+  X,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -134,6 +135,13 @@ function GoogleIntegrationBanner({
 }) {
   const [status, setStatus] = useState<Partial<GoogleIntegrationStatus> & { is_connected: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Same pattern as UpgradeBanner: a dismissed nudge stays dismissed, per
+  // workspace, instead of reappearing on every visit until Google is linked.
+  const dismissKey = `crm_google_banner_dismissed_${workspaceId}`;
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(dismissKey) === "true";
+  });
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -183,6 +191,7 @@ function GoogleIntegrationBanner({
   if (isLoading) return null;
 
   if (!status?.is_connected) {
+    if (dismissed) return null;
     return (
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
         <div className="flex items-center justify-between">
@@ -197,12 +206,24 @@ function GoogleIntegrationBanner({
               </p>
             </div>
           </div>
-          <button
-            onClick={onConnect}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Connect
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onConnect}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Connect
+            </button>
+            <button
+              onClick={() => {
+                setDismissed(true);
+                localStorage.setItem(dismissKey, "true");
+              }}
+              aria-label="Dismiss Google banner"
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -424,7 +445,9 @@ export default function CRMPage() {
 
       if (allCountsZero && !hasRecalculated) {
         sessionStorage.setItem("crm_counts_recalculated", "true");
-        recalculateCounts().catch(console.error);
+        // Background freshness pass — no success toast for something the
+        // user didn't ask for.
+        recalculateCounts({ silent: true }).catch(console.error);
       }
     }
   }, [objects, isLoading, isRecalculating, recalculateCounts]);
@@ -462,7 +485,7 @@ export default function CRMPage() {
 
   if (isLoading || authLoading || !hasCheckedOnboarding) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-8">
@@ -483,7 +506,7 @@ export default function CRMPage() {
   const onboardingComplete = localStorage.getItem("crm_onboarding_complete") === "true";
   if (objects.length === 0 && !onboardingComplete) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <EmptyState onStartOnboarding={handleStartOnboarding} />
@@ -494,7 +517,7 @@ export default function CRMPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex gap-8 md:flex-row flex-col-reverse">
@@ -510,7 +533,7 @@ export default function CRMPage() {
                 <button
                   onClick={() => {
                     sessionStorage.removeItem("crm_counts_recalculated");
-                    recalculateCounts().catch(console.error);
+                    recalculateCounts({ silent: false }).catch(console.error);
                   }}
                   disabled={isRecalculating}
                   className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-accent border border-border text-foreground rounded-lg transition-colors text-sm disabled:opacity-50"

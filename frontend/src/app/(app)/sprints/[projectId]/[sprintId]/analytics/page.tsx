@@ -134,7 +134,7 @@ export default function SprintAnalyticsPage({
 
   if (authLoading || currentWorkspaceLoading || sprintLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-foreground">Loading analytics...</p>
@@ -156,7 +156,7 @@ export default function SprintAnalyticsPage({
     : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -180,7 +180,7 @@ export default function SprintAnalyticsPage({
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Overview Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard
@@ -458,7 +458,7 @@ export default function SprintAnalyticsPage({
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

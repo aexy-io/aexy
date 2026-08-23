@@ -26,6 +26,7 @@ import {
     Bell,
     Clock,
     Send,
+    ExternalLink,
 } from "lucide-react";
 import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "../ui/button";
@@ -305,9 +306,24 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                     )}
                     style={depth > 0 ? { paddingLeft: `${(depth * 12) + 12}px` } : undefined}
                 >
-                    <Link href={item.href} className="flex-1 flex items-center gap-x-3 truncate">
+                    <Link
+                        href={item.href}
+                        // An external item leaves the app shell entirely, so it
+                        // opens beside the app rather than replacing it, and
+                        // says so before you click.
+                        {...(item.external
+                            ? { target: "_blank", rel: "noreferrer" }
+                            : {})}
+                        className="flex-1 flex items-center gap-x-3 truncate"
+                    >
                         <Icon className="h-4 w-4 shrink-0" />
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
+                        {!isCollapsed && item.external && (
+                            <ExternalLink
+                                className="h-3 w-3 shrink-0 text-muted-foreground/60"
+                                aria-label="opens in a new tab"
+                            />
+                        )}
                         {/* Collapsed, the label is gone and a number would be
                             meaningless — so it becomes a dot that still says
                             "there is something here". */}
@@ -678,24 +694,43 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                                     const tooltipLabel = parentLabel ? `${item.label} (${parentLabel})` : item.label;
 
                                     return (
+                                        /*
+                                          The pin/remove cluster is `absolute`,
+                                          not a flex sibling. At `opacity-0` it
+                                          was invisible but still holding 34px
+                                          of the 204px row, plus its 12px gap —
+                                          which is why "Dashboard" rendered as
+                                          "Das…" next to its SERVICE DESK badge
+                                          with visible empty space to the right
+                                          of it. The label needed 73px and was
+                                          given 46. Out of flow it gets 92.
+                                        */
                                         <div
                                             key={path}
                                             className={cn(
-                                                "group/fav flex items-center gap-x-3 rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
+                                                "group/fav relative flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
                                                 active ? "bg-accent text-accent-foreground" : "text-muted-foreground"
                                             )}
                                             title={tooltipLabel}
                                         >
-                                            <Link href={path} className="flex-1 flex items-center gap-x-3 truncate min-w-0">
+                                            <Link href={path} className="flex min-w-0 flex-1 items-center gap-x-3">
                                                 <Icon className="h-4 w-4 shrink-0" />
                                                 <span className="truncate">{item.label}</span>
+                                                {/* The badge yields before the
+                                                    label does: a half-read app
+                                                    name still identifies the
+                                                    row, a half-read item name
+                                                    does not. */}
                                                 {parentLabel && (
-                                                    <span className="shrink-0 text-[9px] px-1 py-0.5 rounded bg-accent/80 text-muted-foreground/70 font-normal uppercase leading-none">
+                                                    <span className="min-w-0 shrink truncate rounded bg-accent/80 px-1 py-0.5 text-[9px] font-normal uppercase leading-none text-muted-foreground/70">
                                                         {parentLabel}
                                                     </span>
                                                 )}
                                             </Link>
-                                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/fav:opacity-100 transition-opacity">
+                                            {/* Over the row, not beside it. The
+                                                background matches the hover
+                                                state it only ever appears in. */}
+                                            <div className="absolute inset-y-0.5 right-1 flex items-center gap-0.5 rounded-md bg-accent pl-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover/fav:opacity-100">
                                                 {pinned ? (
                                                     <button
                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(path); }}

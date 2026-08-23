@@ -161,7 +161,7 @@ export default function RecordDetailPage() {
   // Loading state
   if (isLoadingRecord || !record) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="p-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse space-y-6">
@@ -190,7 +190,7 @@ export default function RecordDetailPage() {
   const pinnedNotes = notes.filter((n) => n.is_pinned);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="flex">
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0">

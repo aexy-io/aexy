@@ -45,6 +45,7 @@ import {
   Bell,
 } from "lucide-react";
 import { useCommandPalette, getModifierKey } from "@/hooks/useKeyboardShortcuts";
+import { APP_COMMANDS, useAppCommand } from "@/lib/appCommands";
 import { Kbd } from "@/components/ui/kbd";
 import { useFeedbackStore } from "@/stores/feedbackStore";
 
@@ -90,6 +91,9 @@ export function CommandPalette({ projectId, onCreateTask }: CommandPaletteProps)
 
   // Register Cmd+K shortcut
   useCommandPalette(openPalette);
+  // Also openable from the topbar search affordance, for people who have not
+  // yet learned the shortcut.
+  useAppCommand(APP_COMMANDS.palette, openPalette);
 
   // Focus input when opened
   useEffect(() => {

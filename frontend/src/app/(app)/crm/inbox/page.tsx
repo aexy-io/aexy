@@ -802,7 +802,7 @@ function InboxPageContent() {
 
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center h-[calc(100vh-64px)]">
           <div className="text-muted-foreground">Loading workspace...</div>
         </div>
@@ -812,7 +812,7 @@ function InboxPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background animate-pulse">
+      <div className="animate-pulse">
         <div className="border-b border-border px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -850,7 +850,7 @@ function InboxPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-0">
         {/* Header */}
         <div className="border-b border-border px-6 py-4">
@@ -1020,7 +1020,7 @@ function InboxPageContent() {
 
 export default function InboxPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>}>
       <InboxPageContent />
     </Suspense>
   );

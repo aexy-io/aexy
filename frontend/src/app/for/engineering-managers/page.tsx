@@ -11,9 +11,11 @@ import {
   Activity,
   Github,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+// "Open Ledger" light brand: paper page, ink text, ledger-green accents, and
+// the homepage's diff motif (mono "-" pains, mono "+" fixes) for pain points.
+
 
 const painPoints = [
   { problem: "No visibility into what the team is actually working on", solution: "Real-time activity tracking synced with GitHub" },
@@ -50,96 +52,82 @@ const features = [
 ];
 
 export default function EngineeringManagersPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
       <section className="pt-32 pb-20 px-6 relative">
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 rounded-full text-blue-400 text-sm mb-6">
+          <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             <Users className="h-4 w-4" />
             <span>For Engineering Managers</span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
-            Lead your team with{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              clarity, not chaos
-            </span>
+          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-semibold text-ledger-ink mb-6 tracking-tight leading-tight">
+            Lead your team with <span className="text-ledger-green">clarity, not chaos</span>
           </h1>
 
-          <p className="text-xl text-white/60 mb-10 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-ledger-ink/65 mb-10 max-w-3xl mx-auto leading-relaxed">
             Stop guessing what your team is working on. Get real-time visibility, data-driven planning,
             and fair performance reviews - all without micromanaging.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(59,130,246,0.3)]"
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green text-ledger-paper px-8 py-4 text-lg font-semibold transition hover:bg-[#095A31]"
             >
               Start Free
               <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+            </Link>
             <Link
               href="/manifesto"
-              className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+              className="group inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 text-ledger-ink px-8 py-4 text-lg font-medium transition hover:border-ledger-ink/50"
             >
               Read the Manifesto
             </Link>
           </div>
 
-          <div className="flex items-center justify-center gap-8 text-sm text-white/40">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-ledger-ink/55">
             <span className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-blue-500" />
+              <CheckCircle2 className="h-4 w-4 text-ledger-green" />
               No surveillance
             </span>
             <span className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-blue-500" />
+              <CheckCircle2 className="h-4 w-4 text-ledger-green" />
               Open source
             </span>
             <span className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-blue-500" />
+              <CheckCircle2 className="h-4 w-4 text-ledger-green" />
               Free tier available
             </span>
           </div>
         </div>
       </section>
 
-      {/* Pain Points */}
+      {/* Pain Points — the diff motif: what breaks today, what replaces it */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-semibold text-ledger-ink mb-4 tracking-tight">
               Sound familiar?
             </h2>
           </div>
 
           <div className="space-y-4">
             {painPoints.map((item, idx) => (
-              <div key={idx} className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 rounded-2xl" />
-                <div className="relative grid md:grid-cols-2 gap-4 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-red-400 text-xs">✕</span>
-                    </div>
-                    <p className="text-white/60">{item.problem}</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-400 flex-shrink-0" />
-                    <p className="text-white">{item.solution}</p>
-                  </div>
+              <div
+                key={idx}
+                className="grid md:grid-cols-2 gap-4 p-6 rounded-[2px] border border-ledger-ink/12 bg-ledger-card"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="font-brand-mono leading-7 text-ledger-red">-</span>
+                  <p className="text-ledger-ink/60 leading-7">{item.problem}</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="font-brand-mono leading-7 text-ledger-green">+</span>
+                  <p className="text-ledger-ink/85 leading-7">{item.solution}</p>
                 </div>
               </div>
             ))}
@@ -151,7 +139,7 @@ export default function EngineeringManagersPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-semibold text-ledger-ink mb-4 tracking-tight">
               Everything you need to lead effectively
             </h2>
           </div>
@@ -159,18 +147,13 @@ export default function EngineeringManagersPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {features.map((feature, idx) => (
               <Link key={idx} href={feature.link} className="group">
-                <div className="relative h-full">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-                  <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all h-full">
-                    <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl w-fit mb-6">
-                      <feature.icon className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                    <p className="text-white/60 mb-4">{feature.description}</p>
-                    <span className="text-blue-400 text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
-                      Learn more <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
+                <div className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]">
+                  <feature.icon className="mb-6 h-5 w-5 text-ledger-green" />
+                  <h3 className="font-display text-xl font-semibold text-ledger-ink mb-3">{feature.title}</h3>
+                  <p className="text-ledger-ink/65 leading-7 mb-4">{feature.description}</p>
+                  <span className="text-ledger-green text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+                    Learn more <ArrowRight className="h-4 w-4" />
+                  </span>
                 </div>
               </Link>
             ))}
@@ -182,22 +165,22 @@ export default function EngineeringManagersPage() {
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-semibold text-ledger-ink mb-4 tracking-tight">
               Already running Jira or Linear?
             </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
+            <p className="text-ledger-ink/65 max-w-2xl mx-auto leading-7">
               They track issues well. Aexy tracks issues and connects them to customers,
               docs, people, and AI agents in the same workspace.
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <div className="overflow-x-auto rounded-[2px] border border-ledger-ink/12 bg-ledger-card">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="px-5 py-4 font-semibold text-white/40"> </th>
-                  <th className="px-5 py-4 font-semibold text-cyan-400">Aexy</th>
-                  <th className="px-5 py-4 font-semibold text-white/70">Jira / Linear</th>
+                <tr className="border-b border-ledger-ink/12">
+                  <th className="px-5 py-4 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-ink/50"> </th>
+                  <th className="px-5 py-4 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-green">Aexy</th>
+                  <th className="px-5 py-4 font-brand-mono text-xs font-medium uppercase tracking-[0.14em] text-ledger-ink/70">Jira / Linear</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,10 +193,10 @@ export default function EngineeringManagersPage() {
                   ["AI agents", "Governed agents can triage, summarize, update records, and run workflows across the company.", "Assistant features scoped to issues."],
                   ["Ownership", "Open source and self-hostable.", "Closed SaaS, per-seat pricing."],
                 ] as const).map(([dimension, aexy, them]) => (
-                  <tr key={dimension} className="border-b border-white/10 last:border-b-0">
-                    <td className="px-5 py-4 font-medium text-white/70">{dimension}</td>
-                    <td className="px-5 py-4 leading-6 text-white/90">{aexy}</td>
-                    <td className="px-5 py-4 leading-6 text-white/50">{them}</td>
+                  <tr key={dimension} className="border-b border-ledger-ink/12 last:border-b-0">
+                    <td className="px-5 py-4 font-medium text-ledger-ink/70">{dimension}</td>
+                    <td className="px-5 py-4 leading-6 text-ledger-ink/85">{aexy}</td>
+                    <td className="px-5 py-4 leading-6 text-ledger-ink/55">{them}</td>
                   </tr>
                 ))}
               </tbody>
@@ -221,13 +204,13 @@ export default function EngineeringManagersPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
-            <Link href="/compare/jira" className="text-blue-400 hover:text-blue-300 transition flex items-center gap-1">
+            <Link href="/compare/jira" className="font-semibold text-ledger-green transition hover:text-[#095A31] flex items-center gap-1">
               Full Jira comparison <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/compare/linear" className="text-blue-400 hover:text-blue-300 transition flex items-center gap-1">
+            <Link href="/compare/linear" className="font-semibold text-ledger-green transition hover:text-[#095A31] flex items-center gap-1">
               Full Linear comparison <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/pricing" className="text-blue-400 hover:text-blue-300 transition flex items-center gap-1">
+            <Link href="/pricing" className="font-semibold text-ledger-green transition hover:text-[#095A31] flex items-center gap-1">
               Pricing <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -237,29 +220,24 @@ export default function EngineeringManagersPage() {
       {/* Open source proof */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10 text-center">
-              <div className="flex justify-center mb-6">
-                <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl">
-                  <Github className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                Don&apos;t take our word for it. Read the code.
-              </h2>
-              <p className="text-white/60 max-w-2xl mx-auto mb-8">
-                Aexy is open source. Inspect how planning, insights, and agent governance
-                actually work, self-host it free, and extend it to fit your team.
-              </p>
-              <a
-                href="https://github.com/aexy-io/aexy"
-                className="inline-flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20"
-              >
-                <Github className="h-5 w-5" />
-                Explore on GitHub
-              </a>
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12 text-center">
+            <div className="flex justify-center mb-6">
+              <Github className="h-5 w-5 text-ledger-green" />
             </div>
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-ledger-ink mb-4 tracking-tight">
+              Don&apos;t take our word for it. Read the code.
+            </h2>
+            <p className="text-ledger-ink/65 max-w-2xl mx-auto mb-8 leading-7">
+              Aexy is open source. Inspect how planning, insights, and agent governance
+              actually work, self-host it free, and extend it to fit your team.
+            </p>
+            <a
+              href="https://github.com/aexy-io/aexy"
+              className="inline-flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 text-ledger-ink px-8 py-4 text-lg font-semibold transition hover:border-ledger-ink/50"
+            >
+              <Github className="h-5 w-5" />
+              Explore on GitHub
+            </a>
           </div>
         </div>
       </section>
@@ -267,24 +245,24 @@ export default function EngineeringManagersPage() {
       {/* CTA */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-semibold text-ledger-ink mb-4 tracking-tight">
             Ready to lead with clarity?
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="text-xl text-ledger-ink/60 mb-10">
             Real visibility, data-driven planning, and fair reviews — without the tool sprawl.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green text-ledger-paper px-8 py-4 text-lg font-semibold transition hover:bg-[#095A31]"
             >
               Get Started Free
               <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 text-ledger-ink px-8 py-4 text-lg font-semibold transition hover:border-ledger-ink/50"
             >
               <Github className="h-5 w-5" />
               View on GitHub
@@ -293,7 +271,6 @@ export default function EngineeringManagersPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

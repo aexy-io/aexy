@@ -25,6 +25,7 @@ import {
   QuestionType,
   DifficultyLevel,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // ==================== Assessment List Hook ====================
 
@@ -75,7 +76,7 @@ export function useAssessments(
   });
 
   return {
-    assessments: data?.items || [],
+    assessments: data?.items ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,
@@ -253,7 +254,7 @@ export function useAssessmentTopics(assessmentId: string | null) {
   });
 
   return {
-    topics: topics || [],
+    topics: topics ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -316,7 +317,7 @@ export function useAssessmentQuestions(assessmentId: string | null, topicId?: st
   });
 
   return {
-    questions: questions || [],
+    questions: questions ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -381,7 +382,7 @@ export function useAssessmentCandidates(assessmentId: string | null, organizatio
   });
 
   return {
-    candidates: candidates || [],
+    candidates: candidates ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

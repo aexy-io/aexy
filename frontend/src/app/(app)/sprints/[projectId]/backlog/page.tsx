@@ -533,9 +533,29 @@ export default function BacklogPage({
     });
   }, [backlogItems, searchQuery, priorityFilter]);
 
-  // Sync orderedItems with filteredItems when data changes
+  /*
+    Mirror the query result into local state so drag-and-drop has something to
+    reorder — but bail out when nothing actually changed.
+
+    `filteredItems` is a fresh array on every render by construction (it is the
+    tail of four chained `useMemo`s). Assigning it unconditionally meant a
+    setState per render, and the moment anything upstream churned identity —
+    `useTaskStatuses` returning a new `[]` while its query was in flight did
+    exactly that — the two fed each other into "Maximum update depth exceeded".
+
+    The elements themselves are stable: they come from the react-query cache
+    and only get new identities when the data really changed. So comparing
+    element identity, not contents, is both cheap and exact — and returning
+    `prev` unchanged makes React skip the re-render entirely, which is what
+    breaks the cycle rather than merely shortening it.
+  */
   useEffect(() => {
-    setOrderedItems(filteredItems);
+    setOrderedItems((prev) =>
+      prev.length === filteredItems.length &&
+      prev.every((item, i) => item === filteredItems[i])
+        ? prev
+        : filteredItems,
+    );
   }, [filteredItems]);
 
   // Reorder mutation for drag-and-drop
@@ -686,7 +706,7 @@ export default function BacklogPage({
   const planningSprints = sprints?.filter((s) => s.status === "planning") || [];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col">
       <CommandPalette
         workspaceId={currentWorkspaceId}
         projectId={projectId}
@@ -754,7 +774,7 @@ export default function BacklogPage({
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main backlog list */}
-        <main className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-6">
             {/* Search and filters */}
             <div className="flex items-center gap-3 mb-6">
@@ -892,7 +912,7 @@ export default function BacklogPage({
               </>
             )}
           </div>
-        </main>
+        </div>
 
         {/* Sprint sidebar */}
         <aside className="w-80 border-l border-border bg-muted/30 overflow-y-auto flex-shrink-0 hidden lg:block">

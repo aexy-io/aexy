@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { dashboardApi, workspaceApi } from "@/lib/api";
 import { useMyProjectPermissions } from "./useProjects";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 /**
  * Hook for getting accessible widgets based on user permissions at workspace level
@@ -20,7 +21,7 @@ export function useAccessibleWidgets(workspaceId: string | null, projectId?: str
   });
 
   return {
-    accessibleWidgets: accessibleWidgets || [],
+    accessibleWidgets: accessibleWidgets ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

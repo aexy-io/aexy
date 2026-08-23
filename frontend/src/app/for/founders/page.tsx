@@ -2,14 +2,18 @@ import type { Metadata } from "next";
 import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 
 export const metadata: Metadata = {
-  title: "Aexy for Founders — One Company OS Instead of Ten Tools",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy for Founders — One Company OS Instead of Ten Tools" },
   description:
     "Aexy helps founders run CRM, engineering, docs, hiring, workflows, and AI agents in one open-source company OS — instead of stitching together Notion, Zapier, Jira, and a CRM.",
+  alternates: { canonical: "/for/founders" },
 };
 
 export default function FoundersPage() {
   return (
     <SeoLandingPage
+      path="/for/founders"
       eyebrow="For founders"
       title="Run the company from one operating layer."
       description="Aexy gives founders one place to connect customers, product work, GTM signals, docs, hiring, workflows, and AI agents — before the stack fragments into ten subscriptions nobody reconciles."

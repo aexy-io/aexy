@@ -13,6 +13,7 @@ import {
   TaskStatus,
   TaskPriority,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export type BoardViewMode = "sprint" | "status";
 
@@ -503,8 +504,8 @@ export function useProjectBoard(
 
   return {
     // Data
-    sprints: sprints || [],
-    allTasks: allTasks || [],
+    sprints: sprints ?? EMPTY_ARRAY,
+    allTasks: allTasks ?? EMPTY_ARRAY,
     filteredTasks,
     tasksBySprint,
     tasksByStatus,

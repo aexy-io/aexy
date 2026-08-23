@@ -119,7 +119,22 @@ export default function ProjectLayoutClient({
   const deliveryItems = navItems.filter(item => item.group === "delivery");
 
   return (
-    <div className="min-h-screen bg-background">
+    /*
+      A definite height for the subtree, so the board page's `flex-1` region
+      has something to divide and fills the screen instead of leaving grey
+      space under its last row.
+
+      `min-h-[calc(100vh-3.5rem)]` rather than making AppShell's <main> a flex
+      column: that switch looked cleaner and quietly broke 107 pages. A flex
+      item is only stretched to the line when neither cross-axis margin is
+      auto, and every one of those pages wraps itself in `mx-auto max-w-…` —
+      so `max-w-5xl mx-auto` stopped meaning "1024 wide, centred" and started
+      meaning "as wide as its text, centred". /exports rendered at 704px in a
+      1344px area. Scoping the height here costs one magic number — the 56px
+      topbar, the same one SettingsShell already subtracts — and touches
+      nothing outside /sprints/[projectId].
+    */
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
       {/* Sub-navigation for planning views */}
       <div className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="px-4">

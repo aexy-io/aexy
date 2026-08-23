@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 
 export const metadata: Metadata = {
-  title: "Aexy for AI Agent Builders",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy for AI Agent Builders" },
   description: "Aexy gives AI agent builders a governed company context layer with CRM, GTM, docs, workflows, approved tools, policies, and audit history.",
+  alternates: { canonical: "/for/ai-agent-builders" },
 };
 
 export default function AiAgentBuildersPage() {
   return (
     <SeoLandingPage
+      path="/for/ai-agent-builders"
       eyebrow="For AI agent builders"
       title="Build agents on top of real company context."
       description="Aexy gives agent builders a practical operating layer for tool access, CRM records, docs, workflows, policies, approvals, and audit history."

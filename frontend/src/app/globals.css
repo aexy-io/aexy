@@ -2,13 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
+/* "Open Ledger" marketing theme — scoped by .theme-ledger, which
+ * components/landing/LedgerPage puts on every public marketing page.
+ *
+ * Pages paint themselves with the static ledger-* Tailwind tokens; this block
+ * exists for the pieces that cannot. McpChatPreview is shared between the
+ * homepage and /products/mcp and must not be forked, so it carries semantic
+ * hooks (.mcp-preview-*) whose default styling is its own Tailwind utilities,
+ * overridden only inside .theme-ledger. */
+.theme-ledger {
+  --ledger-paper: #f2f3ee;
+  --ledger-ink: #101913;
+  --ledger-green: #0b6b3a;
+  --ledger-red: #a8342a;
+  --ledger-pane: #0e1512;
+  --ledger-mint: #35c77f;
+}
+
+.theme-ledger .mcp-preview-glow {
+  display: none; /* no blur/glow on paper — the pane is the plate */
+}
+
+.theme-ledger .mcp-preview-frame {
+  border-radius: 4px;
+  border-color: rgb(16 25 19 / 0.25);
+  box-shadow: none;
+  /* The preview inherited white text from the old dark page; on paper it
+   * must carry its own — it is still a dark pane inside. */
+  color: #fff;
+}
+
+/* The hero diff types itself. Each line sets its own --type-w (in ch) and
+ * delay inline; steps() gives the character-by-character reveal without any
+ * JS. Visitors who ask for reduced motion get the finished state immediately
+ * (width: auto, not width: 0 — killing only the animation would hide the
+ * lines forever). */
+@keyframes ledger-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--type-w);
+  }
+}
+
+.diff-typed {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  width: 0;
+  animation: ledger-type 0.9s steps(32, end) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-ledger .diff-typed {
+    animation: none !important;
+    width: auto !important;
+  }
+}
+
+/* Product-tour tab crossfade — the only motion besides the hero diff. */
+@keyframes ledger-tour-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tour-fade {
+  animation: ledger-tour-fade 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-fade {
+    animation: none !important;
+  }
+}
+
 /* NProgress - Navigation Progress Bar */
 #nprogress {
   pointer-events: none;
 }
 
 #nprogress .bar {
-  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  /* Flat accent, no gradient: Open Ledger has none anywhere else. */
+  background: hsl(var(--primary));
   position: fixed;
   z-index: 9999;
   top: 0;
@@ -23,134 +104,202 @@
   right: 0;
   width: 100px;
   height: 100%;
-  box-shadow: 0 0 10px #8b5cf6, 0 0 5px #8b5cf6;
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.55);
   opacity: 1;
   transform: rotate(3deg) translate(0, -4px);
 }
 
 @layer base {
-  /* Dark theme (default) */
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* ── Open Ledger, in the product ──────────────────────────────────────────
+   *
+   * Paper is the default and lives on `:root`; Ledger Dark is the `.dark`
+   * override. That ordering is not cosmetic. It used to be the other way
+   * round — dark on `:root`, light on `.light` — and because ThemeProvider
+   * stamps the class in a `useEffect`, the first paint of every page had dark
+   * variables with *no* `.dark` class present. All 1,761 `dark:` utilities in
+   * the app were inert for that frame, so every `bg-gray-100 dark:bg-gray-800`
+   * pair rendered its light half on a dark ground. The inline script in
+   * app/layout.tsx now stamps the class before paint, and this block makes the
+   * unstamped state (SSR, JS disabled) resolve to the theme most users are on.
+   *
+   * `.light` is kept as an explicit alias of `:root` rather than deleted.
+   * ThemeProvider still writes the class, and anything downstream that keys
+   * off it keeps working without having to know which selector holds the
+   * palette.
+   *
+   * The palette is the same one the marketing site paints with — paper
+   * #F2F3EE, card #FBFCF9, ink #101913, ledger-green #0B6B3A, red #A8342A,
+   * pane #0E1512, mint #35C77F — restated in HSL because the shadcn token
+   * layer these feed is `hsl(var(--x))`. The static `ledger-*` Tailwind
+   * tokens keep their hexes for marketing, which must not flip with app dark
+   * mode. Two representations of one palette; if you change a brand colour,
+   * change both.
+   */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+  :root,
+  .light {
+    /* paper */
+    --background: 72 17% 94%;
+    --foreground: 140 22% 8%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --card: 80 33% 98%;
+    --card-foreground: 140 22% 8%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 98%;
+    --popover: 80 33% 98%;
+    --popover-foreground: 140 22% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* ledger-green */
+    --primary: 149 81% 23%;
+    --primary-foreground: 80 33% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 75 12% 90%;
+    --secondary-foreground: 140 22% 8%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 75 12% 90%;
+    --muted-foreground: 140 8% 40%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 75 14% 89%;
+    --accent-foreground: 140 22% 8%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* ledger-red */
+    --destructive: 5 60% 41%;
+    --destructive-foreground: 80 33% 98%;
+    --destructive-subtle: 6 60% 94%;
+    --destructive-border: 6 45% 84%;
 
-    --radius: 0.5rem;
+    /* Hairlines. The marketing site draws these as ink/12; this is the same
+     * weight resolved against paper, so a rule reads identically on both. */
+    --border: 140 8% 85%;
+    /* Not the same value as --border, though it started as one. A hairline is
+     * 1.24:1 against paper, which is the point of a hairline — and a disaster
+     * on an <input>, whose entire "you can type here" affordance is that
+     * border (ui/input.tsx is `border border-input bg-background`, so on a page
+     * background the fill gives you nothing). WCAG 1.4.11 wants 3:1 for a
+     * control boundary; this is 3.30 against paper and 3.58 against card.
+     * Decorative rules keep --border. */
+    --input: 140 8% 50%;
+    --ring: 149 81% 23%;
 
-    /* Extended theme colors - Dark */
-    --surface: 222 47% 11%;
-    --surface-hover: 217 33% 17%;
-    --surface-active: 215 28% 22%;
-    --surface-elevated: 217 33% 17%;
+    /* 2px, not 8px. See the borderRadius block in tailwind.config.ts — DEFAULT,
+     * xl, 2xl and 3xl are routed through this too, or ~3,100 utilities would
+     * have kept their soft corners on a square design. */
+    --radius: 2px;
 
-    --text-primary: 210 40% 98%;
-    --text-secondary: 215 20% 65%;
-    --text-muted: 215 15% 45%;
-    --text-inverted: 222 47% 11%;
+    --surface: 80 33% 98%;
+    --surface-hover: 75 14% 95%;
+    --surface-active: 75 14% 92%;
+    --surface-elevated: 80 33% 98%;
 
-    --border-default: 217 33% 17%;
-    --border-muted: 217 25% 25%;
-    --border-strong: 215 20% 35%;
+    /* ── status ────────────────────────────────────────────────────────────
+     * Five roles, four slots each: DEFAULT (text/icon), `-foreground` (text
+     * ON the solid fill), `-subtle` (tinted background) and `-border`.
+     *
+     * The `-subtle`/`-border` slots are the new part, and they exist because
+     * their absence is what produced ~5,000 raw red/green/amber/blue classes:
+     * with only a solid `bg-success` available, every module that wanted a
+     * quiet status pill reached for `bg-red-50 text-red-700 border-red-200`
+     * and invented its own. `destructive` doubles as the danger role — one
+     * name for one meaning.
+     */
+    --success: 149 60% 28%;
+    --success-foreground: 80 33% 98%;
+    --success-subtle: 149 40% 92%;
+    --success-border: 149 30% 80%;
 
-    --sidebar-bg: 222 47% 8%;
-    --sidebar-hover: 217 33% 14%;
-    --sidebar-active: 217 33% 17%;
+    /* 32%, not the 34% this started at: 34% measures 4.48:1 on paper and
+     * 4.41:1 on its own subtle fill, both of which round to "fails AA". */
+    --warning: 35 80% 32%;
+    --warning-foreground: 80 33% 98%;
+    --warning-subtle: 40 70% 92%;
+    --warning-border: 38 50% 78%;
 
-    --input-bg: 217 33% 14%;
-    --input-border: 217 25% 25%;
-    --input-focus: 217 91% 60%;
+    --info: 205 60% 34%;
+    --info-foreground: 80 33% 98%;
+    --info-subtle: 205 55% 93%;
+    --info-border: 205 40% 82%;
 
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 0%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
+    /* 38% clears AA on the subtle fill; 40% measured 4.49:1. --muted-foreground
+     * stays at 40% — it is only ever used on background or card, where it
+     * measures 4.81 and 5.22. */
+    --neutral: 140 8% 38%;
+    --neutral-foreground: 80 33% 98%;
+    --neutral-subtle: 75 12% 91%;
+    --neutral-border: 140 8% 85%;
+
+    /* Scrollbars and the navigation-progress bar read these instead of the
+     * slate/indigo hexes they used to hardcode. */
+    --scrollbar-thumb: 140 8% 78%;
+    --scrollbar-thumb-hover: 140 8% 66%;
   }
 
-  /* Light theme */
-  .light {
-    --background: 0 0% 98%;
-    --foreground: 222.2 84% 4.9%;
+  /* Ledger Dark — the marketing site's product pane (#0E1512) as a full
+   * surface, with mint as the accent because ledger-green is too dark to
+   * carry contrast here. */
+  .dark {
+    --background: 154 20% 7%;
+    --foreground: 80 12% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 154 16% 10%;
+    --card-foreground: 80 12% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 154 16% 10%;
+    --popover-foreground: 80 12% 92%;
 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    /* ledger-mint */
+    --primary: 150 58% 49%;
+    --primary-foreground: 154 20% 7%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 154 12% 15%;
+    --secondary-foreground: 80 12% 92%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 154 12% 15%;
+    --muted-foreground: 150 8% 62%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 154 12% 17%;
+    --accent-foreground: 80 12% 92%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* 61%, not 55%. At 55% error text measured 4.43:1 on the pane and 3.85:1
+     * on its own subtle fill — the one role you least want under AA. This also
+     * lifts the label on a solid destructive button, which is the same pair
+     * inverted. */
+    --destructive: 5 60% 61%;
+    --destructive-foreground: 154 20% 7%;
+    --destructive-subtle: 5 40% 15%;
+    --destructive-border: 5 35% 27%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 154 12% 18%;
+    /* Same split as paper, same reason: 1.42:1 is a hairline, not a control
+     * boundary. 42% is 3.85:1 on the pane and 3.57:1 on a card. */
+    --input: 154 12% 42%;
+    --ring: 150 58% 49%;
 
-    /* Extended theme colors - Light */
-    --surface: 0 0% 100%;
-    --surface-hover: 210 40% 98%;
-    --surface-active: 210 40% 96%;
-    --surface-elevated: 0 0% 100%;
+    --surface: 154 16% 11%;
+    --surface-hover: 154 14% 14%;
+    --surface-active: 154 14% 17%;
+    --surface-elevated: 154 14% 13%;
 
-    --text-primary: 222 47% 11%;
-    --text-secondary: 215 16% 47%;
-    --text-muted: 215 14% 65%;
-    --text-inverted: 210 40% 98%;
+    --success: 150 58% 55%;
+    --success-foreground: 154 20% 7%;
+    --success-subtle: 152 35% 14%;
+    --success-border: 152 30% 24%;
 
-    --border-default: 214 32% 91%;
-    --border-muted: 214 25% 85%;
-    --border-strong: 214 20% 75%;
+    --warning: 40 80% 60%;
+    --warning-foreground: 154 20% 7%;
+    --warning-subtle: 40 40% 14%;
+    --warning-border: 40 35% 26%;
 
-    --sidebar-bg: 0 0% 100%;
-    --sidebar-hover: 210 40% 97%;
-    --sidebar-active: 210 40% 94%;
+    --info: 205 70% 62%;
+    --info-foreground: 154 20% 7%;
+    --info-subtle: 205 40% 15%;
+    --info-border: 205 35% 27%;
 
-    --input-bg: 0 0% 100%;
-    --input-border: 214 32% 91%;
-    --input-focus: 221 83% 53%;
+    --neutral: 150 8% 62%;
+    --neutral-foreground: 154 20% 7%;
+    --neutral-subtle: 154 12% 15%;
+    --neutral-border: 154 12% 20%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 0%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
+    --scrollbar-thumb: 154 12% 22%;
+    --scrollbar-thumb-hover: 154 12% 32%;
   }
 }
 
@@ -181,7 +330,7 @@
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: #64748b;
+  color: hsl(var(--muted-foreground));
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -204,10 +353,12 @@
   animation: fade-in 0.2s ease-out forwards;
 }
 
-/* Global custom scrollbar - Dark theme */
+/* Scrollbars follow the theme through --scrollbar-thumb rather than the
+ * hardcoded slate pair they used to carry, which meant the `.light` override
+ * below existed purely to undo a dark default. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
+  scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -220,29 +371,16 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: hsl(var(--scrollbar-thumb));
+  border-radius: var(--radius);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: hsl(var(--scrollbar-thumb-hover));
 }
 
 *::-webkit-scrollbar-corner {
   background: transparent;
-}
-
-/* Light theme scrollbar */
-.light * {
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.light *::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-}
-
-.light *::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
 }
 
 /* Extra thin scrollbar utility */

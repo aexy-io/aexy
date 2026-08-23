@@ -10,6 +10,7 @@ import {
   AutomationAgentExecution,
   AutomationAgentExecutionListItem,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // =============================================================================
 // Agent Trigger Hooks
@@ -79,7 +80,7 @@ export function useAutomationAgentTriggers(
   });
 
   return {
-    triggers: triggers || [],
+    triggers: triggers ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -146,7 +147,7 @@ export function useAutomationAgentExecutions(
   });
 
   return {
-    executions: executions || [],
+    executions: executions ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -203,7 +204,7 @@ export function useAgentAutomationExecutions(
   });
 
   return {
-    executions: executions || [],
+    executions: executions ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

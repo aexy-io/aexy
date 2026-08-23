@@ -594,7 +594,7 @@ export default function RoadmapPage({
   // Project loaded but not publicly available
   if (project && !project.public_slug) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
         <CommandPalette projectId={projectId} />
         <header className="border-b border-border bg-muted/50 backdrop-blur-sm sticky top-0 z-30">
           <div className="max-w-[1400px] mx-auto px-4 py-3">
@@ -614,7 +614,7 @@ export default function RoadmapPage({
             </div>
           </div>
         </header>
-        <main className="max-w-[1400px] mx-auto px-4 py-16">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
               <Lock className="h-8 w-8 text-muted-foreground" />
@@ -635,7 +635,7 @@ export default function RoadmapPage({
               </Link>
             )}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -650,7 +650,7 @@ export default function RoadmapPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <CommandPalette  projectId={projectId} />
 
       {/* Header */}
@@ -722,7 +722,7 @@ export default function RoadmapPage({
       </header>
 
       {/* Content */}
-      <main className="px-4 py-6">
+      <div className="px-4 py-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
@@ -798,7 +798,7 @@ export default function RoadmapPage({
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Request Detail Modal */}
       {selectedRequest && project?.public_slug && (

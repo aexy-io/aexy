@@ -235,7 +235,7 @@ export default function TemplatesPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
 <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -248,7 +248,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
 <div className="p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}

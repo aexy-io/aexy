@@ -19,10 +19,6 @@ export default function ServiceDeskMasterDataSettingsPage() {
       // told a reader of this page nothing about what the three tables do.
       description={t("settings.masterDataHint")}
       width="wide"
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

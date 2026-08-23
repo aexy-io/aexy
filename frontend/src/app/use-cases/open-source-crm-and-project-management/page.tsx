@@ -4,11 +4,14 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Open Source CRM and Project Management",
   description: "Aexy combines open-source CRM and project management with docs, GTM intelligence, workflows, and governed AI agents.",
+  alternates: { canonical: "/use-cases/open-source-crm-and-project-management" },
 };
 
 export default function OpenSourceCrmAndProjectManagementPage() {
   return (
     <SeoLandingPage
+      path="/use-cases/open-source-crm-and-project-management"
+      breadcrumbName="Open-source CRM and project management"
       eyebrow="Use case"
       title="Open-source CRM and project management in one company OS."
       description="Aexy connects customer records to planning, tickets, docs, forms, workflows, and agents so technical teams can manage both relationships and execution in one place."

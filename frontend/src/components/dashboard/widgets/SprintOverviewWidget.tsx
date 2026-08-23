@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  PlayCircle,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTeams } from "@/hooks/useTeams";
@@ -35,7 +34,19 @@ export function SprintOverviewWidget() {
   }
 
   const sprint = activeSprint;
-  const hasActiveSprint = !!sprint && !!defaultTeamId;
+
+  /*
+    No sprint, no widget. This used to render a full "Sprint Overview" card
+    around a centred icon and one line of grey text, and on a workspace that
+    does not run sprints it sat on the dashboard permanently saying nothing.
+    Returning null drops it out of the grid entirely — MasonryItem hides an
+    item whose content measures zero — so the widgets that do have something
+    to show close up around it instead of flowing around a placeholder.
+
+    Deliberately after the isLoading branch: disappearing while the query is
+    still in flight would make the dashboard reflow once the answer arrives.
+  */
+  if (!sprint || !defaultTeamId) return null;
 
   // Calculate sprint progress
   const totalTasks = sprint?.tasks_count || 0;
@@ -67,31 +78,6 @@ export function SprintOverviewWidget() {
         </Link>
       </div>
       <div className="p-4">
-        {!currentWorkspace ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-              <Calendar className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Select a workspace to view sprint data.
-            </p>
-          </div>
-        ) : !hasActiveSprint ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-              <PlayCircle className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground text-sm mb-3">
-              No active sprint. Start a new sprint to track progress.
-            </p>
-            <Link
-              href="/sprints/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition"
-            >
-              Create Sprint
-            </Link>
-          </div>
-        ) : (
           <div className="space-y-4">
             {/* Sprint name and dates */}
             <div className="flex items-center justify-between">
@@ -153,7 +139,6 @@ export function SprintOverviewWidget() {
               </div>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

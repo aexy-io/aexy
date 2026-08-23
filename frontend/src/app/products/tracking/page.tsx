@@ -18,34 +18,29 @@ import {
   PieChart,
   AlertTriangle,
 } from "lucide-react";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const features = [
   {
     icon: Activity,
     title: "Real-time Activity Tracking",
     description: "See what your team is working on as it happens. Commits, PRs, and code reviews sync automatically.",
-    color: "from-emerald-500 to-teal-500",
   },
   {
     icon: Users,
     title: "Developer Profiles",
     description: "AI-generated skill profiles from actual code contributions. Know your team's true expertise.",
-    color: "from-blue-500 to-cyan-500",
   },
   {
     icon: TrendingUp,
     title: "Trend Analysis",
     description: "Track productivity patterns over time. Identify bottlenecks before they become problems.",
-    color: "from-purple-500 to-pink-500",
   },
   {
     icon: PieChart,
     title: "Contribution Insights",
     description: "Understand how work is distributed across the team. Balance workloads effectively.",
-    color: "from-amber-500 to-orange-500",
   },
 ];
 
@@ -57,115 +52,104 @@ const metrics = [
 ];
 
 export default function TrackingProductPage() {
-  const googleLoginUrl = `${API_BASE_URL}/auth/google/login`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="px-6 pt-32 pb-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6">
+              <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
                 <Target className="h-4 w-4" />
                 <span>Activity Tracking</span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+              <h1 className="mb-6 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 Know what your team is{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                  actually building
-                </span>
+                <span className="text-ledger-green">actually building</span>
               </h1>
 
-              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+              <p className="mb-8 text-xl leading-relaxed text-ledger-ink/65">
                 Real-time visibility into engineering activity. Automatic skill profiling from code.
                 No manual status updates. No surveillance. Just clarity.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <a
-                  href={googleLoginUrl}
-                  className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(16,185,129,0.3)]"
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
                 >
                   Start Tracking Free
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Link>
                 <Link
-                  href="/manifesto"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 text-white px-8 py-4 rounded-full text-lg font-medium border border-white/10 hover:border-white/20 transition-all"
+                  href="/pricing"
+                  className="group inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-medium text-ledger-ink transition hover:border-ledger-ink/50"
                 >
-                  Learn More
+                  See pricing
                 </Link>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-white/40">
+              <div className="flex items-center gap-6 text-sm text-ledger-ink/55">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   GitHub sync in seconds
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 text-ledger-green" />
                   No code access needed
                 </span>
               </div>
             </div>
 
-            {/* Visual */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-3xl blur-2xl" />
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 space-y-4">
-                {/* Activity Feed Preview */}
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-medium">Live Activity</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-emerald-400 text-xs">Live</span>
-                  </div>
+            {/* Visual - Live activity feed.
+
+                DARK PANE: a genuine product mockup — the activity stream as the
+                app renders it — so it keeps the plate treatment used for product
+                UI on the paper page (see OsConsolePreview): ledger-pane ground,
+                white-opacity type, ledger-mint as the only accent. The white/*
+                utilities below are intentional inside bg-ledger-pane. */}
+            <div className="space-y-3 rounded-[4px] border border-ledger-ink/25 bg-ledger-pane p-6 text-[#E6EDE7]">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-medium">Live Activity</h3>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-ledger-mint" />
+                  <span className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-ledger-mint">Live</span>
                 </div>
-                {[
-                  { user: "Sarah", action: "Merged PR #234", time: "2m ago", icon: GitPullRequest, color: "text-purple-600 dark:text-purple-400" },
-                  { user: "Mike", action: "Pushed 3 commits", time: "5m ago", icon: GitCommit, color: "text-emerald-600 dark:text-emerald-400" },
-                  { user: "Alex", action: "Started code review", time: "8m ago", icon: Eye, color: "text-blue-600 dark:text-blue-400" },
-                  { user: "Jordan", action: "Closed issue #89", time: "12m ago", icon: CheckCircle2, color: "text-amber-600 dark:text-amber-400" },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-full flex items-center justify-center">
-                      <item.icon className={`h-5 w-5 ${item.color}`} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white text-sm">
-                        <span className="font-medium">{item.user}</span>{" "}
-                        <span className="text-white/60">{item.action}</span>
-                      </p>
-                    </div>
-                    <span className="text-white/40 text-xs">{item.time}</span>
-                  </div>
-                ))}
               </div>
+              {[
+                { user: "Sarah", action: "Merged PR #234", time: "2m ago", icon: GitPullRequest },
+                { user: "Mike", action: "Pushed 3 commits", time: "5m ago", icon: GitCommit },
+                { user: "Alex", action: "Started code review", time: "8m ago", icon: Eye },
+                { user: "Jordan", action: "Closed issue #89", time: "12m ago", icon: CheckCircle2 },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-4 rounded-[2px] border border-white/12 p-3">
+                  <item.icon className="h-4 w-4 shrink-0 text-ledger-mint" />
+                  <div className="flex-1">
+                    <p className="text-[13px]">
+                      <span className="font-medium text-white/85">{item.user}</span>{" "}
+                      <span className="text-white/60">{item.action}</span>
+                    </p>
+                  </div>
+                  <span className="font-brand-mono text-[11px] text-white/50">{item.time}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Metrics */}
-      <section className="py-16 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="px-6 py-16">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {metrics.map((metric, idx) => (
-              <div key={idx} className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-                <metric.icon className="h-8 w-8 text-emerald-400 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-white mb-1">{metric.value}</div>
-                <div className="text-white/50 text-sm">{metric.label}</div>
+              <div key={idx} className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-6 text-center">
+                <metric.icon className="mx-auto mb-3 h-5 w-5 text-ledger-green" />
+                <div className="mb-1 font-brand-mono text-3xl text-ledger-ink">{metric.value}</div>
+                <div className="font-brand-mono text-[11px] uppercase tracking-[0.14em] text-ledger-ink/55">{metric.label}</div>
               </div>
             ))}
           </div>
@@ -173,28 +157,26 @@ export default function TrackingProductPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
               Everything you need to understand your team
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-lg text-ledger-ink/55">
               Automatic tracking that respects developer autonomy while giving leaders the visibility they need.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {features.map((feature, idx) => (
-              <div key={idx} className="group relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-3xl opacity-0 group-hover:opacity-10 blur-xl transition-all duration-500`} />
-                <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all h-full">
-                  <div className={`p-4 bg-gradient-to-br ${feature.color} rounded-2xl w-fit mb-6`}>
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-white/60">{feature.description}</p>
-                </div>
+              <div
+                key={idx}
+                className="h-full rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
+              >
+                <feature.icon className="mb-6 h-5 w-5 text-ledger-green" />
+                <h3 className="mb-3 font-display text-xl font-semibold">{feature.title}</h3>
+                <p className="text-ledger-ink/65">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -202,101 +184,90 @@ export default function TrackingProductPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
               How tracking works
             </h2>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-white/10">
-              <div className="grid md:grid-cols-3 gap-8">
-                {[
-                  { step: "1", title: "Connect GitHub", desc: "One-click OAuth connection. Read-only access to metadata only.", icon: Code2 },
-                  { step: "2", title: "Auto-Profile", desc: "AI analyzes commits and PRs to build skill profiles automatically.", icon: Zap },
-                  { step: "3", title: "See Everything", desc: "Real-time dashboards show team activity, skills, and trends.", icon: BarChart3 },
-                ].map((item, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="relative w-16 h-16 mx-auto mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl" />
-                      <div className="absolute inset-0 flex items-center justify-center text-white">
-                        <item.icon className="h-7 w-7" />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-white text-black rounded-full flex items-center justify-center text-xs font-bold">
-                        {item.step}
-                      </div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                    <p className="text-white/50 text-sm">{item.desc}</p>
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-8 md:p-12">
+            <div className="grid gap-8 md:grid-cols-3">
+              {[
+                { step: "1", title: "Connect GitHub", desc: "One-click OAuth connection. Read-only access to metadata only.", icon: Code2 },
+                { step: "2", title: "Auto-Profile", desc: "AI analyzes commits and PRs to build skill profiles automatically.", icon: Zap },
+                { step: "3", title: "See Everything", desc: "Real-time dashboards show team activity, skills, and trends.", icon: BarChart3 },
+              ].map((item, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-[2px] border border-ledger-ink/25 bg-ledger-paper">
+                    <item.icon className="h-5 w-5 text-ledger-green" />
+                    <span className="font-brand-mono text-[10px] uppercase tracking-[0.14em] text-ledger-ink/55">{item.step}</span>
                   </div>
-                ))}
-              </div>
+                  <h3 className="mb-2 font-display text-lg font-semibold">{item.title}</h3>
+                  <p className="text-sm leading-6 text-ledger-ink/55">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Not Surveillance */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-3xl blur-xl" />
-            <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 md:p-12 border border-white/10">
-              <div className="flex items-start gap-4 mb-6">
-                <AlertTriangle className="h-8 w-8 text-amber-400 flex-shrink-0" />
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                    Tracking, not surveillance
-                  </h2>
-                  <p className="text-white/60 text-lg mb-6">
-                    We built Aexy because we believe visibility should empower teams, not monitor them.
-                  </p>
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-[2px] border border-ledger-ink/12 bg-ledger-card p-10 md:p-12">
+            <div className="mb-6 flex items-start gap-4">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-ledger-green" />
+              <div>
+                <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
+                  Tracking, not surveillance
+                </h2>
+                <p className="mb-6 text-lg text-ledger-ink/65">
+                  We built Aexy because we believe visibility should empower teams, not monitor them.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                "No keystroke logging",
+                "No screen recording",
+                "No productivity scores",
+                "No individual rankings",
+                "Open source & auditable",
+                "Developers control their data",
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 rounded-[2px] border border-ledger-ink/12 bg-ledger-paper p-4">
+                  <span className="font-brand-mono text-base leading-none text-ledger-green">+</span>
+                  <span className="text-ledger-ink/75">{item}</span>
                 </div>
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  "No keystroke logging",
-                  "No screen recording",
-                  "No productivity scores",
-                  "No individual rankings",
-                  "Open source & auditable",
-                  "Developers control their data",
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-4 bg-white/5 rounded-xl">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />
-                    <span className="text-white/80">{item}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Start understanding your engineering team today
           </h2>
-          <p className="text-xl text-white/50 mb-10">
+          <p className="mb-10 text-xl text-ledger-ink/55">
             Connect GitHub and see insights in minutes. Free forever for small teams.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a
-              href={googleLoginUrl}
-              className="group inline-flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105"
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
             >
               Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
             <a
               href="https://github.com/aexy-io/aexy"
-              className="group bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all border border-white/10 hover:border-white/20 flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
             >
               View on GitHub
             </a>
@@ -304,7 +275,6 @@ export default function TrackingProductPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

@@ -4,6 +4,7 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Agent-Native CRM",
   description: "Aexy is an agent-native CRM for teams that want customer records, activities, workflows, GTM signals, and AI agents in one open company OS.",
+  alternates: { canonical: "/agent-native-crm" },
 };
 
 const faqs: Array<[string, string]> = [
@@ -15,6 +16,7 @@ const faqs: Array<[string, string]> = [
 export default function AgentNativeCrmPage() {
   return (
     <SeoLandingPage
+      path="/agent-native-crm"
       eyebrow="Agent-native CRM"
       title="A CRM your team and AI agents can operate together."
       description="Aexy connects customer records, GTM signals, email history, workflow state, docs, and engineering context so agents can help with real revenue work without losing control."

@@ -1,26 +1,20 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { ReminderCreationWizard } from "@/components/reminders/wizard/ReminderCreationWizard";
-import { useRouter } from "next/navigation";
-
-export default function NewReminderPage() {
-  const { currentWorkspace } = useWorkspace();
-  const router = useRouter();
-
-  if (!currentWorkspace?.id) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
-  return (
-    <ReminderCreationWizard
-      workspaceId={currentWorkspace.id}
-      onClose={() => router.push("/compliance/reminders")}
-      onSuccess={(reminderId) => router.push(`/compliance/reminders/${reminderId}`)}
-    />
-  );
+/**
+ * Reminders moved under Compliance, which is where the product always pointed.
+ *
+ * These eight pages shipped at two URLs: the implementation lived here, and
+ * `compliance/reminders/*` was eight seven-line files re-exporting it. Only the
+ * compliance tree was navigable — it is the `reminders` module of
+ * `APP_CATALOG.compliance` and the sidebar entry — so this copy was reachable
+ * only by typing it, while still being built, indexed and maintained. Two URLs
+ * for one page also meant two breadcrumb trails and two `metadata` titles that
+ * had already drifted apart.
+ *
+ * The implementation now lives in the canonical tree and this redirects to it.
+ * Nothing in the product ever linked here — the backend builds no reminder deep
+ * links — so this exists for hand-made bookmarks, not for the app.
+ */
+export default function RemindersNewRedirect() {
+  redirect("/compliance/reminders/new");
 }

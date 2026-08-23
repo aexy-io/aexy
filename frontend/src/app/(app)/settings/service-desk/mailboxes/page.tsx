@@ -15,11 +15,6 @@ export default function ServiceDeskMailboxesSettingsPage() {
     <SettingsPage
       title={t("settings.mailboxes")}
       description={t("settings.mailboxesHint")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("settings.mailboxes") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

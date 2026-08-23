@@ -108,7 +108,7 @@ export default function PeerRequestsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-primary-500/20 rounded-full"></div>
@@ -125,8 +125,8 @@ export default function PeerRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-4xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -255,7 +255,7 @@ export default function PeerRequestsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

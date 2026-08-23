@@ -1,196 +1,163 @@
-# Aexy - Engineering OS
+# Aexy
 
-Aexy is a full-stack Engineering OS platform with developer analytics, sprint planning, CRM, email marketing, AI agents, workflow automation, and many more modules.
+**One system where CRM, sprints, tickets, docs, workflows, people ops and AI
+agents share the same database** — instead of six SaaS tools that each know a
+fifth of the story. Self-hostable, AGPL-3.0, and it ships an MCP server so
+ChatGPT or Claude can act inside your workspace rather than just read about it.
 
-## Tech Stack
+- **Docs**: [aexy.io/handbook](https://aexy.io/handbook) — 53 pages, generated from this repo
+- **Hosted**: [aexy.io](https://aexy.io) — if you would rather not run it
+- **Licence**: AGPL-3.0 for the code, with a [commercial licence](COMMERCIAL_LICENSE.md) for hosting it as a service. See [Licence](#licence).
+
+## Run it
+
+Requires Docker and about 4 GB of RAM.
+
+```bash
+git clone https://github.com/aexy-io/aexy.git
+cd aexy
+docker compose up -d
+```
+
+Then give yourself an account with something in it:
+
+```bash
+docker compose exec backend python scripts/seed_demo_workspace.py
+```
+
+Open http://localhost:3000/login and use the **Self-hosted demo** panel —
+`demo@example.com` / `aexy-demo`. That panel only appears because
+`docker-compose.yml` sets `AEXY_DEMO_LOGIN=true`; sign-in otherwise goes through
+GitHub, Google or Microsoft OAuth, which means registering an app with one of
+them first. `docker-compose.prod.yml` leaves demo login off.
+
+The demo account cannot send email or spend LLM tokens. Its workspace has the AI
+kill switch off and the email-marketing and agents modules disabled, outbound
+email is refused at both send paths while demo login is on, and the seeded
+automations are left inactive — all re-applied on every sign-in, because the demo
+account is an owner and could otherwise switch them back on. Details in
+[getting-started](docs/guides/getting-started.md#about-that-demo-account).
+
+Services come up on: frontend `:3000`, backend `:8000` (OpenAPI at `/docs`),
+Temporal UI `:8080`, Postgres `:5432`, Redis `:6379`, RustFS `:9000`, Mailpit
+`:8025`.
+
+Nothing above needs an LLM key. AI features are the part that does — set
+`LLM_PROVIDER` and the matching key in `backend/.env`, or point
+`LLM_PROVIDER=ollama` at a local model. Everything else works without one.
+
+See [docs/guides/getting-started.md](docs/guides/getting-started.md) for a
+native install, and [DEPLOY.md](DEPLOY.md) for a real deployment.
+
+## What's in it
+
+Breadth is the point — the modules share one database, which is what lets an
+agent answer a question that spans three of them. It also means depth varies:
+some of these are the tool we run our own company on, and some are thinner than
+the product they would replace. [CHANGELOG.md](CHANGELOG.md) is the honest
+record of where the work has actually been going, and each module's page in the
+handbook says what it does and does not do.
+
+**Engineering** — sprints & epics, tickets & projects, service desk, standups
+and time tracking, on-call rotations, uptime monitoring, GitHub sync, delivery
+analytics
+**Customers** — schema-flexible CRM (custom objects, sequences, automations),
+GTM (lead scoring, ABM, intent), email marketing, forms, tables, booking
+**People** — performance reviews, hiring & assessments, learning paths,
+compliance training, leave
+**Knowledge** — collaborative docs, drive, knowledge graph, AI metadata
+pipeline
+**AI** — LangGraph agents with tool access, policy gates and an audit trail;
+visual workflow automation; an MCP server for ChatGPT, Claude, Cursor and
+friends
+
+## How it's built
+
+```
+backend/src/aexy/
+  api/        ~100 FastAPI routers under /api/v1
+  models/     ~74 SQLAlchemy ORM models
+  schemas/    Pydantic v2 request/response schemas
+  services/   ~160 business-logic modules
+  temporal/   Workflows, activities, schedules
+  llm/        Multi-provider LLM gateway with rate limiting
+  agents/     LangGraph agent implementations
+
+frontend/src/
+  app/        Next.js App Router — (app), (admin), auth/, public/
+  components/ Radix UI primitives + custom
+  hooks/      ~71 hooks
+  lib/api.ts  API client
+  config/     App registry, sidebar, dashboard widgets
+```
 
 | Layer | Technology |
 |-------|-----------|
 | Backend | Python 3.13, FastAPI, SQLAlchemy 2.0 (async) |
-| Frontend | Next.js 14 (App Router), React 18, TypeScript, TailwindCSS |
-| Database | PostgreSQL 18, Redis 7 |
-| Background Jobs | Temporal (workflow engine) |
-| AI/LLM | Claude, Gemini, OpenRouter, Ollama (abstracted gateway) |
-| AI Agents | LangGraph + LangChain |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, TailwindCSS |
+| Database | PostgreSQL 18 (pgvector), Redis 7 |
+| Background work | Temporal — not Celery |
+| LLM | Claude, Gemini, OpenRouter, Ollama, LM Studio behind one gateway |
+| Agents | LangGraph + LangChain |
 | Storage | RustFS (S3-compatible) |
-| Email | Postmark (transactional + broadcast) |
+| Email | Postmark |
 
-## Quick Start
+Deeper reading: [architecture](docs/architecture),
+[adding a feature](docs/guides/adding-a-feature.md),
+[API conventions](docs/guides/api-conventions.md),
+[Temporal](docs/guides/temporal.md),
+[MCP](docs/mcp.md), [billing](docs/billing.md).
 
-```bash
-# Start all services
-docker-compose up -d
-
-# Services: Backend :8000, Frontend :3000, Temporal UI :8080, PostgreSQL :5432, Redis :6379
-```
-
-### Backend
+## Develop
 
 ```bash
+# Backend
 cd backend
-uvicorn aexy.main:app --reload          # Dev server on :8000
-python -m aexy.temporal.worker           # Temporal worker
-pytest                                    # Run tests
-ruff check src/                           # Lint
-```
+uvicorn aexy.main:app --reload        # :8000
+python -m aexy.temporal.worker        # background worker
+pytest                                # tests (SQLite in-memory)
+ruff check src/ && mypy src/
 
-### Frontend
-
-```bash
+# Frontend
 cd frontend
-npm run dev                               # Dev server on :3000
-npm run build                             # Production build
-npm run lint                              # ESLint
-npm run test                              # Vitest unit tests
-npm run test:e2e                          # Playwright E2E tests
+npm run dev                           # :3000
+npm run test                          # Vitest
+npm run test:e2e                      # Playwright
+npm run lint
 ```
 
-### Database Migrations
-
-Custom SQL-based migration system (not Alembic). Migration files in `backend/scripts/migrate_*.sql`.
+Migrations are plain SQL files in `backend/scripts/migrate_*.sql`, tracked with
+checksums in a `schema_migrations` table. Alembic is installed as a transitive
+dependency and is **not** used.
 
 ```bash
-docker exec aexy-backend python scripts/run_migrations.py --list      # Status
-docker exec aexy-backend python scripts/run_migrations.py              # Run all pending
-docker exec aexy-backend python scripts/run_migrations.py --file migrate_feature.sql  # Run specific
+docker compose exec backend python scripts/run_migrations.py --list
+docker compose exec backend python scripts/run_migrations.py
 ```
 
-## Architecture
+There is a second test tier that runs the AI features against a real model,
+defaulting to a local LM Studio so it costs nothing —
+see [docs/testing](docs/testing) and `backend/tests/ai/`.
 
-```
-backend/src/aexy/
-  api/            # ~100 FastAPI routers under /api/v1
-  models/         # ~74 SQLAlchemy ORM models
-  schemas/        # Pydantic v2 request/response schemas
-  services/       # ~160 business logic service modules
-  temporal/       # Workflow engine (activities, workflows, schedules)
-  llm/            # Multi-provider LLM abstraction with rate limiting
-  agents/         # LangGraph-based AI agents
+## Contributing
 
-frontend/src/
-  app/            # Next.js App Router (route groups: (app), (admin), auth/, public/)
-  components/     # Shared React components (Radix UI + custom)
-  hooks/          # ~71 custom hooks
-  lib/api.ts      # Generated API client
-  stores/         # Zustand stores
-  config/         # App registry, sidebar, dashboard widgets
-```
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to the
+process in [SECURITY.md](SECURITY.md) — please don't open a public issue for
+those.
 
-## Modules
+## Licence
 
-### Engineering
-- **Dashboard** - Developer profiles, skill fingerprints, work patterns
-- **Tracking** - Standups, blockers, time entries
-- **Sprints** - Board, epics, tasks, backlog, velocity
-- **Tickets** - Customer support ticketing with SLA
-- **Insights** - AI-powered developer & team analytics
-- **On-Call** - Scheduling and swap requests
-- **Uptime** - Monitor health checks and incidents
+The code in this repository is licensed under the **GNU Affero General Public
+License v3.0** ([LICENSE.md](LICENSE.md)). You can run it, read it, modify it
+and self-host it for your own company at no cost. The AGPL's condition is that
+if you modify it and offer it to others over a network, those users get your
+modified source.
 
-### People
-- **Reviews** - Performance review cycles, goals, peer feedback
-- **Hiring** - Assessments, candidates, proctored coding tests
-- **Learning** - Goals, budgets, certifications, compliance training
-- **Leave** - Requests, approvals, balances, team calendar
+A separate **[commercial licence](COMMERCIAL_LICENSE.md)** exists for the cases
+the AGPL makes impractical: hosting Aexy as a service for third parties, or
+combining it with proprietary code you cannot release. It is not a paid tier of
+the software — nothing is withheld from the AGPL build, and self-hosting is the
+same software the hosted product runs. If you are self-hosting for your own
+organisation, the AGPL is all you need.
 
-### Business
-- **CRM** - Contacts, accounts, deals, activities, automations
-- **Email Marketing** - Campaigns, templates, visual builder, analytics
-- **Booking** - Calendar scheduling with availability management
-- **GTM** - Lead scoring, intent signals, competitor tracking, ABM
-
-### Productivity
-- **Documents** - Collaborative docs with spaces and versioning
-- **Tables** - Custom data tables with views and sharing
-- **Forms** - Public/private forms with automation triggers
-- **Chat** - Team messaging with channels and topics
-- **AI Agents** - Configurable LangGraph agents with policies
-- **Automations** - Workflow definitions and execution engine
-
-## Billing System
-
-Flexible per-org billing with 4 models:
-
-| Plan | Model | Description |
-|------|-------|-------------|
-| Free | `free` | All modules, soft limits (10 repos, 90-day history), limited AI |
-| Pro | `per_seat` | $X/user/month, full AI access, 500K tokens/month included |
-| Flat + Usage | `flat_plus_usage` | $Y/month flat + metered AI token usage |
-| Postpaid | `postpaid` | Pay at end of billing period, per-seat + AI usage |
-| Enterprise | `per_seat` | Custom pricing, SSO, dedicated support |
-
-### Per-Org Configuration
-
-Platform admins can override any plan field per workspace via `WorkspacePlanOverride`:
-- Custom pricing, limits, and discounts
-- Custom billing model (switch between per-seat, flat+usage, postpaid)
-- Custom net terms (`days_until_due`)
-- Payment method preference (Stripe or bank transfer)
-
-### Bank Transfer / Offline Invoicing
-
-For B2B customers paying via bank transfer (ACH/wire):
-
-1. Admin generates invoice via `/settings/admin-invoices` or API
-2. Customer receives invoice with amount due
-3. Customer wires payment to company bank account
-4. Admin marks invoice as paid with bank transfer reference
-
-```bash
-# Admin API endpoints
-POST   /api/v1/platform-admin/invoices                              # Create manual invoice
-POST   /api/v1/platform-admin/invoices/{id}/mark-paid               # Mark as paid
-POST   /api/v1/platform-admin/invoices/{id}/void                    # Void invoice
-GET    /api/v1/platform-admin/invoices                              # List invoices
-POST   /api/v1/platform-admin/workspaces/{id}/generate-invoice      # Generate from usage
-```
-
-## E2E Tests
-
-Playwright E2E tests with mocked API routes (no backend needed):
-
-```bash
-cd frontend
-
-# Run all billing tests
-npm run test:e2e:billing
-
-# Run admin invoice tests
-npm run test:e2e:invoices
-
-# Run with headed browser
-npm run test:e2e:billing:headed
-npm run test:e2e:invoices:headed
-
-# Run with Playwright UI
-npm run test:e2e:billing:ui
-
-# Run all E2E tests
-npm run test:e2e
-```
-
-If the dev server is running on a non-default port:
-```bash
-PLAYWRIGHT_BASE_URL=http://localhost:3002 npm run test:e2e:billing
-```
-
-## Environment
-
-```bash
-# Backend (.env)
-DATABASE_URL=postgresql+asyncpg://...
-REDIS_URL=redis://localhost:6379
-TEMPORAL_ADDRESS=localhost:7233
-SECRET_KEY=...
-STRIPE_SECRET_KEY=...
-STRIPE_WEBHOOK_SECRET=...
-CLAUDE_API_KEY=...
-GEMINI_API_KEY=...
-
-# Frontend (.env)
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-```
-
-## License
-
-Proprietary. All rights reserved.
+Trademark: the commercial licence does not grant rights to the Aexy name.

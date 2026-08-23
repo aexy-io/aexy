@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "@/components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Aexy vs GBOS",
+  // `absolute` because the title already carries the brand; the root
+  // layout's "%s | Aexy" template would otherwise render it twice.
+  title: { absolute: "Aexy vs GBOS" },
   description: "Compare Aexy and GBOS for teams evaluating AI-native business operating systems, SaaS stack replacement, CRM, GTM, docs, workflows, and agents.",
+  alternates: { canonical: "/compare/gbos" },
 };
 
 export default function GbosComparisonPage() {
   return (
     <ComparisonPage
+      path="/compare/gbos"
       competitor="GBOS"
       eyebrow="Aexy vs GBOS"
       title="A GBOS alternative for technical teams that need concrete operating modules."

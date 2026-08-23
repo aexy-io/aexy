@@ -4,11 +4,14 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 export const metadata: Metadata = {
   title: "Replace SaaS Sprawl",
   description: "Use Aexy to reduce SaaS sprawl by connecting CRM, GTM, planning, tickets, docs, workflows, people, and AI agents in one open company OS.",
+  alternates: { canonical: "/use-cases/replace-saas-sprawl" },
 };
 
 export default function ReplaceSaasSprawlPage() {
   return (
     <SeoLandingPage
+      path="/use-cases/replace-saas-sprawl"
+      breadcrumbName="Replace SaaS sprawl"
       eyebrow="Use case"
       title="Replace SaaS sprawl with one company context layer."
       description="Aexy helps teams consolidate the work graph across customers, projects, docs, workflows, people, and AI agents without pretending every specialized tool disappears on day one."

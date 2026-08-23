@@ -441,6 +441,22 @@ class EmailService:
         auto_generated: bool = False,
     ) -> dict[str, Any]:
         """Send email using the configured provider."""
+        # Same gate as ProviderService.send_via_provider, on the other send
+        # path: this one carries notifications and anything an agent drafts.
+        from aexy.services.demo_login_service import outbound_email_blocked
+
+        if outbound_email_blocked(settings):
+            logger.warning(
+                "Demo deployment: refused outbound email to %s", recipient_email
+            )
+            return {
+                "success": False,
+                "error": (
+                    "Outbound email is disabled on this demo deployment. "
+                    "Set AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=true to allow it."
+                ),
+            }
+
         logger.info(f"_send_email called with provider={self.provider}, smtp_configured={self.is_smtp_configured}, ses_configured={self.is_ses_configured}")
         if self.provider == "postmark":
             logger.info(f"Using Postmark to send email to {recipient_email}")

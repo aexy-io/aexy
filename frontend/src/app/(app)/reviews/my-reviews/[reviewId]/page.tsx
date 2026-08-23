@@ -117,7 +117,7 @@ export default function MyReviewDetailPage() {
 
   if (authLoading || !isAuthenticated || reviewLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -125,8 +125,8 @@ export default function MyReviewDetailPage() {
 
   if (reviewError || !review) {
     return (
-      <div className="min-h-screen bg-background">
-        <main className="max-w-4xl mx-auto px-4 py-8">
+      <div>
+        <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-card border border-border rounded-xl p-8 text-center">
             <p className="text-sm text-muted-foreground">
               We couldn&apos;t load this review.
@@ -139,7 +139,7 @@ export default function MyReviewDetailPage() {
               Back to reviews
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -150,8 +150,8 @@ export default function MyReviewDetailPage() {
   // can't see it" oracle.
   if (!isReviewee) {
     return (
-      <div className="min-h-screen bg-background">
-        <main className="max-w-4xl mx-auto px-4 py-8">
+      <div>
+        <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-card border border-border rounded-xl p-8 text-center">
             <p className="text-sm text-muted-foreground">
               This review isn&apos;t yours to view here.
@@ -164,7 +164,7 @@ export default function MyReviewDetailPage() {
               Back to reviews
             </Link>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -172,8 +172,8 @@ export default function MyReviewDetailPage() {
   const selfSubmitted = !!review.self_review;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-4xl mx-auto px-4 py-8">
+    <div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <Breadcrumb
           items={[
             { label: "Reviews", href: "/reviews" },
@@ -372,7 +372,7 @@ export default function MyReviewDetailPage() {
             }}
           />
         )}
-      </main>
+      </div>
     </div>
   );
 }

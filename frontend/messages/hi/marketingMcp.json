@@ -1,123 +1,130 @@
 {
   "marketingMcp": {
-    "_note": "Placeholder: values are intentionally English. The marketing surface is not yet localised — a single translated block on an otherwise English page reads worse than a consistent one. Keys are in place so translating marketing is a copy pass, not a refactor.",
     "nav": {
       "label": "MCP"
     },
     "hero": {
-      "linkLabel": "Connect ChatGPT or Claude"
+      "linkLabel": "ChatGPT या Claude कनेक्ट करें"
     },
     "home": {
       "eyebrow": "Model Context Protocol",
-      "heading": "Already using ChatGPT? Point it at your company.",
-      "body": "Aexy speaks MCP, so the assistant you already pay for can work inside your workspace — moving tickets, updating deals, reading sprints, drafting from real context — instead of you copying it into a chat window and pasting the answer back.",
+      "heading": "पहले से ChatGPT इस्तेमाल कर रहे हैं? उसे अपनी कंपनी से जोड़ दें।",
+      "body": "Aexy MCP बोलता है, इसलिए जिस असिस्टेंट के लिए आप पहले से भुगतान करते हैं वह आपके वर्कस्पेस के अंदर काम कर सकता है — टिकट खिसकाना, डील अपडेट करना, Sprint पढ़ना, असली संदर्भ से ड्राफ्ट लिखना — बजाय इसके कि आप संदर्भ चैट विंडो में कॉपी करें और जवाब वापस पेस्ट करें।",
       "cards": {
         "anyClient": {
-          "title": "The assistant you already have",
-          "body": "ChatGPT connects over HTTP. Claude Code, Claude Desktop, Cursor, VS Code and Codex run the server locally. Nothing new to learn."
+          "title": "वही असिस्टेंट जो आपके पास पहले से है",
+          "body": "ChatGPT HTTP पर कनेक्ट होता है। Claude Code, Claude Desktop, Cursor, VS Code और Codex सर्वर को लोकल चलाते हैं। कुछ नया सीखने की ज़रूरत नहीं।"
         },
         "realWork": {
-          "title": "It does the work, not just the reading",
-          "body": "Move a task to In Review and assign it. Create a deal. Log a ticket. Query analytics. Not a chatbot bolted onto a search box."
+          "title": "यह सिर्फ़ पढ़ता नहीं, काम करता है",
+          "body": "किसी टास्क को In Review में ले जाएं और असाइन करें। डील बनाएं। टिकट लॉग करें। एनालिटिक्स पूछें। यह सर्च बॉक्स पर चिपका चैटबॉट नहीं है।"
         },
         "oauth": {
-          "title": "Sign in, don't paste a key",
-          "body": "ChatGPT registers itself and sends you to a consent screen where you pick one workspace. No API key to mint, store, or forget about."
+          "title": "साइन इन करें, key पेस्ट न करें",
+          "body": "ChatGPT खुद को रजिस्टर करता है और आपको एक सहमति स्क्रीन पर भेजता है जहाँ आप एक वर्कस्पेस चुनते हैं। कोई API key बनाने, सहेजने या भूलने की ज़रूरत नहीं।"
         },
         "revoke": {
-          "title": "You can take it back",
-          "body": "Every connector is listed with the workspace it reaches and when it last ran. Revoking cuts it off immediately — it cannot quietly reconnect."
+          "title": "आप इसे कभी भी वापस ले सकते हैं",
+          "body": "हर कनेक्टर उस वर्कस्पेस के साथ सूचीबद्ध है जिस तक वह पहुँचता है और कब आख़िरी बार चला। रद्द करते ही उसकी पहुँच तुरंत कट जाती है — वह चुपचाप दोबारा कनेक्ट नहीं हो सकता।"
         }
       },
-      "cta": "See how it works"
+      "cta": "देखें यह कैसे काम करता है"
+    },
+    "shot": {
+      "eyebrow": "प्रोडक्ट में",
+      "heading": "वह tool catalogue जो आपका assistant देखता है।",
+      "body": "Aexy एक MCP server देता है जो sprints, CRM, agents, email, analytics और workflows को कवर करता है — category के हिसाब से समूहित, और हर client के लिए copy-paste setup ब्लॉक के साथ।",
+      "figure": "FIG. 01",
+      "caption": "MCP server — tool catalogue और client setup",
+      "alt": "Aexy का MCP पेज जो tool categories दिखाता है — sprint management, CRM, AI agents, email और GTM, analytics, platform, और Temporal workflows — साथ में Claude Code setup command"
     },
     "faq": {
-      "question": "Can I use Aexy from ChatGPT or Claude?",
-      "answer": "Yes. Aexy ships an MCP server, so ChatGPT, Claude Desktop, Claude Code, Cursor, VS Code and Codex can work inside your workspace directly — reading sprints, moving tickets, updating CRM records, querying analytics. ChatGPT connects over a remote HTTP endpoint with OAuth: it registers itself, you approve one workspace on a consent screen, and the access it gets is scoped to you in that workspace and revocable at any time under Settings → Connected Apps."
+      "question": "क्या मैं ChatGPT या Claude से Aexy इस्तेमाल कर सकता हूँ?",
+      "answer": "हाँ। Aexy एक MCP सर्वर के साथ आता है, इसलिए ChatGPT, Claude Desktop, Claude Code, Cursor, VS Code और Codex सीधे आपके वर्कस्पेस में काम कर सकते हैं — Sprint पढ़ना, टिकट खिसकाना, CRM रिकॉर्ड अपडेट करना, एनालिटिक्स पूछना। ChatGPT OAuth के साथ एक रिमोट HTTP endpoint पर कनेक्ट होता है: वह खुद को रजिस्टर करता है, आप सहमति स्क्रीन पर एक वर्कस्पेस स्वीकृत करते हैं, और उसे मिली पहुँच उस वर्कस्पेस में आप तक सीमित रहती है और Settings → Connected Apps से कभी भी रद्द की जा सकती है।"
     },
     "page": {
-      "metaTitle": "MCP Server — Run Aexy from ChatGPT and Claude",
-      "metaDescription": "Connect ChatGPT, Claude, Cursor or Codex to Aexy over the Model Context Protocol. Move tickets, update CRM records and query analytics from the assistant you already use, with OAuth and per-workspace scoping.",
+      "metaTitle": "MCP सर्वर — ChatGPT और Claude से Aexy चलाएं",
+      "metaDescription": "Model Context Protocol पर ChatGPT, Claude, Cursor या Codex को Aexy से कनेक्ट करें। जिस असिस्टेंट का आप पहले से इस्तेमाल करते हैं उसी से टिकट खिसकाएं, CRM रिकॉर्ड अपडेट करें और एनालिटिक्स पूछें — OAuth और प्रति-वर्कस्पेस स्कोपिंग के साथ।",
       "badge": "Model Context Protocol",
-      "h1": "Run Aexy from the assistant you already use.",
-      "subhead": "Aexy ships an MCP server, so ChatGPT, Claude, Cursor and Codex can work inside your workspace directly — instead of you copying context out of a browser tab and pasting the answer back in.",
-      "ctaPrimary": "Start free",
-      "ctaSecondary": "Read the setup guide",
+      "h1": "जिस असिस्टेंट का आप पहले से इस्तेमाल करते हैं, उसी से Aexy चलाएं।",
+      "subhead": "Aexy एक MCP सर्वर के साथ आता है, इसलिए ChatGPT, Claude, Cursor और Codex सीधे आपके वर्कस्पेस में काम कर सकते हैं — बजाय इसके कि आप ब्राउज़र टैब से संदर्भ कॉपी करें और जवाब वापस पेस्ट करें।",
+      "ctaPrimary": "मुफ़्त शुरू करें",
+      "ctaSecondary": "सेटअप गाइड पढ़ें",
       "prompts": {
-        "heading": "Things you can just ask for",
-        "body": "Each of these lands on a real tool call against your workspace, under your own permissions.",
-        "sprint": "Move the auth-refresh bug to In Review and assign it to Priya.",
-        "standup": "What shipped in this sprint, and what is still open?",
-        "crm": "Log a call with Northwind and set the deal to Negotiation.",
-        "ticket": "Open a ticket for the login timeout and tag it urgent.",
-        "docs": "Find our incident runbook and summarise the escalation path.",
-        "analytics": "Who is over capacity this sprint?"
+        "heading": "जो आप बस पूछ सकते हैं",
+        "body": "इनमें से हर अनुरोध आपकी अपनी अनुमतियों के तहत, आपके वर्कस्पेस पर एक असली tool call बनता है।",
+        "sprint": "auth-refresh बग को In Review में ले जाओ और प्रिया को असाइन करो।",
+        "standup": "इस Sprint में क्या शिप हुआ, और क्या अभी बाकी है?",
+        "crm": "Northwind के साथ कॉल लॉग करो और डील को Negotiation पर सेट करो।",
+        "ticket": "लॉगिन टाइमआउट के लिए टिकट खोलो और urgent टैग लगाओ।",
+        "docs": "हमारी incident runbook ढूंढो और escalation path का सार बताओ।",
+        "analytics": "इस Sprint में कौन क्षमता से ज़्यादा लोड में है?"
       },
       "capabilities": {
-        "heading": "What makes it safe to connect",
+        "heading": "इसे कनेक्ट करना सुरक्षित क्यों है",
         "anyClient": {
-          "title": "Any MCP client",
-          "body": "ChatGPT over remote HTTP; Claude Code, Claude Desktop, Cursor, VS Code and Codex over a local process. One server, six ways in."
+          "title": "कोई भी MCP क्लाइंट",
+          "body": "ChatGPT रिमोट HTTP पर; Claude Code, Claude Desktop, Cursor, VS Code और Codex लोकल प्रोसेस पर। एक सर्वर, छह रास्ते।"
         },
         "scoped": {
-          "title": "Scoped to one workspace",
-          "body": "You pick the workspace at the consent screen. The grant is bound to you in that workspace — not to your account across everything you can reach."
+          "title": "एक वर्कस्पेस तक सीमित",
+          "body": "सहमति स्क्रीन पर आप वर्कस्पेस चुनते हैं। अनुमति उस वर्कस्पेस में आपसे बंधी होती है — हर उस चीज़ से नहीं जिस तक आपका अकाउंट पहुँच सकता है।"
         },
         "filtered": {
-          "title": "Filtered before it is offered",
-          "body": "Capabilities resolve from the same app access that governs the web app. Holding the sprints app is what grants sprint tools. What you cannot use is never offered."
+          "title": "पेश होने से पहले ही फ़िल्टर",
+          "body": "क्षमताएँ उसी app access से तय होती हैं जो वेब ऐप को नियंत्रित करती है। Sprints ऐप होने पर ही sprint tools मिलते हैं। जो आप इस्तेमाल नहीं कर सकते, वह कभी पेश ही नहीं होता।"
         },
         "audit": {
-          "title": "Listed, and revocable",
-          "body": "Connected Apps shows every client you authorised and when it last ran. Revoking kills the refresh token too, so it has to ask again."
+          "title": "सूचीबद्ध, और रद्द करने योग्य",
+          "body": "Connected Apps हर वह क्लाइंट दिखाता है जिसे आपने अधिकृत किया और वह आख़िरी बार कब चला। रद्द करने पर refresh token भी खत्म हो जाता है, इसलिए उसे दोबारा पूछना पड़ता है।"
         }
       },
       "connect": {
-        "heading": "Two ways to connect",
-        "body": "Which one you get depends on your client, and the difference matters.",
+        "heading": "कनेक्ट करने के दो तरीके",
+        "body": "कौन-सा मिलेगा यह आपके क्लाइंट पर निर्भर है, और यह फ़र्क़ मायने रखता है।",
         "remote": {
-          "title": "ChatGPT — remote, over OAuth",
-          "body": "Paste the server URL into Settings → Connectors → Create. ChatGPT registers itself, you approve one workspace, and the access is scoped to you there and revocable from Connected Apps. There is no API key in this flow.",
-          "tag": "Recommended"
+          "title": "ChatGPT — रिमोट, OAuth के साथ",
+          "body": "Settings → Connectors → Create में सर्वर URL पेस्ट करें। ChatGPT खुद को रजिस्टर करता है, आप एक वर्कस्पेस स्वीकृत करते हैं, और पहुँच वहाँ आप तक सीमित रहती है और Connected Apps से रद्द की जा सकती है। इस फ़्लो में कोई API key नहीं है।",
+          "tag": "अनुशंसित"
         },
         "local": {
-          "title": "Claude, Cursor, Codex — local process",
-          "body": "These launch the server on your machine with an API token. Convenient for editors, but the token carries everything your account can do — treat it like a password and revoke it when the machine goes away.",
-          "tag": "Editors"
+          "title": "Claude, Cursor, Codex — लोकल प्रोसेस",
+          "body": "ये सर्वर को आपकी मशीन पर API token के साथ चलाते हैं। एडिटर के लिए सुविधाजनक, लेकिन token में वह सब कुछ होता है जो आपका अकाउंट कर सकता है — इसे पासवर्ड की तरह संभालें और मशीन हटते ही रद्द करें।",
+          "tag": "एडिटर"
         },
-        "guide": "Full setup for every client"
+        "guide": "हर क्लाइंट के लिए पूरा सेटअप"
       },
       "security": {
-        "heading": "Governance, not a trust exercise",
-        "body": "An MCP grant is the app grant your workspace already made. There is no second permission model to configure, drift from, or forget to revoke when somebody changes teams.",
+        "heading": "गवर्नेंस, भरोसे का प्रयोग नहीं",
+        "body": "MCP अनुमति वही app grant है जो आपका वर्कस्पेस पहले ही दे चुका है। कोई दूसरा permission model नहीं जिसे कॉन्फ़िगर करना पड़े, जो बहक जाए, या जिसे टीम बदलने पर रद्द करना भूल जाएँ।",
         "points": {
-          "one": "Authorization is OAuth 2.1 with PKCE, and every code and token is stored only as a digest.",
-          "two": "Replaying an authorization code or a retired refresh token revokes the whole grant, because a replayed secret means somebody else is holding it.",
-          "three": "Revoked connectors stay listed rather than disappearing, so an audit can see what existed and when it last ran."
+          "one": "Authorization PKCE के साथ OAuth 2.1 है, और हर code व token केवल digest के रूप में सहेजा जाता है।",
+          "two": "किसी authorization code या हटाए गए refresh token को दोबारा चलाने पर पूरी अनुमति रद्द हो जाती है, क्योंकि दोहराया गया secret बताता है कि वह किसी और के पास है।",
+          "three": "रद्द किए गए कनेक्टर गायब नहीं होते, सूची में बने रहते हैं, ताकि ऑडिट देख सके कि क्या मौजूद था और आख़िरी बार कब चला।"
         }
       },
       "faq": {
-        "heading": "Questions",
+        "heading": "सवाल",
         "q1": {
-          "q": "Do I need to install anything for ChatGPT?",
-          "a": "No. ChatGPT reaches Aexy over HTTP — you paste a URL into Settings → Connectors and approve a workspace. The local install applies only to editor clients like Claude Code, Cursor and Codex."
+          "q": "क्या ChatGPT के लिए कुछ इंस्टॉल करना होगा?",
+          "a": "नहीं। ChatGPT HTTP पर Aexy तक पहुँचता है — आप Settings → Connectors में एक URL पेस्ट करते हैं और एक वर्कस्पेस स्वीकृत करते हैं। लोकल इंस्टॉल केवल Claude Code, Cursor और Codex जैसे एडिटर क्लाइंट पर लागू होता है।"
         },
         "q2": {
-          "q": "Can a connector see data I cannot?",
-          "a": "No. Tools are built from the capabilities you already hold in the workspace you approved, and filtered before the client ever sees the list. A client that ignores the list gains nothing — every endpoint still enforces its own permissions."
+          "q": "क्या कोई कनेक्टर वह डेटा देख सकता है जो मैं नहीं देख सकता?",
+          "a": "नहीं। Tools उन्हीं क्षमताओं से बनते हैं जो स्वीकृत वर्कस्पेस में आपके पास पहले से हैं, और क्लाइंट को सूची दिखने से पहले ही फ़िल्टर हो जाते हैं। सूची को अनदेखा करने वाले क्लाइंट को कुछ नहीं मिलता — हर endpoint अपनी अनुमतियाँ खुद लागू करता है।"
         },
         "q3": {
-          "q": "How do I disconnect it?",
-          "a": "Settings → Connected Apps lists every client you authorised. Revoking invalidates both the access token and the refresh token behind it, so the client cannot mint a replacement — it has to walk the consent flow again."
+          "q": "इसे डिस्कनेक्ट कैसे करूँ?",
+          "a": "Settings → Connected Apps में हर अधिकृत क्लाइंट सूचीबद्ध है। रद्द करने पर access token और उसके पीछे का refresh token दोनों अमान्य हो जाते हैं, इसलिए क्लाइंट नया token नहीं बना सकता — उसे दोबारा सहमति फ़्लो से गुज़रना पड़ता है।"
         },
         "q4": {
-          "q": "Does this work with self-hosted Aexy?",
-          "a": "Yes. The MCP server and its authorization endpoints are part of Aexy itself, so a self-hosted deployment exposes them at its own domain. Aexy is open source and self-hostable."
+          "q": "क्या यह self-hosted Aexy के साथ काम करता है?",
+          "a": "हाँ। MCP सर्वर और उसके authorization endpoints Aexy का ही हिस्सा हैं, इसलिए self-hosted डिप्लॉयमेंट उन्हें अपने ही डोमेन पर उपलब्ध कराता है। Aexy ओपन सोर्स और self-hostable है।"
         }
       },
       "finalCta": {
-        "heading": "Connect it in about a minute.",
-        "body": "Start free, open Settings → Connected Apps, and point your assistant at your workspace."
+        "heading": "क़रीब एक मिनट में कनेक्ट करें।",
+        "body": "मुफ़्त शुरू करें, Settings → Connected Apps खोलें, और अपने असिस्टेंट को अपने वर्कस्पेस से जोड़ दें।"
       }
     }
   }

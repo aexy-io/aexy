@@ -8,7 +8,7 @@ export default function CRMOnboardingLayoutClient({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-background">
+    <div className="bg-gradient-to-br from-background via-background to-background">
       {/* Header */}
       <header className="border-b border-muted/50 bg-background/50 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -25,9 +25,9 @@ export default function CRMOnboardingLayoutClient({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1">
+      <div className="flex-1">
         {children}
-      </main>
+      </div>
     </div>
   );
 }

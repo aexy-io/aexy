@@ -4,6 +4,7 @@ import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { webhooksApi, BookingWebhook, WebhookTestResult } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 export function useBookingWebhooks(workspaceId: string | null) {
   const queryClient = useQueryClient();
@@ -78,7 +79,7 @@ export function useBookingWebhooks(workspaceId: string | null) {
   });
 
   return {
-    webhooks: data?.webhooks || [],
+    webhooks: data?.webhooks ?? EMPTY_ARRAY,
     total: data?.total || 0,
     isLoading,
     error,

@@ -150,7 +150,7 @@ export default function TableSettingsPage() {
 
   if (!table) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -159,7 +159,7 @@ export default function TableSettingsPage() {
   const sortedFields = [...fields].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="p-8">
         <div className="max-w-3xl mx-auto">
           <Breadcrumb

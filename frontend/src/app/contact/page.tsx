@@ -2,7 +2,7 @@
 
 import { Mail, MessageSquare, Shield, Briefcase, ArrowRight } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
-import { LandingHeader, LandingFooter } from "@/components/landing/LandingHeader";
+import { LedgerPage } from "@/components/landing/LedgerPage";
 
 const CONTACTS = [
   {
@@ -37,28 +37,21 @@ const CONTACTS = [
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-
-      <LandingHeader />
+    <LedgerPage className="overflow-hidden">
 
       <section className="pt-32 pb-16 px-6 relative">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 rounded-full text-primary-400 text-sm mb-6">
+          <div className="mb-6 inline-flex items-center gap-2 font-brand-mono text-xs font-medium uppercase tracking-[0.18em] text-ledger-green">
             <Mail className="h-4 w-4" />
             Contact
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-semibold mb-6 tracking-tight leading-tight">
             Get in{" "}
-            <span className="bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-ledger-green">
               touch
             </span>
           </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto">
+          <p className="text-xl text-ledger-ink/65 max-w-2xl mx-auto">
             We try to reply within one business day. The fastest path is email.
           </p>
         </div>
@@ -67,18 +60,16 @@ export default function ContactPage() {
       <section className="py-16 px-6 relative">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-6">
-            {CONTACTS.map(({ icon: Icon, title, desc, email, color }) => (
+            {CONTACTS.map(({ icon: Icon, title, desc, email }) => (
               <a
                 key={email}
                 href={`mailto:${email}`}
-                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all"
+                className="group relative bg-ledger-card border border-ledger-ink/12 rounded-[2px] p-8 transition hover:shadow-[inset_0_2px_0_0_#0B6B3A]"
               >
-                <div className={`p-3 bg-gradient-to-br ${color} rounded-2xl shadow-lg w-fit mb-4`}>
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                <p className="text-white/50 text-sm mb-4 leading-relaxed">{desc}</p>
-                <div className="inline-flex items-center gap-2 text-primary-400 text-sm font-medium group-hover:gap-3 transition-all">
+                <Icon className="mb-4 h-5 w-5 text-ledger-green" />
+                <h3 className="font-display text-xl font-semibold mb-2">{title}</h3>
+                <p className="text-ledger-ink/55 text-sm mb-4 leading-relaxed">{desc}</p>
+                <div className="inline-flex items-center gap-2 text-ledger-green text-sm font-medium group-hover:gap-3 transition-all">
                   {email}
                   <ArrowRight className="h-4 w-4" />
                 </div>
@@ -87,10 +78,10 @@ export default function ContactPage() {
           </div>
 
           <div className="mt-12 text-center">
-            <p className="text-white/40 text-sm mb-4">Prefer to file an issue?</p>
+            <p className="text-ledger-ink/50 text-sm mb-4">Prefer to file an issue?</p>
             <a
               href="https://github.com/aexy-io/aexy/issues"
-              className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm transition"
+              className="inline-flex items-center gap-2 text-ledger-ink/70 hover:text-ledger-green text-sm transition"
             >
               <SiGithub className="h-4 w-4" />
               Open an issue on GitHub
@@ -100,7 +91,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <LandingFooter />
-    </div>
+    </LedgerPage>
   );
 }

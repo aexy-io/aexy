@@ -3,6 +3,7 @@
 import { getApiErrorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -70,7 +71,7 @@ export function useMcpConnectors() {
   });
 
   return {
-    connectors: data || [],
+    connectors: data ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

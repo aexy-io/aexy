@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
 
   if (isLoading || loadingStates.developers) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Header */}
       <header className="border-b border-border bg-muted">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -288,7 +288,7 @@ export default function AnalyticsPage() {
             />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

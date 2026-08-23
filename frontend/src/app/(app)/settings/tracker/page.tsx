@@ -66,7 +66,6 @@ export default function WorkspaceTrackerAdminPage() {
       title={t("title")}
       description={t("adminSubtitle")}
       width="wide"
-      breadcrumbs={[{ label: "Settings", href: "/settings" }, { label: t("title") }]}
     >
       <div className="flex gap-2">
         {tabBtn("projects", t("tabProjects"))}
@@ -87,15 +86,15 @@ export default function WorkspaceTrackerAdminPage() {
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : projectsQuery.isError ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500 ">
+          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500">
             {t("adminAccessDenied")}
           </div>
         ) : !projectsQuery.data?.length ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500 ">
+          <div className="rounded-xl border border-dashed border-border py-16 text-center text-gray-500">
             {t("noProjects")}
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-xl border border-border dark:divide-gray-800 ">
+          <ul className="divide-y divide-gray-100 rounded-xl border border-border dark:divide-gray-800">
             {projectsQuery.data.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -135,7 +134,7 @@ export default function WorkspaceTrackerAdminPage() {
           <select
             value={developerId}
             onChange={(e) => setDeveloperId(e.target.value)}
-           className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm "
+           className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
           >
             <option value="">{t("selectDeveloper")}</option>
             {(members as Array<{ developer_id: string; name?: string; email?: string }> | undefined)?.map((m) => (
@@ -155,7 +154,7 @@ export default function WorkspaceTrackerAdminPage() {
                 {t("noRecordsPermission")}
               </div>
             ) : !timesheet.data?.days?.length ? (
-              <div className="rounded-xl border border-dashed border-border py-12 text-center text-gray-500 ">
+              <div className="rounded-xl border border-dashed border-border py-12 text-center text-gray-500">
                 {t("noActivity")}
               </div>
             ) : (
@@ -166,7 +165,7 @@ export default function WorkspaceTrackerAdminPage() {
                 {timesheet.data.days.map((day) => (
                   <div
                     key={day.date}
-                   className="rounded-xl border border-border bg-card p-4 "
+                   className="rounded-xl border border-border bg-card p-4"
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-medium">{day.date}</span>
@@ -282,7 +281,7 @@ function TargetsTab({
       </div>
 
       {/* Workspace default */}
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <div>
           <h3 className="text-sm font-medium">{t("workspaceDefault")}</h3>
           <p className="text-xs text-muted-foreground">{t("workspaceDefaultHint")}</p>
@@ -313,7 +312,7 @@ function TargetsTab({
       </div>
 
       {/* Per-developer overrides */}
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <h3 className="text-sm font-medium">{t("developerOverrides")}</h3>
         {devRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noOverrides")}</p>
@@ -336,13 +335,13 @@ function TargetsTab({
             ))}
           </ul>
         )}
-        <div className="flex items-end gap-3 border-t border-gray-100 pt-3 ">
+        <div className="flex items-end gap-3 border-t border-gray-100 pt-3">
           <label className="text-sm">
             <span className="mb-1 block text-muted-foreground">{t("selectDeveloper")}</span>
             <select
               value={newDevId}
               onChange={(e) => setNewDevId(e.target.value)}
-             className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm "
+             className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
             >
               <option value="">{t("selectDeveloper")}</option>
               {availableMembers.map((m) => (
@@ -375,7 +374,7 @@ function TargetsTab({
       </div>
 
       {/* Per-project overrides (read-only; set on each project's Tracker page) */}
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4 ">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <h3 className="text-sm font-medium">{t("projectOverrides")}</h3>
         {projectRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noProjectOverrides")}</p>

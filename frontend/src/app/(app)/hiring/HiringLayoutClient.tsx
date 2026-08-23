@@ -119,7 +119,7 @@ export default function HiringLayoutClient({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Scroll-to-reveal Header */}
       <AnimatePresence>
         {isScrolled && !isBaseRoute && (

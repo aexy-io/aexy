@@ -15,6 +15,7 @@ import {
   ActivitySource,
   ActivityStatus,
 } from "@/lib/api";
+import { EMPTY_ARRAY } from "@/lib/emptyArray";
 
 // List activities for a developer with pagination
 export function useLearningActivities(
@@ -61,7 +62,7 @@ export function useLearningActivities(
   });
 
   return {
-    activities: data?.activities || [],
+    activities: data?.activities ?? EMPTY_ARRAY,
     total: data?.total || 0,
     page: data?.page || 1,
     pageSize: data?.page_size || 20,
@@ -204,7 +205,7 @@ export function useDailySummaries(developerId: string | null, days?: number) {
   });
 
   return {
-    summaries: summaries || [],
+    summaries: summaries ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -225,7 +226,7 @@ export function usePathActivities(pathId: string | null, developerId: string | n
   });
 
   return {
-    activities: activities || [],
+    activities: activities ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,
@@ -246,7 +247,7 @@ export function useMilestoneActivities(milestoneId: string | null, developerId: 
   });
 
   return {
-    activities: activities || [],
+    activities: activities ?? EMPTY_ARRAY,
     isLoading,
     error,
     refetch,

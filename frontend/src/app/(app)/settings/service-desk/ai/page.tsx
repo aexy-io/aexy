@@ -15,11 +15,6 @@ export default function ServiceDeskAiSettingsPage() {
     <SettingsPage
       title={t("ai.title")}
       description={t("ai.description")}
-      breadcrumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: t("tabs.settings") },
-        { label: t("ai.title") },
-      ]}
     >
       <div className="space-y-6">
         <ReadOnlyNotice />

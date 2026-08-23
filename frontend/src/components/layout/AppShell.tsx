@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface AppShellProps {
     children: React.ReactNode;
     user?: {
+        id?: string | null;
         name?: string | null;
         email?: string | null;
     } | null;
     logout?: () => void;
 }
 
+import { AppTopbar } from "./AppTopbar";
+import { BreadcrumbOverrideProvider, type Breadcrumb } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { Button } from "../ui/button";
@@ -24,6 +26,12 @@ export function AppShell({ children, user, logout }: AppShellProps) {
     // web sidebar + mobile header and render content full-width. The flag is
     // persisted so client-side route changes within the embed stay chromeless.
     const [embedded, setEmbedded] = useState(false);
+    // A page that knows more than the pathname does (a sprint's name, a
+    // candidate's) publishes its trail here and the topbar renders it instead of
+    // the derived one. Kept in the shell so there is exactly one breadcrumb on
+    // screen — see BreadcrumbOverrideProvider.
+    const [crumbOverride, setCrumbOverride] = useState<Breadcrumb[] | null>(null);
+    const onCrumbChange = useCallback((trail: Breadcrumb[] | null) => setCrumbOverride(trail), []);
     useEffect(() => {
         try {
             const isEmbed =
@@ -47,43 +55,56 @@ export function AppShell({ children, user, logout }: AppShellProps) {
                 tab stops in the sidebar. */}
             <a
                 href="#main-content"
-                className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-3 focus:py-2 focus:rounded-lg focus:bg-purple-600 focus:text-white focus:shadow-lg focus-visible:ring-2 focus-visible:ring-purple-300"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground focus:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
             >
                 Skip to main content
             </a>
-            {/* Mobile Navigation */}
-            {!embedded && (
-                <header className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-16 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <Sheet>
-                        <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="mr-2">
-                                <Menu className="h-5 w-5" />
-                                <span className="sr-only">Toggle menu</span>
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-[240px] max-w-[85vw]">
-                            <Sidebar user={user} logout={logout} className="border-none w-full h-full" />
-                        </SheetContent>
-                    </Sheet>
-                    <div className="font-semibold text-lg">Aexy</div>
-                </header>
-            )}
-
             {!embedded && <Sidebar user={user} logout={logout} className="hidden md:flex" />}
-            <main
-                id="main-content"
-                tabIndex={-1}
-                className={cn(
-                    "flex-1 overflow-y-auto focus:outline-none",
-                    embedded ? "pt-0" : "md:pt-0 pt-16"
+
+            {/*
+                The scroll container is this column, not <main>, so the topbar can
+                stick to the top of it while the page scrolls underneath. <main>
+                keeps the id and tabIndex the skip link targets.
+            */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+                {!embedded && (
+                    <AppTopbar
+                        userId={user?.id}
+                        breadcrumbs={crumbOverride}
+                        // The mobile nav used to be a second 64px bar of its own,
+                        // holding a hamburger and the word "Aexy" — 128px of
+                        // chrome above the fold once the topbar existed, and the
+                        // top bar said nothing about the page you were on. The
+                        // trigger moves in here instead.
+                        leading={
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="-ml-1 md:hidden">
+                                        <Menu className="h-5 w-5" />
+                                        <span className="sr-only">Toggle menu</span>
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-[240px] max-w-[85vw] p-0">
+                                    <Sidebar user={user} logout={logout} className="h-full w-full border-none" />
+                                </SheetContent>
+                            </Sheet>
+                        }
+                    />
                 )}
-            >
-                <div className="mx-0 p-0">
+                <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
+                    {/*
+                        Deliberately no padding or width here: `PageShell` owns
+                        both. This used to be `<div className="mx-0 p-0">`, which
+                        is why 277 pages each invented their own and the app ended
+                        up with seven content widths and five padding scales.
+                    */}
                     <ErrorBoundary>
-                        {children}
+                        <BreadcrumbOverrideProvider onChange={onCrumbChange}>
+                            {children}
+                        </BreadcrumbOverrideProvider>
                     </ErrorBoundary>
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     );
 }

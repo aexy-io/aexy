@@ -1,5 +1,8 @@
 import { ImageResponse } from "next/og";
 
+// Social card in the "Open Ledger" brand: paper, ink, ledger green, and the
+// signature diff. Colors match the ledger tokens in tailwind.config.ts.
+
 export const alt = "Aexy — The AI Company OS";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -15,11 +18,10 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "96px",
-          background: "#08090d",
-          backgroundImage:
-            "radial-gradient(circle at 12% 8%, rgba(45,212,191,0.22), transparent 42%), radial-gradient(circle at 88% 96%, rgba(168,85,247,0.20), transparent 40%)",
-          color: "#ffffff",
+          background: "#F2F3EE",
+          color: "#101913",
           fontFamily: "sans-serif",
+          borderTop: "16px solid #0B6B3A",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
@@ -30,11 +32,11 @@ export default function OpengraphImage() {
               justifyContent: "center",
               width: "88px",
               height: "88px",
-              borderRadius: "22px",
-              background: "#ffffff",
+              borderRadius: "6px",
+              background: "#101913",
             }}
           >
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#08090d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F2F3EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="6" y1="3" x2="6" y2="15" />
               <circle cx="18" cy="6" r="3" />
               <circle cx="6" cy="18" r="3" />
@@ -54,17 +56,19 @@ export default function OpengraphImage() {
             lineHeight: 1.05,
           }}
         >
-          The AI Company OS
+          Replace the stack. Keep the context.
         </div>
         <div
           style={{
-            marginTop: "36px",
-            fontSize: "34px",
-            fontWeight: 500,
-            color: "rgba(255,255,255,0.66)",
+            marginTop: "40px",
+            display: "flex",
+            flexDirection: "column",
+            fontSize: "30px",
+            fontFamily: "monospace",
           }}
         >
-          engineering · CRM · GTM · people · docs · agents
+          <div style={{ color: "#A8342A" }}>- hubspot&nbsp;&nbsp;- jira&nbsp;&nbsp;- notion&nbsp;&nbsp;- zapier</div>
+          <div style={{ color: "#0B6B3A" }}>+ aexy — the open-source AI company OS</div>
         </div>
       </div>
     ),

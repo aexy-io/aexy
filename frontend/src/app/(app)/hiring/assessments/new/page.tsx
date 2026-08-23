@@ -65,7 +65,7 @@ export default function NewAssessmentPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <div className="text-center max-w-md p-6">
           <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
@@ -84,7 +84,7 @@ export default function NewAssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <div className="px-6 py-6">
         <Breadcrumb
           items={[
