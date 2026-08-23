@@ -61,6 +61,35 @@ describe("the shell owns the page frame", () => {
     expect(readRaw(SHELL)).toContain('href="#main-content"');
   });
 
+  it("<main> stays a block box, so pages that centre themselves keep their width", () => {
+    /*
+      107 pages wrap themselves in `mx-auto max-w-…`. That works because <main>
+      lays them out as blocks: a block child fills the line, and the max-width
+      then caps it while the auto margins centre what is left.
+
+      Make <main> a flex or grid container and every one of those pages
+      silently narrows. A flex item is stretched to the line's cross size only
+      when neither cross-axis margin is `auto`, and `mx-auto` is exactly that —
+      so the item falls back to its content width. `/exports` rendered at 704px
+      inside a 1344px area, and nothing errored, warned, or failed a build.
+
+      A page that needs to fill the viewport height gives itself a definite one
+      (see ProjectLayoutClient) rather than making the shell a flex column.
+    */
+    const mainTag = read(SHELL).match(/<main[\s\S]*?>/)?.[0] ?? "";
+    expect(mainTag, "the <main> tag moved").toContain("main-content");
+    const classes = (mainTag.match(/className="([^"]*)"/)?.[1] ?? "").split(/\s+/);
+    // Whole tokens only: `flex-1` is a flex *item* property and is fine here —
+    // it is `display: flex` on the container that does the damage.
+    for (const display of ["flex", "grid", "inline-flex", "inline-grid"]) {
+      expect(
+        classes.includes(display),
+        `<main> must not be a ${display} container — it collapses every ` +
+          "`mx-auto max-w-*` page to its content width"
+      ).toBe(false);
+    }
+  });
+
   it("no page nests a second <main> inside it", () => {
     const offenders = files.filter((f) => /<main\b/.test(read(f))).map((f) => relative(APP, f));
     expect(offenders, "use a <div>: AppShell already provides the main landmark").toEqual([]);

@@ -2192,8 +2192,10 @@ export default function ProjectBoardPage({
         )}
       </AnimatePresence>
 
-      {/* Board Content */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      {/* Board Content. A flex column so the row below can claim the height
+          with `flex-1`; `h-full` does not resolve here, because this div's own
+          height comes from the flex algorithm rather than a computed value. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {boardView === "archived" ? (
           <div className="p-4 overflow-y-auto h-full">
             {archivedLoading ? (
@@ -2264,7 +2266,7 @@ export default function ProjectBoardPage({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-4 p-4 overflow-x-auto h-full">
+            <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto p-4">
               {viewMode === "sprint" ? (
                 // Sprint View - columns are sprints
                 <>

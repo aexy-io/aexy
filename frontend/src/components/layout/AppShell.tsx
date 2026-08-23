@@ -91,19 +91,7 @@ export function AppShell({ children, user, logout }: AppShellProps) {
                         }
                     />
                 )}
-                {/*
-                    `flex flex-col` (not `min-h-0`) so a page can opt into
-                    filling the viewport with `flex-1` — the boards need it, and
-                    without a flex parent their `flex-1`/`h-full` regions had no
-                    height to divide and left dead space under the last row.
-                    The auto min-height is deliberate: a page taller than the
-                    viewport still grows and scrolls in the column above.
-                */}
-                <main
-                    id="main-content"
-                    tabIndex={-1}
-                    className="flex flex-1 flex-col focus:outline-none"
-                >
+                <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
                     {/*
                         Deliberately no padding or width here: `PageShell` owns
                         both. This used to be `<div className="mx-0 p-0">`, which

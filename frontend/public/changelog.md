@@ -110,6 +110,31 @@ Sprint Overview, Sprint Overview hides itself when there is no sprint rather
 than drawing a card around an empty state, and My Goals is off by default.
 Anyone who has already saved a layout keeps it; only the defaults change.
 
+### Fixed: pages narrower than the width they asked for
+
+`/exports` declared `max-w-5xl` and rendered at 704px inside a 1344px content
+area. So did every one of the **107 pages that wrap themselves in
+`mx-auto max-w-…`** — the width stopped being a cap and became a shrink-wrap.
+
+The cause was a one-line change made for the board's height: `<main>` became a
+flex column. A flex item is stretched to the line only when neither cross-axis
+margin is `auto`, and `mx-auto` is exactly that, so those pages fell back to
+their content width. Nothing errored; the build passed.
+
+`<main>` is a block box again, and the board takes its height from a definite
+`min-h` on its own subtree instead — one magic number, scoped to
+`/sprints/[projectId]`, rather than a change every page silently depended on.
+A guard fails if `<main>` becomes a flex or grid container again.
+
+### Changed: the org chart uses the page
+
+Six departments stacked into a single 1024px column down the middle of a
+1344px area, half of them empty cards saying "Nobody is in this department
+yet" at the same visual weight as a team of eight. Departments lay out in
+columns now, sized to their own contents; an empty one is a quiet dashed row
+rather than a full card; and the list is no longer boxed inside a second
+bordered card that added nothing.
+
 ### Fixed: sidebar favourites truncated with space to spare
 
 Favourites read "Das… SERVICE DESK" and "Autom… AUTOPILOT" with visible empty
