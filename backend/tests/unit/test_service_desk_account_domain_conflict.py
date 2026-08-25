@@ -50,9 +50,9 @@ async def test_a_full_address_conflicts_the_same_way(db_session: AsyncSession):
     """What was actually reported — an address, not a domain, held twice."""
     ws = await _workspace(db_session, "dom-addr")
     svc = ServiceDeskService(db_session)
-    await svc.create_account(ws.id, AccountCreate(name="Surbhi", domains=["surbhi.j@bimaplan.co"]))
+    await svc.create_account(ws.id, AccountCreate(name="Surbhi", domains=["surbhi.j@desk.example"]))
     await db_session.commit()
 
     with pytest.raises(HTTPException) as exc:
-        await svc.create_account(ws.id, AccountCreate(name="Surbhi J", domains=["surbhi.j@bimaplan.co"]))
+        await svc.create_account(ws.id, AccountCreate(name="Surbhi J", domains=["surbhi.j@desk.example"]))
     assert exc.value.status_code == 409

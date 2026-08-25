@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-08-25
+
+### Fixed: mail a colleague sent no longer picks an owner at random
+
+Three tickets arrived from the same person, about the same client, on the same
+afternoon, and landed on three different owners. All three were mail *from* the
+desk's own domain — a KAM writing out to the client with the desk copied — and
+intake treated its own domain as a dead end. It looked for a forwarded message
+and, finding none, handed the ticket to whoever the fallback picked.
+
+Both answers were already in Master Data and neither was ever read:
+
+* **The counterparty the message was addressed to.** A colleague writing out
+  names the client in `To:` or `Cc:` and nowhere else. Recipients are matched
+  against accounts and vendors now, so that mail files against the right client
+  and reaches its owner.
+* **A row mapping the colleague's own address.** Mapping a whole internal
+  address is a desk saying where that person's mail belongs. Those rows existed
+  on live desks and had never once been consulted.
+
+And when nothing identifies a counterparty at all, **the colleague who wrote in
+owns it**. A request somebody here raised is theirs until it is moved, and that
+answer needs no configuration — it holds for a desk that has mapped nothing and
+for a colleague who joined this morning. Membership is checked rather than merely
+having a developer record: a ticket sitting in a departed employee's queue is
+worse than one assigned at random, because nobody is watching it at all.
+
+The specific answer wins: the counterparty written to beats a standing row for
+the sender, which beats the forwarded-message inference, which beats the person
+who wrote in, which beats the fallback. So a KAM chasing another KAM's client
+does not take the ticket off them by writing about it. Two addresses are
+deliberately never allowed to decide anything — a colleague among the recipients
+(two colleagues on a thread are not a counterparty) and the desk's own domain as
+an account row, which would otherwise capture every internal message ever sent.
+
+### Added: the ticket says why it has the owner it has
+
+Intake has always written the reason — "no account is mapped to this domain",
+"this account has no assigned owner" — as an internal note that nothing
+displayed. So a ticket on the wrong owner was indistinguishable from a
+deliberate assignment, and "routing is not following our master data" could not
+be answered from the ticket that prompted it. It is on the ticket now, above the
+save button. Tickets created before this shipped read their reason from the note
+that was already recorded, so an existing desk can answer the question about
+mail it already has.
+
+It follows the owner rather than the first decision made about it: when an
+account/product pairing reassigns a ticket after classification, that becomes the
+reason on show. A line explaining an owner the ticket no longer has is worse than
+no line.
+
+### Added: replying from a ticket keeps everyone on the thread
+
+The ticket knew who wrote in and nothing about who they had copied — intake read
+`To:` and `Cc:` only to decide which mailbox a message belonged to, then dropped
+them. A reply from the desk reached one address out of five, and the colleague
+actually chasing the request never saw the answer.
+
+Those addresses are kept as each message arrives, in every direction: the
+original request, stakeholder replies, and replies typed in the mail client,
+which is where somebody is most often added to a chain. The compose box opens
+addressed to whoever wrote in last, with the rest of the conversation already
+copied as chips that can be removed one at a time, and a box for adding anyone
+else. Anyone kept or added by hand joins the conversation from that moment, so
+they are still there on the reply after next.
+
+A ticket logged by phone has no requester address to answer, and the compose box
+says so by staying empty rather than offering the placeholder one.
+
+One deliberate limit: redirecting the reply to a different party clears what was
+carried over. Copying a partner's colleagues onto a message to an insurer is a
+disclosure, and the confirmation panel would have shown it only after the sender
+had stopped reading.
+
+### Added: attach a file of your own when replying
+
+The only file the desk could send was one that had already arrived on the
+ticket, because the bytes were re-fetched from the mailbox. Answering a partner
+with a completed form meant leaving the product for a personal inbox — and that
+reply, with its attachment, left the record entirely.
+
+Files can be uploaded to a ticket and attached to a reply. What made forwarding
+safe is unchanged: the client names a file and never sends bytes with the send,
+and a named file has to be one that ticket actually holds. Sending moves the
+file onto the message it left with, so a later reader can see which mail it went
+out on, and it is no longer offered on the next reply. Uploads are listed apart
+from the files that arrived — telling a reader the customer sent something they
+never sent is worse than not showing it at all.
+
+### Fixed: the ticket detail left names blank that the list resolved
+
+`product_name`, `vendor_name` and `assigned_owner_name` were never filled in on
+the detail endpoint, so a page could show a blank owner beside a list showing
+their name — which reads as an unassigned ticket.
+
 ## [0.29.1] - 2026-08-23
 
 A follow-up on the demo account: it now shows the two modules it refuses to run,

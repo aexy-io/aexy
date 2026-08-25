@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aexy.models.developer import Developer
 from aexy.models.organization import DepartmentMember
 from aexy.models.service_desk import (
     MailboxChannel,
@@ -49,6 +50,7 @@ from aexy.services.service_desk_config import (
     forwarded_sender,
     force_ticket_id_into_subject,
     looks_automatic,
+    message_recipients,
     normalise_ignored_senders,
     sender_is_ignored,
     ticket_number_in_subject,
@@ -62,6 +64,11 @@ from aexy.services.service_desk_industry_templates import SEMANTIC_EXTERNAL
 from aexy.services.service_desk_taxonomy import external_slug_for, load_taxonomy
 
 logger = logging.getLogger(__name__)
+
+# How many addresses of one thread are kept for reply-all. A long chain of
+# forwards accumulates dozens, and the compose box has to stay something a person
+# can read and edit before they send to all of them.
+THREAD_PARTICIPANT_LIMIT = 25
 
 SERVICE_DESK_FORM_SLUG = "service-desk"
 # Stands in for the requester on a ticket logged by phone or WhatsApp, where
@@ -177,6 +184,27 @@ async def attachment_previews_enabled(db: AsyncSession, workspace_id: str) -> bo
     return await ai_classification_enabled(db, workspace_id)
 
 
+def stamp_assignment_note(ticket: Ticket, note: str) -> TicketResponse:
+    """Record why a ticket has the owner it has, in both places it gets read.
+
+    The timeline entry is what somebody scrolls to. The copy on the ticket is
+    what the detail endpoint reads to show the reason at the top, without having
+    to guess which of a ticket's internal notes was the routing one — a guess
+    that would sooner or later show an AI-match note as an assignment reason.
+
+    Returns the timeline row for the caller to add; the ticket is updated here.
+    """
+    values = dict(ticket.field_values or {})
+    values["assignment_note"] = note
+    ticket.field_values = values
+    return TicketResponse(
+        id=str(uuid4()),
+        ticket_id=ticket.id,
+        content=note,
+        is_internal=True,
+    )
+
+
 def is_aexy_generated(email: InboundEmail) -> bool:
     """True for mail this application sent (see ``OUTBOUND_MARKER_HEADER``)."""
     return bool((email.headers or {}).get(OUTBOUND_MARKER_HEADER.lower(), "").strip())
@@ -285,7 +313,9 @@ class ServiceDeskIntakeService:
             #     single candidate. Anything else falls through to a new ticket.
             existing, match_note, suggestion = await self._ai_match_ticket(workspace_id, email)
         if existing is not None:
-            await self._append_reply(workspace_id, existing, email, automatic=automatic)
+            await self._append_reply(
+                workspace_id, existing, email, mailbox, automatic=automatic
+            )
             if match_note:
                 # Visible on the timeline so a human can see the merge happened,
                 # why, and undo it if the model was wrong.
@@ -394,6 +424,10 @@ class ServiceDeskIntakeService:
             )
         )
         self._absorb_attachments(ticket, email)
+        # Adding somebody to the chain most often happens here, in the mail
+        # client, not in the ticket — so a desk reply updates the participants
+        # even though it never changes who a reply goes back to.
+        self._absorb_participants(ticket, email, mailbox, from_desk=True)
         await self.db.flush()
         await self._link_message(workspace_id, email.message_id, ticket.id)
         return ticket
@@ -607,7 +641,12 @@ class ServiceDeskIntakeService:
         )
 
     async def _append_reply(
-        self, workspace_id: str, ticket: Ticket, email: InboundEmail, automatic: bool = False
+        self,
+        workspace_id: str,
+        ticket: Ticket,
+        email: InboundEmail,
+        mailbox: ServiceDeskMailbox | None = None,
+        automatic: bool = False,
     ) -> None:
         response = TicketResponse(
             id=str(uuid4()),
@@ -618,6 +657,7 @@ class ServiceDeskIntakeService:
         )
         self.db.add(response)
         self._absorb_attachments(ticket, email)
+        self._absorb_participants(ticket, email, mailbox)
         await self.db.flush()
 
         # A reply to a closed ticket must reopen it — otherwise the requester's
@@ -739,6 +779,251 @@ class ServiceDeskIntakeService:
             values["attachments"] = existing
             ticket.field_values = values
 
+    # ----------------------------------------------------- routing, own domain
+
+    async def _route_internal_sender(
+        self,
+        workspace_id: str,
+        email: InboundEmail,
+        address: str | None,
+        internal_domain: str | None,
+        policy: str,
+    ) -> tuple[
+        ServiceDeskAccount | None, ServiceDeskVendor | None, str | None, str | None, bool
+    ]:
+        """Owner and attribution for mail sent from the desk's own domain.
+
+        Returns ``(account, vendor, owner_id, assignment_note, needs_triage)``.
+
+        The sender is a colleague, so the address in ``From:`` identifies nobody
+        the desk routes by — every internal message would otherwise be handed to
+        an arbitrary member of the desk. Four sources are tried, most specific
+        first, and only the last two infer anything:
+
+        1. **Who the message was addressed to.** A colleague writing out to a
+           counterparty with the desk copied names that counterparty in ``To:``
+           or ``Cc:`` and nowhere else. This is the common shape and it used to
+           route entirely at random.
+        2. **A Master Data row for the colleague's own address.** Mapping a whole
+           address rather than a domain is how a desk says "mail from this person
+           belongs to this account", and it is worth honouring: matching is
+           restricted to the exact address so that a row carelessly keyed on the
+           desk's *own domain* can never swallow all internal mail.
+        3. **The original author of a forwarded message**, from the forwarding
+           headers or the quoted block. Inferred, so the ticket stays flagged.
+        4. **The colleague who wrote in.** A request somebody here raised is
+           theirs until it is moved. This one needs no configuration, which is
+           what makes the routing hold for a desk that has mapped nothing and for
+           a colleague who joined this morning.
+
+        The first two read Master Data as directly as the external-sender branch
+        does, so they do not flag the ticket for triage; the last two are
+        inferences and leave it flagged. Nothing here invents an owner: an
+        account with no owner still falls back, and says so.
+        """
+        # Never route by an address on the desk's own domain — a colleague in Cc
+        # is a colleague, not the counterparty this ticket is about.
+        counterparties = [
+            candidate
+            for candidate in message_recipients(email.headers or {})
+            if candidate != address and _domain_of(candidate) != internal_domain
+        ]
+
+        # A message addressed to an insurer and copied to a partner concerns both,
+        # so the whole recipient list is read before anything is decided. Looking
+        # for the vendor only until the account turned up made the vendor link
+        # depend on which of the two happened to be first in the headers.
+        matched: ServiceDeskAccount | None = None
+        matched_address: str | None = None
+        vendor: ServiceDeskVendor | None = None
+        for candidate in counterparties:
+            if matched is None:
+                matched = await self._match_account(
+                    workspace_id, _domain_of(candidate), candidate
+                )
+                if matched is not None:
+                    matched_address = candidate
+                    continue
+            if vendor is None:
+                vendor = await self._match_vendor(
+                    workspace_id, _domain_of(candidate), candidate
+                )
+            if matched is not None and vendor is not None:
+                break
+
+        if matched is not None:
+            owner = matched.assigned_owner_id
+            note = None
+            if owner is None:
+                owner = await self._fallback_owner(workspace_id, policy)
+                note = (
+                    f"Assigned by fallback: this message is addressed to {matched_address}, "
+                    f'which Master Data maps to "{matched.name}" — but that account has '
+                    "no assigned owner. Set one so its tickets stop being distributed "
+                    "arbitrarily."
+                )
+            return matched, vendor, owner, note, False
+
+        # Exact address only. `_match_account` would otherwise also try the
+        # sender's domain, which here is the desk's own — one row keyed on it
+        # would capture every internal message ever sent.
+        own_row = await self._match_account(workspace_id, None, address)
+        if own_row is not None:
+            owner = own_row.assigned_owner_id
+            note = None
+            if owner is None:
+                owner = await self._fallback_owner(workspace_id, policy)
+                note = (
+                    f'Assigned by fallback: Master Data maps {email.from_email} to '
+                    f'"{own_row.name}", which has no assigned owner. Set one so its tickets '
+                    "stop being distributed arbitrarily."
+                )
+            return own_row, vendor, owner, note, False
+
+        forwarded = forwarded_sender(email.headers or {}, email.body_text, internal_domain)
+        account = (
+            await self._match_account(workspace_id, _domain_of(forwarded), forwarded)
+            if forwarded
+            else None
+        )
+        if account is not None:
+            owner = account.assigned_owner_id or await self._fallback_owner(
+                workspace_id, policy
+            )
+            note = (
+                f'Attributed to "{account.name}" from the forwarded message: '
+                f"{email.from_email} forwarded mail originally from {forwarded}. "
+                "Confirm this is the right account."
+            )
+            if account.assigned_owner_id is None:
+                note += (
+                    f' "{account.name}" has no assigned owner in Master Data, so the '
+                    "owner was picked by fallback."
+                )
+            # Inferred attribution, so a human still confirms it. The value is
+            # that the *owner* is right in the meantime: without this every
+            # forwarded request landed on an arbitrary member of the desk and
+            # looked deliberately assigned.
+            return account, vendor, owner, note, True
+
+        # Nothing identified a counterparty. The one person this message is known
+        # to concern is the colleague who wrote it, and a request raised by a
+        # colleague is theirs until somebody moves it. Handing it to an arbitrary
+        # third person instead was the whole of the reported bug — and unlike the
+        # steps above, this needs no Master Data at all, so it holds for a
+        # colleague nobody has mapped and for one who joined this morning.
+        sender_id = await self._workspace_member_id(workspace_id, address)
+        if sender_id is not None:
+            return (
+                None,
+                vendor,
+                sender_id,
+                (
+                    f"Assigned to {email.from_email}, who raised it: no account is mapped to "
+                    "that address or to anyone this message was addressed to, and the person "
+                    "who wrote in is the one it is known to concern. Move it if somebody else "
+                    "should carry it."
+                ),
+                True,
+            )
+
+        return (
+            None,
+            vendor,
+            await self._fallback_owner(workspace_id, policy),
+            (
+                f"Assigned by fallback: {email.from_email} is on this desk's own domain, is "
+                "not a member of this workspace, and no account is mapped to that address or "
+                "to anyone this message was addressed to. Map the counterparty's domain to the "
+                "right account in Master Data so mail like this reaches its owner."
+            ),
+            True,
+        )
+
+    async def _workspace_member_id(self, workspace_id: str, address: str | None) -> str | None:
+        """The developer behind an address, if they are an active member here.
+
+        Membership is the check, not merely having a row: developer records are
+        synced from elsewhere and outlive people leaving, and a ticket assigned
+        to somebody who left is worse than one assigned at random — nobody is
+        watching that queue at all.
+        """
+        if not address:
+            return None
+        return (
+            await self.db.execute(
+                select(Developer.id)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.status == "active",
+                    func.lower(Developer.email) == address,
+                )
+            )
+        ).scalars().first()
+
+    @staticmethod
+    def _absorb_participants(
+        ticket: Ticket,
+        email: InboundEmail,
+        mailbox: ServiceDeskMailbox | None,
+        from_desk: bool = False,
+    ) -> None:
+        """Record who else is on this email thread.
+
+        Replying from the ticket could never keep the people already on the
+        conversation, because the ticket knew who wrote in and nothing about who
+        they copied. Those addresses exist only on the message, so they are taken
+        from each one as it arrives — the original request, every stakeholder
+        reply, and replies a colleague typed in the mail client, which is where
+        somebody most often adds a person to the chain.
+
+        The desk's own address is never a participant: copying it into a reply
+        would bring that reply back through the sync as fresh correspondence.
+
+        ``thread_reply_to`` is the last person who *wrote in*, not the first. A
+        thread that has moved on to an insurer's claims handler must not answer
+        the partner who opened it three weeks ago. Mail the desk itself sent
+        updates the chain but never this — the desk does not reply to itself.
+        """
+        desk = (mailbox.address or "").strip().lower() if mailbox is not None else ""
+        values = dict(ticket.field_values or {})
+        stored = values.get("thread_participants")
+        participants = [
+            item.strip().lower()
+            for item in (stored if isinstance(stored, list) else [])
+            if isinstance(item, str) and "@" in item
+        ]
+
+        arriving = list(message_recipients(email.headers or {}))
+        sender = _address_of(email.from_email)
+        # A ticket logged by phone has no requester address, only the sentinel
+        # standing in for one. Recording it would prefill the compose box with an
+        # address that cannot receive mail, which is worse than an empty box.
+        if sender == MANUAL_SENDER_ADDRESS:
+            sender = None
+        if sender and not from_desk:
+            arriving.append(sender)
+
+        changed = False
+        for address in arriving:
+            if not address or address == desk or address in participants:
+                continue
+            if address == MANUAL_SENDER_ADDRESS:
+                continue
+            if len(participants) >= THREAD_PARTICIPANT_LIMIT:
+                break
+            participants.append(address)
+            changed = True
+
+        if sender and not from_desk and values.get("thread_reply_to") != sender:
+            values["thread_reply_to"] = sender
+            changed = True
+
+        if changed:
+            values["thread_participants"] = participants
+            ticket.field_values = values
+
     # ------------------------------------------------------------- new ticket
 
     async def create_ticket(
@@ -789,45 +1074,20 @@ class ServiceDeskIntakeService:
         policy = await self._unmatched_policy(workspace_id)
 
         if domain and internal_domain and domain == internal_domain:
-            # Sender is on the desk's own domain. Either a colleague wrote in, or
-            # — far more often — somebody forwarded a partner's mail to the desk,
-            # in which case the address in `From:` is the forwarder and the real
-            # requester is named in a header or in the quoted block below it.
+            # Sender is on the desk's own domain: a colleague wrote in, forwarded
+            # a counterparty's mail, or copied the desk on mail they sent out.
+            # `From:` names none of those counterparties, so routing has to look
+            # somewhere other than the sender — see `_route_internal_sender`.
             origin = TicketOrigin.INTERNAL.value
-            # Inferred attribution, so a human still confirms it. The value is
-            # that the *owner* is right in the meantime: without this every
-            # forwarded partner request landed on an arbitrary member of the desk
-            # and looked deliberately assigned.
-            needs_triage = True
-            forwarded = forwarded_sender(email.headers or {}, email.body_text, internal_domain)
-            account = (
-                await self._match_account(
-                    workspace_id, _domain_of(forwarded), forwarded
-                )
-                if forwarded
-                else None
+            (
+                account,
+                vendor,
+                assigned_owner_id,
+                assignment_note,
+                needs_triage,
+            ) = await self._route_internal_sender(
+                workspace_id, email, address, internal_domain, policy
             )
-            if account is not None:
-                assigned_owner_id = account.assigned_owner_id or await self._fallback_owner(
-                    workspace_id, policy
-                )
-                assignment_note = (
-                    f'Attributed to "{account.name}" from the forwarded message: '
-                    f"{email.from_email} forwarded mail originally from {forwarded}. "
-                    "Confirm this is the right account."
-                )
-                if account.assigned_owner_id is None:
-                    assignment_note += (
-                        f' "{account.name}" has no assigned owner in Master Data, so the '
-                        "owner was picked by fallback."
-                    )
-            else:
-                assigned_owner_id = await self._fallback_owner(workspace_id, policy)
-                assignment_note = (
-                    f"Assigned by fallback: {email.from_email} is on this desk's own domain, "
-                    "so no account could be inferred from it. Set the account by hand to route "
-                    "this ticket to its owner."
-                )
         else:
             account = await self._match_account(workspace_id, domain, address)
             if account is not None:
@@ -896,11 +1156,15 @@ class ServiceDeskIntakeService:
                     {**attachment.model_dump(), "message_id": email.message_id}
                     for attachment in email.attachments
                 ],
+                # Everyone this first message reached, so a reply from the ticket
+                # can keep them. Filled in below, once the ticket exists.
+                "thread_participants": [],
             },
             status=TicketStatus.NEW.value,
             assignee_id=assigned_owner_id,
             source=source,
         )
+        self._absorb_participants(ticket, email, mailbox)
         await self.db.flush()
 
         # Where a new ticket starts and what it is triaged as both come from the
@@ -942,14 +1206,7 @@ class ServiceDeskIntakeService:
         self.db.add(sd)
 
         if assignment_note:
-            self.db.add(
-                TicketResponse(
-                    id=str(uuid4()),
-                    ticket_id=ticket.id,
-                    content=assignment_note,
-                    is_internal=True,
-                )
-            )
+            self.db.add(stamp_assignment_note(ticket, assignment_note))
 
         # open the first pending-with segment (the ledger starts here)
         self.db.add(
@@ -1017,15 +1274,14 @@ class ServiceDeskIntakeService:
         reroute = await self.product_owner(sd.account_id, sd.product_id)
         if reroute and reroute != ticket.assignee_id:
             ticket.assignee_id = reroute
+            # Stamped, not just noted: this supersedes whatever the routing block
+            # decided, so leaving the earlier reason on the ticket would have the
+            # "why this owner" line explain an owner the ticket no longer has.
             self.db.add(
-                TicketResponse(
-                    id=str(uuid4()),
-                    ticket_id=ticket.id,
-                    content=(
-                        f"Reassigned on classification: this {taxonomy.term('account')} has a "
-                        f"separate owner for this {taxonomy.term('product')}."
-                    ),
-                    is_internal=True,
+                stamp_assignment_note(
+                    ticket,
+                    f"Reassigned on classification: this {taxonomy.term('account')} has a "
+                    f"separate owner for this {taxonomy.term('product')}.",
                 )
             )
 

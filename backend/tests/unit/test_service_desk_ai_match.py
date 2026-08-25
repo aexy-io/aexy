@@ -43,7 +43,7 @@ def _gateway(monkeypatch, payload: str, seen: list | None = None):
 @pytest.fixture
 async def desk(db_session: AsyncSession):
     """AI-enabled workspace, a known insurer, and one open ticket with them."""
-    owner = Developer(id=str(uuid4()), email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    owner = Developer(id=str(uuid4()), email=f"o-{uuid4().hex[:6]}@desk.example", name="Owner")
     db_session.add(owner)
     await db_session.flush()
     ws = Workspace(id=str(uuid4()), name="BP", slug=f"bp-{uuid4().hex[:6]}", owner_id=owner.id)
@@ -55,7 +55,7 @@ async def desk(db_session: AsyncSession):
     await seed_service_desk_taxonomy(db_session, ws.id)
 
     mailbox = ServiceDeskMailbox(
-        id=str(uuid4()), workspace_id=ws.id, address="ops@bimaplan.co", channel="webhook"
+        id=str(uuid4()), workspace_id=ws.id, address="ops@desk.example", channel="webhook"
     )
     db_session.add(mailbox)
     insurer = ServiceDeskVendor(id=str(uuid4()), workspace_id=ws.id, name="Insurer I1")
@@ -104,7 +104,7 @@ async def desk(db_session: AsyncSession):
 def _stray(**over) -> InboundEmail:
     """A fresh thread from the insurer with no ticket number anywhere."""
     base = {
-        "to": "ops@bimaplan.co",
+        "to": "ops@desk.example",
         "from_email": "claims@i1.example",
         "subject": "Update on the C-9 matter",
         "body_text": "We have approved the claim discussed earlier.",
@@ -331,7 +331,7 @@ async def test_the_deterministic_paths_still_win_before_any_model_runs(
 
 def _reply_from(sender: str, **over) -> InboundEmail:
     base = {
-        "to": "ops@bimaplan.co",
+        "to": "ops@desk.example",
         "from_email": sender,
         "subject": "Re: SD-7 claim update",
         "body_text": "Still checking, will confirm tomorrow.",

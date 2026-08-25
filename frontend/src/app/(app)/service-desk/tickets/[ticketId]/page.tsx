@@ -13,6 +13,8 @@ import {
   Paperclip,
   Scissors,
   Send,
+  Upload,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -78,6 +80,9 @@ export default function ServiceDeskTicketDetailPage() {
     splitDetectedIssues,
     updateTicket,
     emailStakeholder,
+    uploadFiles,
+    deleteUpload,
+    downloadUpload,
   } = useServiceDeskMutations();
   const { currentWorkspace } = useWorkspace();
   const { projects } = useProjects(currentWorkspace?.id ?? null);
@@ -107,11 +112,24 @@ export default function ServiceDeskTicketDetailPage() {
   // the ticket already holds, so a background refetch never fights the form.
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [mailTo, setMailTo] = useState("");
-  const [mailCc, setMailCc] = useState("");
+  // Chips rather than a comma-separated string. The addresses are prefilled from
+  // the thread now, so the common act is removing one — and picking a name out of
+  // a run-on line to delete exactly its comma is not something to ask of somebody
+  // about to send mail to a customer.
+  const [mailCc, setMailCc] = useState<string[]>([]);
+  const [ccDraft, setCcDraft] = useState("");
+  // Whether the Cc currently on screen is the thread's own chain rather than
+  // addresses the sender chose. Only the former may be dropped automatically.
+  const [ccFromChain, setCcFromChain] = useState(false);
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [mailFiles, setMailFiles] = useState<string[]>([]);
+  const [mailUploadIds, setMailUploadIds] = useState<string[]>([]);
   const [mailMoves, setMailMoves] = useState(true);
+  // Which ticket the compose box has been filled in for. Filling it once, rather
+  // than whenever the ticket data arrives, is what stops a background refetch
+  // overwriting a half-written reply.
+  const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
   // A send cannot be undone once Gmail accepts it, and the recipient list holds
   // partners and insurers side by side, so the last guard against a misdirected
   // email is showing exactly what is about to leave and to whom.
@@ -119,6 +137,24 @@ export default function ServiceDeskTicketDetailPage() {
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!ticket) return <div className="p-6 text-muted-foreground">Not found.</div>;
+
+  // Reply-all, the way a mail client does it: the box opens addressed to whoever
+  // wrote in last, with everyone else on the conversation already copied. Before
+  // this, answering from the ticket reached one address out of five and the rest
+  // of the chain never saw the reply.
+  //
+  // Adjusted during render rather than in an effect — React's own answer for
+  // "reset state when the thing it describes changes". Remembering which ticket
+  // it was done for is what makes it happen once: run it on every render and a
+  // background refetch would overwrite a half-written reply.
+  if (prefilledFor !== ticketId) {
+    setPrefilledFor(ticketId);
+    const chain = ticket.reply_all?.cc ?? [];
+    setMailTo(ticket.reply_all?.to ?? ticket.requester_email ?? "");
+    setMailCc(chain);
+    setCcFromChain(chain.length > 0);
+    setMailSubject(ticket.subject ?? "");
+  }
 
   // Write authority as the server computed it for this caller — manager, the
   // assigned owner, or a member of the queue the ticket is pending with. The
@@ -130,10 +166,41 @@ export default function ServiceDeskTicketDetailPage() {
   const mailStageRaw = mailKnown?.stage ?? null;
   // Already there? Then there is nothing to move and no choice to offer.
   const mailStage = mailStageRaw && mailStageRaw !== ticket.pending_with ? mailStageRaw : null;
-  // Typed by hand, so the address is checked here as well as server-side — the
-  // send is irreversible and a typo in Cc is silent.
-  const ccList = mailCc.split(",").map((value) => value.trim()).filter(Boolean);
-  const ccInvalid = ccList.some((value) => !EMAIL_RE.test(value));
+  // What a reply to this thread would be addressed to, used to tell "the sender
+  // redirected this message" from "the sender is answering the thread".
+  // Read defensively: a payload cached by React Query from before this shipped
+  // has no `reply_all`, and a compose box that throws is worse than one that
+  // falls back to answering the requester, which is what it did before.
+  const chainTo = (ticket.reply_all?.to ?? ticket.requester_email ?? "").toLowerCase();
+  const chainCc = ticket.reply_all?.cc ?? [];
+  // Addresses are validated as they are added, so the only thing that can still
+  // be wrong is what is left in the box. Split the same way committing does — a
+  // list pasted from a mail client arrives as one string and is not one bad
+  // address. The send is irreversible and a typo in Cc is silent, so anything
+  // still wrong blocks rather than being dropped quietly.
+  const ccPending = ccDraft.split(/[,;\s]+/).map((value) => value.trim()).filter(Boolean);
+  const ccInvalid = ccPending.some((value) => !EMAIL_RE.test(value));
+  // The ticket's files, split by where they came from. A file somebody here
+  // uploaded to send did not arrive on the request, and listing it there would
+  // tell a later reader the customer had sent it.
+  // Same reason for the default: a file from a payload that predates `source`
+  // arrived by email, which is the only kind that existed then.
+  const emailedFiles = ticket.attachments.filter((file) => file.source !== "upload");
+  const uploadedFiles = ticket.attachments.filter((file) => file.source === "upload");
+  // Everything that will actually be attached, both kinds together — the panel's
+  // job is to show what leaves, not how the desk got hold of it.
+  const confirmFiles = [
+    ...mailFiles,
+    ...uploadedFiles
+      .filter((file) => mailUploadIds.includes(file.id ?? ""))
+      .map((file) => file.filename),
+  ];
+  // Offered when the thread has a chain and the box no longer matches it — after
+  // a removal, or after the sender redirected the message and came back.
+  const canRestoreChain =
+    chainCc.length > 0 &&
+    (mailTo.trim().toLowerCase() !== chainTo ||
+      chainCc.some((address) => !mailCc.includes(address)));
   // The confirmation panel's whole job is showing exactly what will leave, so it
   // has to apply the server's rule rather than assume the prefix is always
   // added: an id the sender already typed is not repeated.
@@ -180,28 +247,103 @@ export default function ServiceDeskTicketDetailPage() {
 
   const sendMail = async () => {
     if (!mailTo || !mailSubject.trim() || !mailBody.trim() || ccInvalid) return;
-    await emailStakeholder.mutateAsync({
+    const updated = await emailStakeholder.mutateAsync({
       id: ticketId,
       data: {
         to: mailTo.trim(),
-        cc: ccList,
+        cc: mailCc,
         subject: mailSubject.trim(),
         body: mailBody.trim(),
         attachment_filenames: mailFiles,
+        attachment_ids: mailUploadIds,
         move_ticket: mailMoves,
       },
     });
-    setMailCc("");
-    setMailSubject("");
+    // Re-seeded from what the send returned, not by asking for a re-prefill: the
+    // reply just sent is part of the thread, and anyone the sender added by hand
+    // is on it from now on. Waiting for the background refetch instead would
+    // re-seed from the copy that predates this very message.
+    const chain = updated?.reply_all?.cc ?? [];
+    setMailTo(updated?.reply_all?.to ?? updated?.requester_email ?? "");
+    setMailCc(chain);
+    setCcFromChain(chain.length > 0);
+    setCcDraft("");
+    setMailSubject(updated?.subject ?? "");
     setMailBody("");
     setMailFiles([]);
+    setMailUploadIds([]);
     setConfirming(false);
+  };
+
+  /** Add whatever is in the Cc box, however many addresses were pasted in. */
+  const commitCcDraft = () => {
+    const candidates = ccDraft
+      .split(/[,;\s]+/)
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+    if (candidates.length === 0) return;
+    // A malformed one is left in the box rather than dropped, where it keeps
+    // the error visible and blocks the send until it is fixed.
+    if (candidates.some((value) => !EMAIL_RE.test(value))) return;
+    setMailCc((current) => [...current, ...candidates.filter((v) => !current.includes(v))]);
+    // Anything typed by hand is the sender's own choice, so redirecting the
+    // message may no longer drop the list wholesale.
+    setCcFromChain(false);
+    setCcDraft("");
+    setConfirming(false);
+  };
+
+  const removeCc = (address: string) => {
+    setMailCc((current) => current.filter((value) => value !== address));
+    setConfirming(false);
+  };
+
+  const restoreChain = () => {
+    setMailTo(ticket.reply_all?.to ?? ticket.requester_email ?? "");
+    setMailCc((current) => [...current, ...chainCc.filter((v) => !current.includes(v))]);
+    setCcFromChain(true);
+    setConfirming(false);
+  };
+
+  const changeMailTo = (value: string) => {
+    setMailTo(value);
+    setConfirming(false);
+    // Redirecting the reply must not carry the first party's chain along with it.
+    // Copying a partner's colleagues onto a message to an insurer is a
+    // disclosure, and one the sender never asked for — the confirmation panel
+    // would show it only after they had stopped reading.
+    if (ccFromChain && value.trim().toLowerCase() !== chainTo) {
+      setMailCc([]);
+      setCcFromChain(false);
+    }
   };
 
   const toggleMailFile = (name: string, checked: boolean) =>
     setMailFiles((current) =>
       checked ? [...current, name] : current.filter((value) => value !== name),
     );
+
+  const toggleMailUpload = (id: string, checked: boolean) =>
+    setMailUploadIds((current) =>
+      checked ? [...current, id] : current.filter((value) => value !== id),
+    );
+
+  const chooseFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    uploadFiles.mutate(
+      { id: ticketId, files: Array.from(files) },
+      {
+        // Uploading one is the act of choosing it — an upload that then had to be
+        // ticked would be a file the sender believes is attached and is not.
+        onSuccess: (created) =>
+          setMailUploadIds((current) => [
+            ...current,
+            ...created.map((file) => file.id).filter((id): id is string => Boolean(id)),
+          ]),
+      },
+    );
+    setConfirming(false);
+  };
 
   const quoteRequest = () => {
     const from = ticket.requester_name || ticket.requester_email || "";
@@ -260,13 +402,13 @@ export default function ServiceDeskTicketDetailPage() {
               carries the quoted history and the attachments, looked like
               something other than a message. Same entry shape throughout, so
               the thread reads top to bottom. */}
-          {(ticket.body || ticket.attachments.length > 0 || ticket.correspondence.length > 0) && (
+          {(ticket.body || emailedFiles.length > 0 || ticket.correspondence.length > 0) && (
             <Card className="space-y-3 p-4">
               <div className="flex items-center gap-1.5 text-sm font-semibold">
                 <Mail className="h-4 w-4" /> {t("detail.correspondence")}
               </div>
               <ol className="space-y-3">
-              {(ticket.body || ticket.attachments.length > 0) && (
+              {(ticket.body || emailedFiles.length > 0) && (
               <li className="rounded-md border border-border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="break-all text-sm font-medium">
@@ -281,7 +423,7 @@ export default function ServiceDeskTicketDetailPage() {
                   {new Date(ticket.created_at).toLocaleString()}
                 </div>
               {ticket.body && <QuotedBody body={ticket.body} />}
-              {ticket.attachments.length > 0 && (
+              {emailedFiles.length > 0 && (
                 <div className="mt-2 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <Paperclip className="h-3.5 w-3.5" /> {t("detail.attachments")}
@@ -291,9 +433,9 @@ export default function ServiceDeskTicketDetailPage() {
                       had arrived and gave them no way to open it — the ticket
                       could not be worked without going back to the mailbox. */}
                   <ul className="space-y-2">
-                    {ticket.attachments.map((file) => (
+                    {emailedFiles.map((file) => (
                       <AttachmentRow
-                        key={file.index}
+                        key={file.index ?? file.filename}
                         file={file}
                         downloading={
                           downloadAttachment.isPending &&
@@ -302,7 +444,7 @@ export default function ServiceDeskTicketDetailPage() {
                         onDownload={() =>
                           downloadAttachment.mutate({
                             id: ticketId,
-                            index: file.index,
+                            index: file.index ?? 0,
                             filename: file.filename,
                           })
                         }
@@ -467,6 +609,18 @@ export default function ServiceDeskTicketDetailPage() {
                   }))}
               />
             </div>
+
+            {/* Why this ticket has the owner it has. Intake has always recorded
+                the reason and nothing ever showed it, so a ticket on the wrong
+                KAM looked exactly like a deliberate assignment — and "routing is
+                not following our master data" could not be answered from the
+                ticket that prompted it. */}
+            {ticket.assignment_note && (
+              <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{t("detail.whyThisOwner")}</span>{" "}
+                <span className="break-words">{ticket.assignment_note}</span>
+              </div>
+            )}
 
             {canEdit && (
               <div className="flex flex-wrap items-center gap-2">
@@ -662,7 +816,7 @@ export default function ServiceDeskTicketDetailPage() {
                     list="sd-email-recipients"
                     value={mailTo}
                     placeholder={t("detail.emailRecipientPlaceholder")}
-                    onChange={(e) => { setMailTo(e.target.value); setConfirming(false); }}
+                    onChange={(e) => changeMailTo(e.target.value)}
                   />
                   <datalist id="sd-email-recipients">
                     {ticket.email_recipients.map((r) => (
@@ -685,7 +839,7 @@ export default function ServiceDeskTicketDetailPage() {
                     <button
                       key={r.email}
                       type="button"
-                      onClick={() => { setMailTo(r.email); setConfirming(false); }}
+                      onClick={() => changeMailTo(r.email)}
                       className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
                         r.email.toLowerCase() === mailToClean
                           ? "border-primary bg-primary/10 text-foreground"
@@ -700,13 +854,54 @@ export default function ServiceDeskTicketDetailPage() {
 
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">{t("detail.emailCc")}</label>
+                {/* Everyone already on the thread, each one removable. This is
+                    the whole of "reply all, then take somebody off". */}
+                {mailCc.length > 0 && (
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
+                    {mailCc.map((address) => (
+                      <span
+                        key={address}
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs"
+                      >
+                        <span className="break-all">{address}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeCc(address)}
+                          aria-label={t("detail.emailCcRemove", { email: address })}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" aria-hidden />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <Input
-                  value={mailCc}
+                  value={ccDraft}
                   placeholder={t("detail.emailCcPlaceholder")}
-                  onChange={(e) => { setMailCc(e.target.value); setConfirming(false); }}
+                  onChange={(e) => { setCcDraft(e.target.value); setConfirming(false); }}
+                  // Enter and comma both commit, as they do in a mail client.
+                  // Blur too: an address left in the box when somebody moves on
+                  // to the message is one they meant to add.
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === "," || e.key === ";") {
+                      e.preventDefault();
+                      commitCcDraft();
+                    }
+                  }}
+                  onBlur={commitCcDraft}
                 />
                 {ccInvalid && (
                   <p className="mt-1 text-xs text-destructive">{t("detail.emailCcInvalid")}</p>
+                )}
+                {canRestoreChain && (
+                  <button
+                    type="button"
+                    onClick={restoreChain}
+                    className="mt-1.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  >
+                    {t("detail.emailReplyAll")}
+                  </button>
                 )}
               </div>
 
@@ -728,12 +923,12 @@ export default function ServiceDeskTicketDetailPage() {
 
               {/* Files default to unselected. Forwarding a partner's register to an
                   insurer is a disclosure, so it must be an explicit choice each time. */}
-              {ticket.attachments.some((f) => f.can_forward) && (
+              {emailedFiles.some((f) => f.can_forward) && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Paperclip className="h-3.5 w-3.5" /> {t("detail.emailAttach")}
                   </div>
-                  {ticket.attachments.filter((f) => f.can_forward).map((file) => (
+                  {emailedFiles.filter((f) => f.can_forward).map((file) => (
                     <label key={file.index} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -747,6 +942,69 @@ export default function ServiceDeskTicketDetailPage() {
                   ))}
                 </div>
               )}
+
+              {/* A file from the sender's own machine. Without this the only file
+                  the desk could send was one that had already arrived, so
+                  answering with a completed form meant leaving Aexy for a
+                  personal mailbox — and that reply left the record entirely. */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Upload className="h-3.5 w-3.5" /> {t("detail.emailUpload")}
+                </div>
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={mailUploadIds.includes(file.id ?? "")}
+                      onChange={(e) => { toggleMailUpload(file.id ?? "", e.target.checked); setConfirming(false); }}
+                    />
+                    <button
+                      type="button"
+                      className="min-w-0 break-all text-left underline underline-offset-2 hover:text-foreground"
+                      onClick={() =>
+                        downloadUpload.mutate({
+                          id: ticketId,
+                          attachmentId: file.id ?? "",
+                          filename: file.filename,
+                        })
+                      }
+                    >
+                      {file.filename}
+                    </button>
+                    <span className="shrink-0 text-xs text-muted-foreground">{fmtBytes(file.size_bytes)}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={t("detail.emailUploadRemove", { filename: file.filename })}
+                      disabled={deleteUpload.isPending}
+                      onClick={() => {
+                        toggleMailUpload(file.id ?? "", false);
+                        deleteUpload.mutate({ id: ticketId, attachmentId: file.id ?? "" });
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                ))}
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                  <input
+                    type="file"
+                    multiple
+                    className="sr-only"
+                    disabled={uploadFiles.isPending}
+                    onChange={(e) => { chooseFiles(e.target.files); e.target.value = ""; }}
+                  />
+                  {uploadFiles.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Paperclip className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  <span className="underline underline-offset-2">
+                    {uploadFiles.isPending ? t("detail.emailUploading") : t("detail.emailChooseFile")}
+                  </span>
+                </label>
+              </div>
 
               {/* Sending is usually the hand-off, so the stage follows the recipient.
                   Untick when the mail is an update rather than a request. */}
@@ -774,12 +1032,12 @@ export default function ServiceDeskTicketDetailPage() {
                     <div><span className="text-muted-foreground">{t("detail.emailTo")}: </span>{mailTo.trim()}</div>
                     <div>
                       <span className="text-muted-foreground">{t("detail.emailCc")}: </span>
-                      {ccList.length ? ccList.join(", ") : t("detail.emailCcNone")}
+                      {mailCc.length ? mailCc.join(", ") : t("detail.emailCcNone")}
                     </div>
                     <div><span className="text-muted-foreground">{t("detail.emailSubject")}: </span>{mailSubjectSent}</div>
                     <div>
                       <span className="text-muted-foreground">{t("detail.emailAttach")}: </span>
-                      {mailFiles.length ? mailFiles.join(", ") : t("detail.emailNoAttachments")}
+                      {confirmFiles.length ? confirmFiles.join(", ") : t("detail.emailNoAttachments")}
                     </div>
                     {mailStage && mailMoves && (
                       <div>
@@ -811,7 +1069,10 @@ export default function ServiceDeskTicketDetailPage() {
                       ccInvalid ||
                       emailStakeholder.isPending
                     }
-                    onClick={() => setConfirming(true)}
+                    // An address still sitting in the Cc box is one the sender
+                    // means to include — committing it here is what stops
+                    // "review" showing a message without it.
+                    onClick={() => { commitCcDraft(); setConfirming(true); }}
                   >
                     {t("detail.emailReview")}
                   </Button>

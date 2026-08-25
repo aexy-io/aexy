@@ -347,8 +347,32 @@ export function useServiceDeskMutations() {
       mutationFn: (data: Parameters<typeof serviceDeskApi.createManual>[1]) => serviceDeskApi.createManual(ws!, data),
       onSuccess: () => invalidateTickets(),
     }),
+    /** Put files on the ticket ahead of the send that will attach them. */
+    uploadFiles: useDeskMutation({
+      mutationFn: ({ id, files }: { id: string; files: File[] }) =>
+        serviceDeskApi.uploadFiles(ws!, id, files),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
+    deleteUpload: useDeskMutation({
+      mutationFn: ({ id, attachmentId }: { id: string; attachmentId: string }) =>
+        serviceDeskApi.deleteUpload(ws!, id, attachmentId),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
+    /** Same shape and the same blob-error handling as `downloadAttachment`. */
+    downloadUpload: useDeskMutation({
+      mutationFn: async ({ id, attachmentId, filename }: { id: string; attachmentId: string; filename: string }) => {
+        let blob: Blob;
+        try {
+          blob = await serviceDeskApi.downloadUpload(ws!, id, attachmentId);
+        } catch (error) {
+          await revealBlobError(error);
+          throw error;
+        }
+        saveBlob(blob, filename);
+      },
+    }),
     emailStakeholder: useDeskMutation({
-      mutationFn: ({ id, data }: { id: string; data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
+      mutationFn: ({ id, data }: { id: string; data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; attachment_ids?: string[]; move_ticket?: boolean } }) =>
         serviceDeskApi.emailStakeholder(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),

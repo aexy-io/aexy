@@ -192,7 +192,7 @@ async def test_load_clock_honours_a_per_workspace_shift(db_session: AsyncSession
 
 @pytest.mark.asyncio
 async def test_load_clock_honours_active_test_sla_and_ignores_expired_one(db_session: AsyncSession):
-    owner = Developer(email=f"o-{uuid4().hex[:6]}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"o-{uuid4().hex[:6]}@desk.example", name="Owner")
     db_session.add(owner)
     await db_session.flush()
     future = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()

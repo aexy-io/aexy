@@ -8,7 +8,17 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 import asyncio
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer
@@ -48,6 +58,7 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
     StakeholderEmailRequest,
+    TicketAttachment,
     AIAccuracy,
     DigestPreview,
     ServiceDeskTicketResponse,
@@ -619,6 +630,85 @@ async def download_ticket_attachment(
     )
 
 
+# Registered on their own path rather than under `attachments/`, whose remaining
+# segment is an int: a name there would 422 before it could ever reach a handler.
+@router.post(
+    "/tickets/{ticket_id}/uploads",
+    response_model=list[TicketAttachment],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_ticket_files(
+    workspace_id: str,
+    ticket_id: str,
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Take files to attach to a reply from this ticket.
+
+    Streamed to storage from their spooled temp files, so a large upload is never
+    held in memory. Requires write authority on the ticket, as the send does.
+    """
+
+    def _size(upload: UploadFile) -> int:
+        if upload.size is not None:
+            return upload.size
+        upload.file.seek(0, 2)
+        size = upload.file.tell()
+        upload.file.seek(0)
+        return size
+
+    return await ServiceDeskTicketService(db).add_outbound_attachments(
+        workspace_id,
+        ticket_id,
+        [(f.filename or "attachment", f.content_type, f.file, _size(f)) for f in files],
+        scope_developer_id=current.id,
+    )
+
+
+@router.delete(
+    "/tickets/{ticket_id}/uploads/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_ticket_upload(
+    workspace_id: str,
+    ticket_id: str,
+    attachment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Drop a file uploaded to this ticket but not yet sent."""
+    await ServiceDeskTicketService(db).remove_outbound_attachment(
+        workspace_id, ticket_id, attachment_id, scope_developer_id=current.id
+    )
+
+
+@router.get("/tickets/{ticket_id}/uploads/{attachment_id}")
+async def download_ticket_upload(
+    workspace_id: str,
+    ticket_id: str,
+    attachment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Hand back a file uploaded to this ticket, staged or already sent."""
+    filename, content_type, raw = await ServiceDeskTicketService(
+        db
+    ).load_uploaded_attachment(
+        workspace_id, ticket_id, attachment_id, scope_developer_id=current.id
+    )
+    return Response(
+        content=raw,
+        media_type=content_type,
+        headers={
+            # Same reasoning as the emailed files: saved, never rendered on our
+            # own origin, and not cached by anything shared.
+            "Content-Disposition": content_disposition(filename, "attachment"),
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.post("/tickets/{ticket_id}/split", response_model=HumanSplitResponse)
 async def split_detected_issues(
     workspace_id: str,
@@ -684,6 +774,7 @@ async def email_stakeholder(
         data.body,
         sender_id=str(current.id),
         attachment_filenames=data.attachment_filenames,
+        attachment_ids=data.attachment_ids,
         move_ticket=data.move_ticket,
         scope_developer_id=current.id,
         cc_emails=data.cc,

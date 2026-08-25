@@ -82,7 +82,7 @@ async def _mailbox(
 
 
 async def _google_integration(
-    db: AsyncSession, ws: Workspace, address: str = "operations@bimaplan.co"
+    db: AsyncSession, ws: Workspace, address: str = "operations@desk.example"
 ) -> GoogleIntegration:
     integration = GoogleIntegration(
         workspace_id=ws.id,
@@ -793,7 +793,7 @@ async def test_our_own_outbound_mail_is_skipped_before_any_ticket_exists(
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _email(
-            from_email="operations@bimaplan.co",
+            from_email="operations@desk.example",
             message_id="a1-self-loop-1",
             subject="SD-1 Your request",
             headers={sd_mod.OUTBOUND_MARKER_HEADER: "1"},
@@ -823,7 +823,7 @@ async def test_partner_mail_from_the_same_domain_is_still_ingested(db_session: A
     await _ops_kam(db_session, ws)
 
     ticket = await ServiceDeskIntakeService(db_session).ingest(
-        _email(from_email="priya@bimaplan.co", message_id="a1-same-domain-1"),
+        _email(from_email="priya@desk.example", message_id="a1-same-domain-1"),
         mb,
         "service_desk_gmail",
     )
@@ -848,7 +848,7 @@ async def test_reply_typed_in_gmail_from_the_desk_never_opens_a_ticket(
 
     result = await ServiceDeskIntakeService(db_session).ingest(
         _email(
-            from_email=f"Bimaplan Operations <{mb.address}>",
+            from_email=f"Acme Operations <{mb.address}>",
             to="requester@partner.example",
             message_id="a1-desk-reply-1",
             thread_id="T-unknown",

@@ -10,8 +10,8 @@ import { tokenise } from "@/components/service-desk/richText";
  */
 describe("tokenise", () => {
   it("turns the reported placeholder into one image, not two links", () => {
-    const segs = tokenise("[image: https://bimaplan.co] <https://bimaplan.co>");
-    expect(segs).toEqual([{ kind: "image", src: "https://bimaplan.co" }]);
+    const segs = tokenise("[image: https://desk.example] <https://desk.example>");
+    expect(segs).toEqual([{ kind: "image", src: "https://desk.example" }]);
   });
 
   it("handles a bare image placeholder", () => {

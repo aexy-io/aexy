@@ -919,6 +919,17 @@ async def _maybe_handle_service_desk(email_data: dict) -> bool:
                     break
             if mailbox is None:
                 return False
+
+            # Reply-all reads the recipients off the headers, and providers vary
+            # in whether they hand the raw ones over at all — the normalised
+            # `recipients` list is the one thing every payload shape produces.
+            # Filled in only when the headers carry no recipient of their own, so
+            # a real `To:`/`Cc:` is never overwritten by the parsed summary.
+            headers = dict(email_data.get("headers") or {})
+            lowered = {str(name).strip().lower() for name in headers}
+            if not ({"to", "cc"} & lowered) and email_data.get("recipients"):
+                headers["to"] = ", ".join(email_data["recipients"])
+
             intake = ServiceDeskIntakeService(session)
             await intake.ingest(
                 InboundEmail(
@@ -931,7 +942,7 @@ async def _maybe_handle_service_desk(email_data: dict) -> bool:
                     message_id=email_data.get("message_id"),
                     thread_id=email_data.get("thread_id"),
                     in_reply_to=email_data.get("in_reply_to_message_id"),
-                    headers=email_data.get("headers") or {},
+                    headers=headers,
                 ),
                 mailbox,
                 source="service_desk_webhook",

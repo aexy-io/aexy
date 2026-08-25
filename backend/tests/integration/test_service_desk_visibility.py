@@ -47,7 +47,7 @@ def _sd(ws_id: str) -> str:
 
 
 async def _developer(db: AsyncSession, label: str) -> Developer:
-    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@bimaplan.co", name=label)
+    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@desk.example", name=label)
     db.add(dev)
     await db.flush()
     return dev
@@ -86,7 +86,7 @@ async def desk(db_session: AsyncSession):
     kam_b = await _developer(db_session, "kam-b")
     finance = await _developer(db_session, "finance")
 
-    ws = Workspace(id=str(uuid4()), name="Bimaplan", slug=f"bp-{uuid4().hex[:6]}", owner_id=head.id)
+    ws = Workspace(id=str(uuid4()), name="that customer", slug=f"bp-{uuid4().hex[:6]}", owner_id=head.id)
     db_session.add(ws)
     await db_session.flush()
     # Stakeholders and request types are per-workspace rows rather than an enum,
@@ -315,7 +315,7 @@ async def test_ops_lead_sees_everything_but_cannot_configure_the_desk(client, de
 
     forbidden = {
         "create partner": await client.post(f"{b}/accounts", headers=h, json={"name": "X", "domains": ["x.com"]}),
-        "create mailbox": await client.post(f"{b}/mailboxes", headers=h, json={"address": "x@bimaplan.co"}),
+        "create mailbox": await client.post(f"{b}/mailboxes", headers=h, json={"address": "x@desk.example"}),
         "rewrite template": await client.patch(
             f"{b}/templates/receipt", headers=h, json={"subject": "x", "body": "y"}
         ),

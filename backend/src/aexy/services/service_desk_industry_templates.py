@@ -16,7 +16,7 @@ of starting points that populates it, so a new desk isn't a blank page.
 support desk triages into. Names, mailboxes, real accounts and staff are
 supplied when a template is applied; the desk's own name defaults to the
 workspace name. That separation is the point: "insurance broking" is reusable,
-"Bimaplan" is not.
+any one customer's name is not.
 
 Two rules hold the whole design together:
 

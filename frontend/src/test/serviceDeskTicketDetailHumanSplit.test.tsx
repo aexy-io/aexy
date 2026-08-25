@@ -119,6 +119,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     convertToTask: { mutate: vi.fn(), isPending: false },
     updateTicket: { mutateAsync: vi.fn(), isPending: false, isError: false },
     emailStakeholder: { mutateAsync: vi.fn(), isPending: false, isError: false },
+    uploadFiles: { mutate: vi.fn(), isPending: false },
+    deleteUpload: { mutate: vi.fn(), isPending: false },
+    downloadUpload: { mutate: vi.fn(), isPending: false },
   }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
   useServiceDeskTaxonomy: () => ({

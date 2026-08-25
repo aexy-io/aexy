@@ -56,7 +56,7 @@ from aexy.models.service_desk import (
     ServiceDeskAccountDomain,
     ServiceDeskTicket,
 )
-from aexy.models.ticketing import Ticket, TicketResponse
+from aexy.models.ticketing import Ticket
 from aexy.models.developer import Developer
 from aexy.models.workspace import Workspace
 from aexy.schemas.service_desk import (
@@ -2125,14 +2125,9 @@ class ServiceDeskService:
             )
 
         if assignment_note:
-            self.db.add(
-                TicketResponse(
-                    id=str(uuid4()),
-                    ticket_id=ticket.id,
-                    content=assignment_note,
-                    is_internal=True,
-                )
-            )
+            from aexy.services.service_desk_intake_service import stamp_assignment_note
+
+            self.db.add(stamp_assignment_note(ticket, assignment_note))
 
         await self.db.flush()
 

@@ -186,19 +186,34 @@ export interface TicketEmailRecipient {
   stage: PendingWith | null;
 }
 
-/** A file that arrived on the ticket's original email. */
+/** A file on the ticket: one that arrived by email, or one uploaded to send. */
 export interface TicketAttachment {
-  /** Position in the ticket's attachment list — the handle the download URL
-   *  takes. Two replies can attach files with the same name, so the name is a
-   *  label and never an identifier. */
-  index: number;
+  /** Position in the ticket's *emailed* attachment list — the handle that
+   *  download URL takes. Two replies can attach files with the same name, so the
+   *  name is a label and never an identifier. Null on an uploaded file, which is
+   *  addressed by `id`. */
+  index: number | null;
+  /** Set on uploaded files only — the handle their own download and delete
+   *  routes take. */
+  id: string | null;
+  /** Where the file came from. "email" arrived on the conversation; "upload" was
+   *  put there by somebody here to be sent out. */
+  source: "email" | "upload";
   filename: string;
   content_type: string | null;
   size_bytes: number | null;
   /** False when the original message gave us no handle for the bytes. Both
    *  forwarding and downloading re-fetch from that message, so neither can be
-   *  offered without it. */
+   *  offered without it. Always true for an uploaded file. */
   can_forward: boolean;
+}
+
+/** Who a reply from this ticket goes to, and who else is on the thread. */
+export interface TicketReplyAll {
+  /** The last person who wrote in — not necessarily whoever opened the ticket. */
+  to: string | null;
+  /** The rest of the chain, the desk's own address excluded. */
+  cc: string[];
 }
 
 export interface DetectedIssue {
@@ -223,7 +238,12 @@ export interface ServiceDeskTicketDetail extends ServiceDeskTicket {
   segments: Segment[];
   correspondence: CorrespondenceEntry[];
   email_recipients: TicketEmailRecipient[];
+  /** Prefills the compose box so a reply keeps the people already on the mail. */
+  reply_all: TicketReplyAll;
   attachments: TicketAttachment[];
+  /** Why this ticket has the owner it has, when the answer was not simply
+   *  Master Data. Null when nothing had to be explained. */
+  assignment_note: string | null;
   tat: TicketTAT;
   /** Server-computed write authority for the requesting caller. */
   can_edit: boolean;
@@ -564,9 +584,27 @@ export const serviceDeskApi = {
     (await api.post(`${base(ws)}/tickets/manual`, data)).data,
   emailStakeholder: async (
     ws: string, id: string,
-    data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean },
+    data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; attachment_ids?: string[]; move_ticket?: boolean },
   ): Promise<ServiceDeskTicketDetail> =>
     (await api.post(`${base(ws)}/tickets/${id}/email`, data)).data,
+  /**
+   * Put files on the ticket to be attached to a reply.
+   *
+   * Uploaded ahead of the send rather than with it: the KAM is still writing,
+   * and a failed send must not also lose the file they chose.
+   */
+  uploadFiles: async (ws: string, id: string, files: File[]): Promise<TicketAttachment[]> => {
+    const form = new FormData();
+    files.forEach((file) => form.append("files", file));
+    return (await api.post(`${base(ws)}/tickets/${id}/uploads`, form)).data;
+  },
+  deleteUpload: async (ws: string, id: string, attachmentId: string): Promise<void> => {
+    await api.delete(`${base(ws)}/tickets/${id}/uploads/${attachmentId}`);
+  },
+  /** The bytes of an uploaded file, staged or already sent. Same reason as
+   *  `downloadAttachment` for going through the client rather than an `<a>`. */
+  downloadUpload: async (ws: string, id: string, attachmentId: string): Promise<Blob> =>
+    (await api.get(`${base(ws)}/tickets/${id}/uploads/${attachmentId}`, { responseType: "blob" })).data,
   convertToTask: async (
     ws: string, ticketId: string, data: { project_id: string; sprint_id?: string; title?: string; priority?: string; assignee_id?: string; pending_with?: string },
   ): Promise<{ task_id: string; task_title: string; linked: boolean }> =>
