@@ -57,6 +57,9 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplate,
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
+    PublishToCommunityRequest,
+    PublishTargetsResponse,
+    TicketCommunityTopic,
     StakeholderEmailRequest,
     TicketAttachment,
     AIAccuracy,
@@ -800,6 +803,59 @@ async def convert_to_task(
         pending_with=data.pending_with,
         scope_developer_id=current.id,
     )
+
+
+@router.get("/community/publish-targets", response_model=PublishTargetsResponse)
+async def community_publish_targets(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Where a ticket answer may be published, if publishing is switched on.
+
+    Returns ``enabled=false`` with no channels when the workspace has not opted
+    in — which is the default — so the ticket UI simply doesn't offer the action
+    rather than offering one that 403s.
+    """
+    from aexy.services.community_publishing_service import CommunityPublishingService
+
+    service = CommunityPublishingService(db)
+    channels = await service.target_channels(workspace_id, "service_desk")
+    community = await service.linked_community(workspace_id, "service_desk")
+    return PublishTargetsResponse(
+        enabled=community is not None,
+        community_slug=community.community_slug if community is not None else None,
+        channels=channels,
+    )
+
+
+@router.post("/tickets/{ticket_id}/publish-to-community", response_model=TicketCommunityTopic)
+async def publish_ticket_to_community(
+    workspace_id: str,
+    ticket_id: str,
+    data: PublishToCommunityRequest,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Publish this ticket's answer as a public community thread.
+
+    The body is whatever the operator reviewed and edited in the composer — the
+    ticket's own correspondence is never posted as-is, because a customer's email
+    contains the customer.
+    """
+    service = ServiceDeskTicketService(db)
+    try:
+        return await service.publish_to_community(
+            workspace_id,
+            ticket_id,
+            channel_id=data.channel_id,
+            title=data.title,
+            content=data.content,
+            developer_id=str(current.id),
+            scope_developer_id=current.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.patch("/tickets/{ticket_id}", response_model=ServiceDeskTicketDetail)

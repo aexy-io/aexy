@@ -222,6 +222,9 @@ class CommunitySettingsUpdate(BaseModel):
     listed: bool | None = None
     allow_participation: bool | None = None
     post_moderation: str | None = Field(None, pattern="^(post|pre)$")
+    allow_new_topics: bool | None = None
+    link_service_desk: bool | None = None
+    link_docs: bool | None = None
 
 
 class CommunitySettingsResponse(BaseModel):
@@ -239,10 +242,71 @@ class CommunitySettingsResponse(BaseModel):
     listed: bool = False
     allow_participation: bool = False
     post_moderation: str = "post"
+    allow_new_topics: bool = False
+    link_service_desk: bool = False
+    link_docs: bool = False
 
 
 class PublicReplyCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=10_000)
+
+
+class PublicTopicCreate(BaseModel):
+    """An outsider opening a new thread in a web-public channel."""
+
+    name: str = Field(..., min_length=3, max_length=200)
+    content: str = Field(..., min_length=1, max_length=10_000)
+
+
+class PublicReactionCreate(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=16)
+
+
+class TopicAcceptedAnswerUpdate(BaseModel):
+    """Mark (or, with null, unmark) a reply as the answer to a topic."""
+
+    message_id: str | None = None
+
+
+class CommunityTemplateChannelPreview(BaseModel):
+    name: str
+    description: str | None = None
+    topics: list[str] = Field(default_factory=list)
+
+
+class CommunityTemplateSummary(BaseModel):
+    id: str
+    name: str
+    description: str
+    audience: str
+    channels: list[CommunityTemplateChannelPreview] = Field(default_factory=list)
+    allow_participation: bool = False
+    allow_new_topics: bool = False
+    post_moderation: str = "post"
+
+
+class CommunityTemplateListResponse(BaseModel):
+    templates: list[CommunityTemplateSummary] = Field(default_factory=list)
+
+
+class CommunityTemplateApply(BaseModel):
+    template_id: str
+    # Off by default even here: applying a template lays out channels and seeds
+    # threads, but going live is still a separate, deliberate switch.
+    publish: bool = False
+
+
+class CommunityTemplateApplyResult(BaseModel):
+    template_id: str
+    channels_created: list[str] = Field(default_factory=list)
+    channels_skipped: list[str] = Field(default_factory=list)
+    topics_created: int = 0
+    enabled: bool = False
+    community_slug: str
+    # False when the community already existed, so the template's participation
+    # defaults were deliberately *not* written over the operator's own choices.
+    # The UI needs this to avoid claiming the template's settings took effect.
+    settings_applied: bool = True
 
 
 class MemberPublicPrefUpdate(BaseModel):
@@ -284,6 +348,7 @@ class PublicCommunityResponse(BaseModel):
     theme: dict = Field(default_factory=dict)
     noindex: bool = False
     allow_participation: bool = False
+    allow_new_topics: bool = False
     channels: list[PublicCommunityChannel] = Field(default_factory=list)
 
 
@@ -307,6 +372,7 @@ class PublicTopicSummary(BaseModel):
     message_count: int = 0
     last_message_at: datetime | None = None
     created_at: datetime | None = None
+    is_answered: bool = False
 
 
 class PublicChannelResponse(BaseModel):
@@ -317,12 +383,27 @@ class PublicChannelResponse(BaseModel):
     total: int = 0
 
 
+class PublicReaction(BaseModel):
+    emoji: str
+    count: int = 0
+    # Whether the caller has already reacted with this emoji. Always false for
+    # anonymous reads, which is why the public page renders the toggle state
+    # client-side after it knows who is looking.
+    mine: bool = False
+
+
 class PublicMessage(BaseModel):
     id: str
     author: str
+    # Opaque, stable per (community, member) handle for the author's public
+    # profile — absent when the author posts anonymously, so an anonymous
+    # display mode cannot be undone by following a link.
+    author_handle: str | None = None
     content: str
     is_edited: bool = False
     created_at: datetime
+    reactions: list[PublicReaction] = Field(default_factory=list)
+    is_accepted: bool = False
 
 
 class PublicTopicResponse(BaseModel):
@@ -334,6 +415,41 @@ class PublicTopicResponse(BaseModel):
     messages: list[PublicMessage] = Field(default_factory=list)
     total: int = 0
     allow_participation: bool = False
+    accepted_message_id: str | None = None
+
+
+class PublicSearchHit(BaseModel):
+    """One matching thread. Search returns threads, never bare messages — a
+    message ripped out of its thread is not an answer to anything."""
+
+    channel_slug: str
+    channel_name: str
+    topic_slug: str | None = None
+    short_id: str | None = None
+    name: str
+    snippet: str | None = None
+    message_count: int = 0
+    last_message_at: datetime | None = None
+    is_answered: bool = False
+
+
+class PublicSearchResponse(BaseModel):
+    query: str
+    hits: list[PublicSearchHit] = Field(default_factory=list)
+    total: int = 0
+
+
+class PublicMemberProfile(BaseModel):
+    """A community member's public face. Carries no email, no developer id, and
+    exists only for members who chose to be named or aliased."""
+
+    handle: str
+    display_name: str
+    joined_at: datetime | None = None
+    topic_count: int = 0
+    message_count: int = 0
+    accepted_answer_count: int = 0
+    topics: list[PublicSearchHit] = Field(default_factory=list)
 
 
 # ── Authenticated member context (internal threads) ──────────────────

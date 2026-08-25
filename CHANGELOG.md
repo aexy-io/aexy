@@ -5,6 +5,143 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-08-25
+
+### Community
+
+The forum has existed since 0.8.57, and the part of it that was finished was the
+part nobody could see: a read model that carries its visibility rules as SQL, so
+nothing leaks even from an endpoint that forgot to filter. Everything between
+"the API is correct" and "a stranger arrives and stays" was missing.
+
+**A visitor can ask a question.** Replying to a thread the vendor started was the
+only thing an outsider could do, which is a comment section, not a forum. New
+threads are their own switch — off by default, and separate from replies, because
+answering in a thread somebody opened and opening one yourself are different
+amounts of trust.
+
+Under pre-moderation the *whole thread* is held, not just its first post. Holding
+the post alone still published the thread's title, which is the half a spammer
+wants published. Approving the opener publishes the thread; rejecting it removes
+the thread — unless answers arrived while the moderator was deciding, in which
+case only the post goes.
+
+**Search.** The product page has always claimed answers here were findable, and
+there was no search. There is now: threads matching a title or a body, with the
+same visibility rules as everything else — so a private thread, a redacted
+message, and anything before a channel's history cutoff stay out of the results
+as well as out of the page.
+
+**Accepted answers.** The person who asked, or an admin, can mark the reply that
+answered it. The thread badges it, lifts it under the question, and describes
+itself to search engines as a question with an accepted answer rather than as a
+generic discussion — which is what earns the answer its own treatment in results.
+
+**Reactions**, from a small fixed palette. The cheapest way for a reader with
+nothing to add to say "this one helped", and what lets a long thread show which
+of its replies was useful.
+
+**Member profiles**, for the people who chose to be named. Somebody posting
+anonymously has no profile and no link to one: a link is exactly how anonymity
+comes undone — follow it once and every other post by the same person is
+attributed. Handles are derived per community, so one forum's handle cannot be
+used to find the same person in another.
+
+**The team hears about it.** A post by an outsider created no notification at
+all, so a question sat on a public page until an admin happened to look. New
+threads, new replies, and posts held for review now reach the channel's members —
+falling back to the workspace's admins — in their own notification category, so
+community traffic can be routed separately from internal chat.
+
+**A reply appears immediately.** Pages are cached, so the author was returned to a
+thread that did not contain what they had just written and read it as a failed
+save. Their post now renders straight away, and the shared page is invalidated so
+the next visitor sees it too.
+
+**Page 2 exists.** The API had always taken a page and an offset; no page ever
+read one, so topic 51 and message 51 existed and could not be visited — by a
+person or by a crawler. Paging is ordinary links with a page-aware canonical.
+
+**It looks like Aexy.** The public pages were generic grey and blue while the
+rest of the site is not, so following a link from the product to its forum felt
+like landing on somewhere else. They are on the brand now — while the header
+still carries the *tenant's* name, logo and accent colour, because most of these
+forums belong to somebody else. That accent was stored, served over the API, and
+had never been applied to a single pixel.
+
+Plus: a social card per thread, so a shared link stops showing the same generic
+image for every question; an RSS feed; the directory in the sitemap and in the
+site's own navigation, which is how a forum stops being reachable only by
+accident; and every string on the public and settings pages translated, which
+four of the five pages were not.
+
+### Added: a community starts with something on it
+
+Enabling a community used to mean a checkbox followed by an empty page. There are
+starter shapes now — product support, open-source project, customer community,
+public knowledge base — each laying out a few channels, seeding the first threads,
+and setting participation defaults that suit that kind of forum. A workspace with
+no community sees the picker first, because an empty forum with a perfect settings
+page is not a forum.
+
+Applying one is idempotent by channel name, so a second click reports what it
+skipped instead of leaving you with `help` and `help-a1b2c3`. And it publishes
+nothing by itself: laying out a forum and going live are separate decisions.
+
+### Added: publish an answer you have already written (off by default)
+
+A team that answers the same question ten times a month over email has the
+answers and nowhere public to put them. A resolved Service Desk ticket can now
+become a public thread, and a published document can get one for discussing it.
+
+Both are per-workspace switches and both ship **off**. Publishing moves text
+somebody else wrote onto a page anyone can read, so it is never a default — and
+the two are separate, because a workspace may well want its docs public and its
+customer ticket traffic emphatically not.
+
+Nothing is published as it arrived. The action opens a composer pre-filled with
+the ticket's subject and the desk's own last reply, and a person edits it before
+anything goes out. A customer's email contains the customer, and no automatic
+redaction is trustworthy enough to run that unattended onto a public page. The
+thread is recorded on the ticket afterwards, so the next person to open it can
+see the answer is already public instead of writing a second one.
+
+A document gets "Discuss this page" instead, opening one public thread per
+document — and the thread's opening post is an intro somebody writes, not a copy
+of the document. A document is edited after it is published, and a stale copy of
+it sitting on a public forum page is worse than no copy, so the thread links back
+to the living document.
+
+A community that has not gone live still accepts published threads; they are
+simply not served yet. "Publish the answers, go live on Monday" is an ordinary
+way to launch.
+
+### Changed: a channel called "Members" keeps working
+
+`/community/{slug}/search` and `/community/{slug}/members/…` are fixed paths, and
+a fixed path always wins over the channel slug beside it. A channel slugged
+exactly `search` or `members` would therefore have worked everywhere inside the
+product and 404'd on the forum — and "Members" is an entirely reasonable channel
+for a community to want. Those two names now get a short suffix when the slug is
+minted, and any channel already carrying one is repaired. Nothing that ever
+resolved can break: those URLs never resolved.
+
+### Changed: public search has a per-address budget
+
+It is the one anonymous page that runs a query rather than serving a cached copy.
+Thirty searches a minute per address — loose on purpose, because an office behind
+one connection is many readers sharing an address, and a limit set too low makes
+a working forum look broken.
+
+### Fixed: signing in from a forum no longer creates an internal account
+
+The backend has always accepted the markers that make a forum-only sign-in a
+*community* account — walled off from the internal product, non-billable, and
+returned to the thread rather than dumped on the dashboard. The login page never
+forwarded them. So every visitor who signed in to ask one question received a full
+internal account, and the isolation middleware written to contain them never fired
+once.
+
 ## [0.30.0] - 2026-08-25
 
 ### Fixed: mail a colleague sent no longer picks an owner at random

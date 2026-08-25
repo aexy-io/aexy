@@ -13,6 +13,7 @@ import { DocumentBreadcrumb } from "@/components/docs/DocumentBreadcrumb";
 import { DocumentComments } from "@/components/docs/DocumentComments";
 import { ProposedEditsBanner } from "@/components/docs/ProposedEditsBanner";
 import { DocumentProvenance } from "@/components/docs/DocumentProvenance";
+import { DiscussInCommunity } from "@/components/docs/DiscussInCommunity";
 import { CodeLinkPanel } from "@/components/docs/CodeLinkPanel";
 import { DocumentImprovements } from "@/components/docs/DocumentImprovements";
 import { GitHubSyncPanel } from "@/components/docs/GitHubSyncPanel";
@@ -241,6 +242,14 @@ export default function DocumentPage() {
             onSync={handleManualSync}
             isSyncing={isUpdating}
             onConfigurePublishing={() => setShowPublishing(true)}
+          />
+          {/* Where this document is discussed in public, if the workspace opted
+              in. Renders nothing otherwise — the switch is off by default. */}
+          <DiscussInCommunity
+            workspaceId={currentWorkspaceId}
+            documentId={documentId}
+            documentTitle={document.title}
+            communityTopicId={document.community_topic_id ?? null}
           />
         </div>
       ) : null}

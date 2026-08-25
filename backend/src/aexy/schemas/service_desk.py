@@ -676,6 +676,41 @@ class StakeholderEmailRequest(BaseModel):
     move_ticket: bool = True
 
 
+class TicketCommunityTopic(BaseModel):
+    """Pointer to the public thread this ticket's answer became."""
+
+    topic_id: str
+    channel_slug: str
+    channel_name: str | None = None
+    community_slug: str
+    path: str
+    published_at: datetime | None = None
+    # Whether the community is currently served publicly. A thread can be
+    # published into a community that has not gone live yet.
+    live: bool = True
+
+
+class PublishToCommunityRequest(BaseModel):
+    channel_id: str
+    title: str = Field(..., min_length=3, max_length=200)
+    # The body the operator actually reviewed. Deliberately required rather than
+    # derived from the ticket's messages: a customer's email contains the
+    # customer, and nothing here is clever enough to redact that unattended.
+    content: str = Field(..., min_length=1, max_length=20_000)
+
+
+class PublishTargetsResponse(BaseModel):
+    """Where this workspace may publish, if it may at all.
+
+    An empty ``channels`` means the link is switched off or there is nowhere
+    public to publish to — either way the UI should not offer the action.
+    """
+
+    enabled: bool = False
+    community_slug: str | None = None
+    channels: list[dict] = Field(default_factory=list)
+
+
 class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     body: str | None = None
     linked_task_id: str | None = None
@@ -691,6 +726,10 @@ class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     # so "assignment is not following our master data" could not be answered from
     # the ticket that prompted it. None when nothing had to be explained.
     assignment_note: str | None = None
+    # Set once this ticket's answer has been published to the public community
+    # forum, so the next person to open it can link to the public thread instead
+    # of writing the same answer again. None until somebody publishes.
+    community_topic: TicketCommunityTopic | None = None
     tat: TicketTAT
     # Server-computed write authority for the requesting caller, so the UI never
     # re-derives (and drifts from) the ``can_edit_ticket`` rule.

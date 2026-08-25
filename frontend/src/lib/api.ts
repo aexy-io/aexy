@@ -6832,6 +6832,8 @@ export interface Document {
   cover_image: string | null;
   is_template: boolean;
   is_published: boolean;
+  /** Set when a public community thread discusses this document. */
+  community_topic_id?: string | null;
   published_at: string | null;
   visibility: DocumentVisibility;
   generation_status: DocumentStatus;
@@ -7244,6 +7246,52 @@ export interface DocumentAncestor {
 // ============ Document API ============
 
 export const documentApi = {
+  /** Where a document's answers may be discussed publicly, if anywhere. */
+  communityTargets: async (
+    workspaceId: string,
+  ): Promise<{
+    enabled: boolean;
+    community_slug: string | null;
+    channels: Array<{ id: string; slug: string; name: string }>;
+  }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/documents/community/targets`);
+    return response.data;
+  },
+
+  /** The thread discussing this document. 404s when it has none. */
+  communityThread: async (
+    workspaceId: string,
+    documentId: string,
+  ): Promise<{ topic_id: string; community_slug: string; path: string | null; live: boolean }> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/${documentId}/community-thread`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Open (or return) the public thread for discussing this document.
+   * Idempotent — a document already linked returns its thread rather than
+   * opening a second one, so "Discuss this page" stays one conversation.
+   */
+  discussInCommunity: async (
+    workspaceId: string,
+    documentId: string,
+    data: { channel_id?: string; title?: string; content?: string },
+  ): Promise<{
+    topic_id: string;
+    community_slug: string;
+    path: string | null;
+    live: boolean;
+    already_linked: boolean;
+  }> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/${documentId}/discuss-in-community`,
+      data,
+    );
+    return response.data;
+  },
+
   // ---- Word documents ----
   //
   // Bytes go through the API rather than a presigned URL: uploads are private,
@@ -23951,6 +23999,42 @@ export interface CommunitySettings {
   listed: boolean;
   allow_participation: boolean;
   post_moderation: string;
+  allow_new_topics: boolean;
+  // Cross-module publishing, one switch per source. Both default false: putting
+  // text somebody else wrote on a public page is never a default.
+  link_service_desk: boolean;
+  link_docs: boolean;
+}
+
+export interface CommunityTemplateChannelPreview {
+  name: string;
+  description: string | null;
+  topics: string[];
+}
+
+export interface CommunityTemplate {
+  id: string;
+  name: string;
+  description: string;
+  audience: string;
+  channels: CommunityTemplateChannelPreview[];
+  allow_participation: boolean;
+  allow_new_topics: boolean;
+  post_moderation: string;
+}
+
+export interface CommunityTemplateApplyResult {
+  template_id: string;
+  channels_created: string[];
+  channels_skipped: string[];
+  topics_created: number;
+  enabled: boolean;
+  community_slug: string;
+  /**
+   * False when the community already existed, so the template's participation
+   * defaults were deliberately not written over the operator's own choices.
+   */
+  settings_applied: boolean;
 }
 
 export interface MemberPublicPref {
@@ -23968,6 +24052,23 @@ export const communityApi = {
     data: Partial<Omit<CommunitySettings, "workspace_id">>,
   ): Promise<CommunitySettings> => {
     const response = await api.put(`/workspaces/${workspaceId}/chat/community/settings`, data);
+    return response.data;
+  },
+  listTemplates: async (
+    workspaceId: string,
+  ): Promise<{ templates: CommunityTemplate[] }> => {
+    const response = await api.get(`/workspaces/${workspaceId}/chat/community/templates`);
+    return response.data;
+  },
+  applyTemplate: async (
+    workspaceId: string,
+    templateId: string,
+    publish = false,
+  ): Promise<CommunityTemplateApplyResult> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/chat/community/apply-template`,
+      { template_id: templateId, publish },
+    );
     return response.data;
   },
   getMyPref: async (workspaceId: string): Promise<MemberPublicPref> => {
@@ -24013,6 +24114,12 @@ export const communityApi = {
 
 // Public community participation (uses the shared axios client, which attaches
 // the auth token when the visitor is signed in).
+export interface CommunityReactionState {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
 export const communityPublicApi = {
   postReply: async (
     communitySlug: string,
@@ -24023,6 +24130,69 @@ export const communityPublicApi = {
     const response = await api.post(
       `/public/community/${communitySlug}/channels/${channelSlug}/topics/${topicParam}/replies`,
       { content },
+    );
+    return response.data;
+  },
+
+  createTopic: async (
+    communitySlug: string,
+    channelSlug: string,
+    name: string,
+    content: string,
+  ): Promise<{
+    id: string;
+    topic_id: string;
+    pending_review: boolean;
+    // Null while a thread is held for review — it has no public page yet, and
+    // sending the author to one would be a 404 they would read as "it vanished".
+    path: string | null;
+  }> => {
+    const response = await api.post(
+      `/public/community/${communitySlug}/channels/${channelSlug}/topics`,
+      { name, content },
+    );
+    return response.data;
+  },
+
+  toggleReaction: async (
+    communitySlug: string,
+    channelSlug: string,
+    topicParam: string,
+    messageId: string,
+    emoji: string,
+  ): Promise<CommunityReactionState> => {
+    const response = await api.post(
+      `/public/community/${communitySlug}/channels/${channelSlug}/topics/${topicParam}/messages/${messageId}/reactions`,
+      { emoji },
+    );
+    return response.data;
+  },
+
+  /**
+   * Which reactions the caller has already left in this thread. Fetched
+   * separately from the thread itself because that payload is cached and shared
+   * across every anonymous reader, so it cannot carry per-viewer state.
+   */
+  myReactions: async (
+    communitySlug: string,
+    channelSlug: string,
+    topicParam: string,
+  ): Promise<{ reactions: Record<string, string[]> }> => {
+    const response = await api.get(
+      `/public/community/${communitySlug}/channels/${channelSlug}/topics/${topicParam}/my-reactions`,
+    );
+    return response.data;
+  },
+
+  setAcceptedAnswer: async (
+    communitySlug: string,
+    channelSlug: string,
+    topicParam: string,
+    messageId: string | null,
+  ): Promise<{ accepted_message_id: string | null }> => {
+    const response = await api.put(
+      `/public/community/${communitySlug}/channels/${channelSlug}/topics/${topicParam}/accepted-answer`,
+      { message_id: messageId },
     );
     return response.data;
   },

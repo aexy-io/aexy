@@ -81,6 +81,11 @@ class DocumentResponse(BaseModel):
     is_template: bool = False
     is_published: bool = False
     published_at: datetime | None = None
+    # The public community thread discussing this document, if the workspace
+    # opted into that link. Just the id — the editor resolves the URL lazily,
+    # rather than every document read paying for three joins on a feature that
+    # ships switched off.
+    community_topic_id: str | None = None
     visibility: DocumentVisibility = "workspace"
     generation_status: DocumentStatus = "draft"
     last_generated_at: datetime | None = None
@@ -131,6 +136,44 @@ class DocumentTreeItem(BaseModel):
     children: list["DocumentTreeItem"] = Field(default_factory=list)
     created_at: str
     updated_at: str
+
+
+class DocumentCommunityDiscussRequest(BaseModel):
+    """Open the public thread for discussing a document.
+
+    Every field is optional because the endpoint is idempotent: a document that
+    already has a thread returns it, and that call needs no body at all. They
+    are required only when a thread is actually being created, which the
+    endpoint enforces.
+    """
+
+    channel_id: str | None = None
+    title: str | None = Field(None, max_length=200)
+    # The opening post. Not the document's own body — a document is edited after
+    # it is published, and a stale copy of it on a public forum page is worse
+    # than no copy, so the thread links back to the living document instead.
+    content: str | None = Field(None, max_length=20_000)
+
+
+class DocumentCommunityThreadResponse(BaseModel):
+    topic_id: str
+    community_slug: str
+    # None when the thread lost its channel, which would leave no public URL.
+    path: str | None = None
+    # False when the community exists but is not switched on yet.
+    live: bool = True
+
+
+class DocumentCommunityTargets(BaseModel):
+    """Where a document may be discussed, if anywhere.
+
+    ``enabled=False`` with no channels is the default — the workspace has not
+    opted in, so the editor should not offer the action at all.
+    """
+
+    enabled: bool = False
+    community_slug: str | None = None
+    channels: list[dict] = Field(default_factory=list)
 
 
 class DocumentMoveRequest(BaseModel):

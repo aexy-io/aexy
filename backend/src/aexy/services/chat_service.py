@@ -32,6 +32,20 @@ MENTION_RE = re.compile(
 )
 
 
+# Channel slugs that would be unreachable on the public forum.
+#
+# The public routes /community/{slug}/search and /community/{slug}/members/…
+# are static path segments, and a static segment always wins over the dynamic
+# [channelSlug] beside it. A channel slugged "search" or "members" would
+# therefore be addressable internally and 404 publicly — a channel called
+# "Members" is an entirely plausible thing for a community to want, so the
+# collision is prevented at the point slugs are minted rather than documented
+# and forgotten. Reserved names get the same random suffix a duplicate does.
+#
+# Keep in step with the directories under frontend/src/app/community/[communitySlug]/.
+RESERVED_CHANNEL_SLUGS = frozenset({"search", "members", "rss.xml", "sitemap.xml"})
+
+
 def _slugify(name: str) -> str:
     slug = name.lower().strip()
     slug = re.sub(r"[^a-z0-9\s-]", "", slug)
@@ -124,14 +138,14 @@ class ChatService:
         description: str | None = None, visibility: str = ChannelVisibility.WORKSPACE.value,
     ) -> ChatChannel:
         slug = _slugify(name)
-        # Ensure unique slug in workspace
+        # Ensure the slug is unique in the workspace AND addressable publicly.
         existing = await self.db.execute(
             select(ChatChannel).where(
                 ChatChannel.workspace_id == workspace_id,
                 ChatChannel.slug == slug,
             )
         )
-        if existing.scalar_one_or_none():
+        if existing.scalar_one_or_none() or slug in RESERVED_CHANNEL_SLUGS:
             slug = f"{slug}-{str(uuid4())[:8]}"
 
         channel = ChatChannel(

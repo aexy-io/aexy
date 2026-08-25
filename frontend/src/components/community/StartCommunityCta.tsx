@@ -18,24 +18,25 @@ export function StartCommunityCta({ signedIn }: { signedIn: boolean }) {
   const label = signedIn ? t("start.createButton") : t("start.signInButton");
 
   return (
-    <section className="mt-10 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 p-6">
+    <section className="mt-12 rounded-[3px] border border-ledger-ink/12 bg-ledger-card p-6">
       <div className="flex items-start gap-4">
-        <div className="rounded-xl bg-blue-600/10 p-2.5 text-blue-600 shrink-0">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[2px] text-ledger-paper"
+          style={{ background: "var(--community-accent, #0B6B3A)" }}
+        >
           <Sparkles className="h-5 w-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-gray-900 dark:text-white">
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display font-semibold tracking-tight">
             {t("start.title")}
           </h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {t("start.body")}
-          </p>
+          <p className="mt-1.5 text-sm leading-6 text-ledger-ink/70">{t("start.body")}</p>
           <Link
             href={href}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-[3px] bg-ledger-ink px-3.5 py-2 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-paper transition hover:bg-ledger-ink/85"
           >
             {label}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>

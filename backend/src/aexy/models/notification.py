@@ -230,6 +230,13 @@ class NotificationEventType(str, Enum):
     CHAT_MENTION = "chat_mention"
     AI_CONVERSATION_SHARED = "ai_conversation_shared"
 
+    # Community forum. Distinct from the chat events because the audience is
+    # different: these are strangers posting on a public page, and the team needs
+    # to hear about them whether or not anybody was @mentioned.
+    COMMUNITY_TOPIC = "community_topic"
+    COMMUNITY_REPLY = "community_reply"
+    COMMUNITY_PENDING_REVIEW = "community_pending_review"
+
 
 class Notification(Base):
     """In-app notification for a user.
@@ -624,6 +631,15 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.CHAT_MENTION.value,
         NotificationEventType.AI_CONVERSATION_SHARED.value,
     ],
+    # Its own category, not part of "chat": a team that mutes internal chat
+    # noise still needs to know a customer asked something in public, and the
+    # per-category Slack routing means community traffic can go to its own
+    # channel.
+    "community": [
+        NotificationEventType.COMMUNITY_TOPIC.value,
+        NotificationEventType.COMMUNITY_REPLY.value,
+        NotificationEventType.COMMUNITY_PENDING_REVIEW.value,
+    ],
 }
 
 # Reverse mapping: event_type -> category
@@ -809,4 +825,10 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     # Chat
     NotificationEventType.CHAT_MENTION: {"in_app": True, "email": True, "slack": False, "web_push": False},
     NotificationEventType.AI_CONVERSATION_SHARED: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    # Community. Email on by default for all three: an unanswered question on a
+    # public page is worse than an unread in-app badge, and a post held for
+    # review is invisible to everyone until somebody acts on it.
+    NotificationEventType.COMMUNITY_TOPIC: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.COMMUNITY_REPLY: {"in_app": True, "email": True, "slack": False, "web_push": False},
+    NotificationEventType.COMMUNITY_PENDING_REVIEW: {"in_app": True, "email": True, "slack": False, "web_push": False},
 }

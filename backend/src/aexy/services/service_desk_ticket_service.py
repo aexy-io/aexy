@@ -32,6 +32,7 @@ from aexy.schemas.service_desk import (
     ServiceDeskCorrespondence,
     ServiceDeskTicketDetail,
     TicketAttachment,
+    TicketCommunityTopic,
     TicketEmailRecipient,
     TicketFieldsUpdate,
     TicketReplyAll,
@@ -998,6 +999,84 @@ class ServiceDeskTicketService:
         )
         return out
 
+    @staticmethod
+    def _community_topic(ticket: Ticket) -> TicketCommunityTopic | None:
+        """The public thread this ticket's answer became, if it has one.
+
+        Stored on the ticket rather than derived, because the thread is in
+        another module's tables and the useful question here — "has this already
+        been answered in public?" — should not need a join to answer.
+        """
+        raw = (ticket.field_values or {}).get("community_topic")
+        if not isinstance(raw, dict):
+            return None
+        try:
+            return TicketCommunityTopic(**raw)
+        except ValidationError:
+            # A hand-edited or half-written value should not take down the whole
+            # ticket detail; the pointer is a convenience, not the record.
+            logger.warning("Ticket %s has an unreadable community_topic", ticket.id)
+            return None
+
+    async def publish_to_community(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        *,
+        channel_id: str,
+        title: str,
+        content: str,
+        developer_id: str,
+        scope_developer_id: str | None = None,
+    ) -> TicketCommunityTopic:
+        """Publish a reviewed answer from this ticket as a public thread.
+
+        The body is what the operator edited and looked at, not the ticket's
+        correspondence — see ``CommunityPublishingService`` for why nothing here
+        auto-publishes what a customer wrote.
+        """
+        from aexy.services.community_publishing_service import (
+            CommunityPublishingService,
+            PublishingError,
+        )
+
+        # for_edit: publishing an answer from a ticket is a write on that ticket,
+        # so it takes the same authority as editing one. A read-only role that can
+        # see every queue must not be able to put any of it on the internet.
+        await self._sd(
+            workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True
+        )
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        try:
+            published = await CommunityPublishingService(self.db).publish(
+                workspace_id,
+                source="service_desk",
+                channel_id=channel_id,
+                title=title,
+                content=content,
+                developer_id=developer_id,
+            )
+        except PublishingError as exc:
+            raise ValueError(exc.message) from exc
+
+        pointer = TicketCommunityTopic(
+            topic_id=published["topic_id"],
+            channel_slug=published["channel_slug"],
+            channel_name=published["channel_name"],
+            community_slug=published["community_slug"],
+            path=published["path"],
+            published_at=published["published_at"],
+            live=published["live"],
+        )
+        values = dict(ticket.field_values or {})
+        values["community_topic"] = pointer.model_dump(mode="json")
+        ticket.field_values = values
+        await self.db.flush()
+        return pointer
+
     async def _assignment_note(self, ticket: Ticket) -> str | None:
         """Why this ticket has the owner it has, when that needed explaining.
 
@@ -1800,6 +1879,7 @@ class ServiceDeskTicketService:
             reply_all=self._reply_all(ticket, desk_address),
             attachments=self._detail_attachments(ticket),
             assignment_note=await self._assignment_note(ticket),
+            community_topic=self._community_topic(ticket),
             tat=tat,
             can_edit=can_edit,
             can_send_email=can_send_email,

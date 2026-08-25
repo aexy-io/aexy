@@ -28,6 +28,7 @@ import {
   useAccounts,
   useProducts,
 } from "@/hooks/useServiceDesk";
+import { PublishToCommunityCard } from "./PublishToCommunityCard";
 import { useProjects } from "@/hooks/useProjects";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { PendingWith, RequestType, TicketAttachment } from "@/lib/service-desk-api";
@@ -783,6 +784,10 @@ export default function ServiceDeskTicketDetailPage() {
               </div>
             </Card>
           )}
+
+          {/* Publishing this answer to the public forum. Renders nothing unless
+              the workspace switched the link on in community settings. */}
+          <PublishToCommunityCard ticket={ticket} ticketId={ticketId} />
         </aside>
 
         {/* ------------------------------- writing out, and what has been said */}

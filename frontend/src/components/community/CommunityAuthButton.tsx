@@ -7,15 +7,25 @@ import { useTranslations } from "next-intl";
 /**
  * Header CTA for the public community pages. Those pages are server/ISR
  * rendered, so auth state can't be read at render time — this small client
- * component reads the token from localStorage (same approach as CommunityReply)
- * and swaps the button accordingly: signed-out visitors get "Sign in" (→ /login,
- * with a next= back to where they are); signed-in visitors get "Open app"
- * (→ /dashboard) instead of being told to sign in when they already are.
+ * component reads the token from localStorage (same approach as the thread
+ * composer) and swaps the button accordingly: signed-out visitors get "Sign in";
+ * signed-in visitors get "Open app" instead of being told to sign in when they
+ * already are.
+ *
+ * The sign-in link carries `context=community` when it comes from inside a
+ * community. That is what makes a forum-only visitor a *community* account —
+ * walled off from the internal product by the isolation middleware, non-billable,
+ * and returned to the forum rather than dumped on /dashboard. Without it, every
+ * person who signed in to ask one question got a full internal account, which is
+ * neither what they wanted nor what the workspace paying for seats wanted.
  */
 export function CommunityAuthButton({
   signedOutVariant = "signIn",
+  communitySlug,
 }: {
   signedOutVariant?: "signIn" | "signInToJoin";
+  /** Set on community pages; omitted on the directory, which is not one community. */
+  communitySlug?: string;
 }) {
   const t = useTranslations("community");
   const [signedIn, setSignedIn] = useState(false);
@@ -28,7 +38,7 @@ export function CommunityAuthButton({
   }, []);
 
   const className =
-    "text-sm rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700";
+    "shrink-0 rounded-[3px] bg-ledger-ink px-3 py-1.5 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-paper transition hover:bg-ledger-ink/85";
 
   if (signedIn) {
     return (
@@ -38,11 +48,14 @@ export function CommunityAuthButton({
     );
   }
 
+  const params = new URLSearchParams({ next });
+  if (communitySlug) {
+    params.set("context", "community");
+    params.set("community", communitySlug);
+  }
+
   return (
-    <Link
-      href={`/login?next=${encodeURIComponent(next)}`}
-      className={className}
-    >
+    <Link href={`/login?${params.toString()}`} className={className}>
       {t(`auth.${signedOutVariant}`)}
     </Link>
   );

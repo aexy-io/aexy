@@ -20,6 +20,10 @@ from aexy.schemas.chat import (
     ChannelUpdate,
     CommunitySettingsResponse,
     CommunitySettingsUpdate,
+    CommunityTemplateApply,
+    CommunityTemplateApplyResult,
+    CommunityTemplateListResponse,
+    CommunityTemplateSummary,
     DMCreate,
     InboxResponse,
     MarkReadRequest,
@@ -40,6 +44,7 @@ from aexy.services.chat_pubsub import get_chat_pubsub
 from aexy.services.chat_service import ChatService
 from aexy.services.community_participation_service import CommunityParticipationService
 from aexy.services.community_service import CommunityService
+from aexy.services.community_templates import template_summaries
 from aexy.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -802,6 +807,9 @@ def _community_to_response(c) -> CommunitySettingsResponse:
         listed=c.listed,
         allow_participation=c.allow_participation,
         post_moderation=c.post_moderation,
+        allow_new_topics=c.allow_new_topics,
+        link_service_desk=c.link_service_desk,
+        link_docs=c.link_docs,
     )
 
 
@@ -877,6 +885,48 @@ async def set_my_public_pref(
     return MemberPublicPrefResponse(
         public_display=pref.public_display, public_alias=pref.public_alias
     )
+
+
+# ── Community starter templates ───────────────────────────────────────
+
+@router.get("/community/templates", response_model=CommunityTemplateListResponse)
+async def list_community_templates(
+    workspace_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """The catalogue of starting shapes. Static — no workspace data involved."""
+    await _check_workspace(db, workspace_id, str(current_user.id))
+    return CommunityTemplateListResponse(
+        templates=[CommunityTemplateSummary(**t) for t in template_summaries()]
+    )
+
+
+@router.post("/community/apply-template", response_model=CommunityTemplateApplyResult)
+async def apply_community_template(
+    workspace_id: str,
+    data: CommunityTemplateApply,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lay out channels and seed threads from a starter template.
+
+    Admin-only, because it creates web-public channels and writes the
+    participation defaults. Idempotent by channel slug, so re-applying reports
+    what it skipped instead of duplicating it.
+    """
+    ws = WorkspaceService(db)
+    if not await ws.check_permission(workspace_id, str(current_user.id), "admin"):
+        raise HTTPException(status_code=403, detail="Workspace admin required")
+    service = CommunityService(db)
+    try:
+        result = await service.apply_template(
+            workspace_id, str(current_user.id), data.template_id, publish=data.publish
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return CommunityTemplateApplyResult(**result)
 
 
 # ── Community moderation queue (pre-moderated participant posts) ──────

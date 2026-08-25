@@ -109,6 +109,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     },
   }),
   useServiceDeskMutations: () => ({
+    publishToCommunity: { mutate: vi.fn(), isPending: false },
     splitDetectedIssues: {
       mutate: mocks.split,
       isPending: false,
@@ -123,6 +124,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     deleteUpload: { mutate: vi.fn(), isPending: false },
     downloadUpload: { mutate: vi.fn(), isPending: false },
   }),
+  // Publishing to the community is opt-in and off by default, so the card the
+  // ticket page renders for it is absent here — which is the default state.
+  useCommunityPublishTargets: () => ({ data: { enabled: false, community_slug: null, channels: [] } }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
   useServiceDeskTaxonomy: () => ({
     stakeholders: [],

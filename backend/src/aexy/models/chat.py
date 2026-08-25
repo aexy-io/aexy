@@ -151,6 +151,18 @@ class ChatTopic(Base):
         UUID(as_uuid=False), ForeignKey("developers.id", ondelete="SET NULL"), nullable=True
     )
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The message that answered the question. Set by the topic's author or a
+    # workspace admin; the public view badges it and hoists it under the
+    # question, and the thread's JSON-LD becomes a QAPage with an acceptedAnswer.
+    #
+    # No ForeignKey, for the same reason as ``last_message_id`` above: topics
+    # and messages already point at each other, and a real constraint in this
+    # direction closes the cycle. SQLAlchemy resolves such a cycle by emitting a
+    # post-hoc ALTER TABLE, which SQLite — what the test suite runs on — cannot
+    # execute. The id is always validated against the topic before being stored.
+    accepted_message_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -212,6 +224,37 @@ class ChatMessage(Base):
     sender: Mapped["Developer"] = relationship("Developer", foreign_keys=[sender_id])
     reply_to: Mapped["ChatMessage | None"] = relationship(
         "ChatMessage", remote_side=[id], foreign_keys=[reply_to_id]
+    )
+
+
+class ChatMessageReaction(Base):
+    """One emoji reaction by one person on one message.
+
+    Shared by the internal chat UI and the public forum — a reaction is the
+    cheapest way for a reader who has nothing to add to say "this helped", and
+    the counts are what let a long thread surface its useful replies. The unique
+    constraint makes double-tapping idempotent rather than additive.
+    """
+
+    __tablename__ = "chat_message_reactions"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id", "developer_id", "emoji", name="uq_chat_message_reaction"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    message_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True
+    )
+    developer_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("developers.id", ondelete="CASCADE"), index=True
+    )
+    emoji: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 
@@ -348,6 +391,18 @@ class WorkspaceCommunity(Base):
     # Whether outsiders may post at all, and how their posts are handled.
     allow_participation: Mapped[bool] = mapped_column(Boolean, default=False)
     post_moderation: Mapped[str] = mapped_column(String(10), default="post")  # post | pre
+    # Whether an outsider may start a *new* thread, not merely reply to one.
+    # Deliberately separate from allow_participation: answering in a thread the
+    # host opened and opening one yourself are different amounts of trust, and a
+    # workspace that wants the first without the second had no way to say so.
+    allow_new_topics: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # ── Connections to other modules (all opt-in, all default off) ────
+    # Publishing moves text somebody else wrote — a customer on a ticket, an
+    # author in a doc — onto a page anyone can read. That is never a default, so
+    # each link is its own switch and every one of them ships off.
+    link_service_desk: Mapped[bool] = mapped_column(Boolean, default=False)
+    link_docs: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

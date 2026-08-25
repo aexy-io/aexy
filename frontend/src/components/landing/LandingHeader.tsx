@@ -55,6 +55,10 @@ const NAV_LINKS: Array<[string, string]> = [
   ["/#solutions", "Solutions"],
   ["/pricing", "Pricing"],
   ["/handbook", "Docs"],
+  // The public forum. It lives outside this header's own chrome (each community
+  // carries its own identity), but it has to be reachable from the site — a
+  // forum nobody can navigate to is a forum nobody posts in.
+  ["/community", "Community"],
 ];
 
 interface LandingHeaderProps {
@@ -186,6 +190,7 @@ const resourceLinks: Array<[string, string]> = [
   ["/compare/jira", "Compare Jira"],
   ["/pricing", "Pricing"],
   ["/handbook", "Documentation"],
+  ["/community", "Community"],
   ["/changelog", "Changelog"],
 ];
 

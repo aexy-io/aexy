@@ -43,6 +43,7 @@ def document(content=EXISTING):
         cover_image=None,
         is_template=False,
         is_published=False,
+            community_topic_id=None,
         published_at=None,
         visibility="workspace",
         generation_status="draft",

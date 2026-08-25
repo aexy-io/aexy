@@ -276,6 +276,18 @@
       "intakePersonaLabel": "These stories are for",
       "intakePersonaPlaceholder": "e.g. finance manager",
       "intakeNeedsPersona": "Say who these stories are for — a story with a placeholder persona tells a team nothing. Ones the document already wrote as \"As a …, I want …\" keep their own."
+    },
+    "community": {
+      "discuss": "Discuss this page",
+      "viewThread": "Discussion thread",
+      "hint": "Opens one public thread for this document. Write an opening message — the document itself is not copied into the forum, because it will be edited and a stale copy on a public page is worse than none.",
+      "selectChannel": "Choose a channel",
+      "introPlaceholder": "What would you like people to discuss?",
+      "cancel": "Cancel",
+      "open": "Open thread",
+      "opened": "Discussion thread opened",
+      "openedNotLive": "Thread created — the community isn't switched on yet, so nobody outside can see it",
+      "failed": "Could not open the discussion thread"
     }
   }
 }

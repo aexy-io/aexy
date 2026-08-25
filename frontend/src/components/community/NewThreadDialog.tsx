@@ -106,7 +106,7 @@ export function NewThreadDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ledger-ink/45 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -115,16 +115,16 @@ export function NewThreadDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("compose.title")}
-        className="w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-xl"
+        className="w-full max-w-md rounded-[3px] border border-ledger-ink/15 bg-ledger-card p-6 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="font-display text-lg font-semibold tracking-tight">
             {t("compose.title")}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded p-1 text-ledger-ink/50 transition hover:bg-ledger-ink/5 hover:text-ledger-ink"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -133,13 +133,13 @@ export function NewThreadDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="mb-1.5 block font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/60">
               {t("compose.channelLabel")}
             </label>
             <select
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-white"
+              className="w-full rounded-[3px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2 text-sm focus:border-ledger-ink/35 focus:outline-none"
             >
               {channels.map((ch) => (
                 <option key={ch.id} value={ch.id}>
@@ -153,27 +153,27 @@ export function NewThreadDialog({
                 value={newChannelName}
                 onChange={(e) => setNewChannelName(e.target.value)}
                 placeholder={t("compose.newChannelPlaceholder")}
-                className="mt-2 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-[3px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2 text-sm focus:border-ledger-ink/35 focus:outline-none"
                 autoFocus
               />
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="mb-1.5 block font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/60">
               {t("compose.threadTitleLabel")}
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("compose.threadTitlePlaceholder")}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
+              className="w-full rounded-[3px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2 text-sm focus:border-ledger-ink/35 focus:outline-none"
               autoFocus={!isNewChannel}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="mb-1.5 block font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/60">
               {t("compose.messageLabel")}
             </label>
             <textarea
@@ -181,12 +181,12 @@ export function NewThreadDialog({
               onChange={(e) => setMessage(e.target.value)}
               placeholder={t("compose.messagePlaceholder")}
               rows={4}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
+              className="w-full rounded-[3px] border border-ledger-ink/15 bg-ledger-paper px-3 py-2 text-sm focus:border-ledger-ink/35 focus:outline-none"
             />
           </div>
 
           {canPostPublic && (
-            <label className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
+            <label className="flex items-start gap-2 rounded-[3px] border border-ledger-ink/15 bg-ledger-paper p-3">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -194,11 +194,11 @@ export function NewThreadDialog({
                 onChange={(e) => setPostPublic(e.target.checked)}
               />
               <span className="text-sm">
-                <span className="flex items-center gap-1.5 font-medium text-amber-900 dark:text-amber-300">
+                <span className="flex items-center gap-1.5 font-medium text-ledger-ink">
                   <Globe className="h-3.5 w-3.5" />
                   {t("compose.postPublicly")}
                 </span>
-                <span className="text-xs text-amber-800/80 dark:text-amber-300/70">
+                <span className="text-xs leading-5 text-ledger-ink/60">
                   {t("compose.postPubliclyHint")}
                 </span>
               </span>
@@ -209,14 +209,14 @@ export function NewThreadDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="rounded-[3px] border border-ledger-ink/20 px-4 py-2 text-sm transition hover:border-ledger-ink/40"
             >
               {tc("cancel")}
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-[3px] bg-ledger-ink px-4 py-2 text-sm text-ledger-paper transition hover:bg-ledger-ink/85 disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? t("compose.submitting") : t("compose.submit")}

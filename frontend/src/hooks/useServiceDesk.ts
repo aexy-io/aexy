@@ -30,6 +30,7 @@ import {
   ServiceDeskTicket,
   TicketQuery,
   ServiceDeskTicketDetail,
+  PublishTargets,
 } from "@/lib/service-desk-api";
 
 /**
@@ -85,7 +86,27 @@ const keys = {
   stakeholders: (ws: string) => ["service-desk", "stakeholders", ws] as const,
   requestTypes: (ws: string) => ["service-desk", "request-types", ws] as const,
   industryTemplates: (ws: string) => ["service-desk", "industry-templates", ws] as const,
+  publishTargets: (ws: string) => ["service-desk", "community-publish-targets", ws] as const,
 };
+
+/**
+ * Where a ticket answer may be published, if publishing is switched on at all.
+ *
+ * Returns `enabled: false` with no channels for every workspace that has not
+ * opted in — which is the default — so the ticket UI can simply not render the
+ * action rather than render one that 403s.
+ */
+export function useCommunityPublishTargets() {
+  const ws = useWs();
+  return useQuery<PublishTargets>({
+    queryKey: keys.publishTargets(ws ?? ""),
+    queryFn: () => serviceDeskApi.communityPublishTargets(ws!),
+    enabled: !!ws,
+    // A workspace's community wiring does not change between page views.
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
 
 export function useServiceDeskSettings() {
   const ws = useWs();
@@ -452,6 +473,20 @@ export function useServiceDeskMutations() {
     deleteRequestType: useDeskMutation({
       mutationFn: (id: string) => serviceDeskApi.deleteRequestType(ws!, id),
       onSuccess: invalidateTaxonomy,
+    }),
+
+    publishToCommunity: useDeskMutation({
+      mutationFn: ({
+        id,
+        data,
+      }: {
+        id: string;
+        data: { channel_id: string; title: string; content: string };
+      }) => serviceDeskApi.publishTicketToCommunity(ws!, id, data),
+      // The ticket now carries a pointer to the thread it produced.
+      onSuccess: (_result, vars) => {
+        if (ws) qc.invalidateQueries({ queryKey: keys.ticket(ws, vars.id) });
+      },
     }),
 
     applyIndustryTemplate: useDeskMutation({

@@ -187,6 +187,24 @@ export interface TicketEmailRecipient {
 }
 
 /** A file on the ticket: one that arrived by email, or one uploaded to send. */
+export interface TicketCommunityTopic {
+  topic_id: string;
+  channel_slug: string;
+  channel_name: string | null;
+  community_slug: string;
+  path: string;
+  published_at: string | null;
+  // False when the community exists but is not switched on yet — the thread is
+  // real, it simply is not being served.
+  live: boolean;
+}
+
+export interface PublishTargets {
+  enabled: boolean;
+  community_slug: string | null;
+  channels: Array<{ id: string; slug: string; name: string }>;
+}
+
 export interface TicketAttachment {
   /** Position in the ticket's *emailed* attachment list — the handle that
    *  download URL takes. Two replies can attach files with the same name, so the
@@ -244,6 +262,9 @@ export interface ServiceDeskTicketDetail extends ServiceDeskTicket {
   /** Why this ticket has the owner it has, when the answer was not simply
    *  Master Data. Null when nothing had to be explained. */
   assignment_note: string | null;
+  // Set once this ticket's answer has been published to the public community
+  // forum, so nobody writes the same answer twice.
+  community_topic: TicketCommunityTopic | null;
   tat: TicketTAT;
   /** Server-computed write authority for the requesting caller. */
   can_edit: boolean;
@@ -661,6 +682,16 @@ export const serviceDeskApi = {
     data: { template_slug: string; apply_terminology?: boolean; create_departments?: boolean },
   ): Promise<ApplyTemplateResult> =>
     (await api.post(`${base(ws)}/industry-templates/apply`, data)).data,
+
+  // community publishing — off unless the workspace opted in
+  communityPublishTargets: async (ws: string): Promise<PublishTargets> =>
+    (await api.get(`${base(ws)}/community/publish-targets`)).data,
+  publishTicketToCommunity: async (
+    ws: string,
+    ticketId: string,
+    data: { channel_id: string; title: string; content: string },
+  ): Promise<TicketCommunityTopic> =>
+    (await api.post(`${base(ws)}/tickets/${ticketId}/publish-to-community`, data)).data,
 
   // mailboxes
   listMailboxes: async (ws: string): Promise<Mailbox[]> => (await api.get(`${base(ws)}/mailboxes`)).data,

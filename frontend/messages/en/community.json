@@ -1,8 +1,20 @@
 {
   "community": {
+    "nav": {
+      "breadcrumb": "Breadcrumb",
+      "community": "Community"
+    },
+    "directory": {
+      "brand": "Communities",
+      "title": "Public communities",
+      "subtitle": "Open forums from teams building on Aexy. Every thread is a page anyone can read and search engines can find.",
+      "empty": "No public communities yet.",
+      "emptyHint": "Communities appear here once their owners list them."
+    },
     "home": {
       "channels": "Channels",
       "channelsSubtitle": "Public discussions anyone can read.",
+      "channelCount": "{count, plural, =0 {No channels} one {# channel} other {# channels}}",
       "noChannels": "No public channels yet.",
       "noChannelsHint": "Once channels are published, they'll show up here.",
       "topics": "{count, plural, =0 {No topics} one {# topic} other {# topics}}",
@@ -10,6 +22,84 @@
       "updated": "Updated {date}",
       "communityFallback": "Community",
       "poweredBy": "Powered by Aexy"
+    },
+    "channel": {
+      "noTopics": "Nothing here yet.",
+      "noTopicsHint": "New threads in this channel will appear here."
+    },
+    "topic": {
+      "readOnly": "This is a read-only community.",
+      "edited": "(edited)",
+      "answered": "Answered",
+      "acceptedAnswerLabel": "Accepted answer",
+      "markAnswer": "Mark as the answer",
+      "unmarkAnswer": "Unmark as the answer"
+    },
+    "reply": {
+      "label": "Add a reply",
+      "placeholder": "Share what you know…",
+      "submit": "Post reply",
+      "posting": "Posting…",
+      "posted": "Reply posted.",
+      "held": "Thanks — your reply was submitted and is waiting to be reviewed.",
+      "tooFast": "You're posting too fast — please wait a moment.",
+      "closed": "Replies aren't open on this topic.",
+      "failed": "Could not post your reply. Please try again.",
+      "signInPrompt": "Want to join the conversation?",
+      "signInGithub": "Sign in with GitHub",
+      "signInGoogle": "Sign in with Google",
+      "you": "You"
+    },
+    "newTopic": {
+      "button": "Ask a question",
+      "signInToAsk": "Sign in to ask",
+      "title": "Start a new thread",
+      "titleLabel": "Title",
+      "titlePlaceholder": "What do you need to know?",
+      "bodyLabel": "Your question",
+      "bodyPlaceholder": "What you were trying to do, what happened instead, and what you already tried.",
+      "publicWarning": "This thread will be visible to anyone on the internet and may be indexed by search engines. Don't include account details, keys, or anything private.",
+      "submit": "Post thread",
+      "posting": "Posting…",
+      "held": "Thanks — your thread was submitted and is waiting to be reviewed. It will appear once a moderator approves it.",
+      "tooFast": "You've started several threads just now — please wait a moment.",
+      "closed": "New threads aren't open in this channel.",
+      "failed": "Could not post your thread. Please try again."
+    },
+    "reactions": {
+      "add": "React with {emoji}",
+      "remove": "Remove your {emoji} reaction"
+    },
+    "search": {
+      "label": "Search this community",
+      "placeholder": "Search…",
+      "heading": "Search",
+      "prompt": "Type something above to search this community's threads.",
+      "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
+      "noResults": "Nothing found for “{query}”.",
+      "noResultsHint": "Try fewer words, or a word you'd expect to appear in the answer."
+    },
+    "pagination": {
+      "label": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "position": "Page {page} of {total}"
+    },
+    "profile": {
+      "joined": "Joined {date}",
+      "threads": "Threads",
+      "posts": "Posts",
+      "answers": "Accepted",
+      "threadsStarted": "Threads started",
+      "noThreads": "No public threads yet."
+    },
+    "feed": {
+      "rss": "RSS"
+    },
+    "notFound": {
+      "title": "Nothing here",
+      "body": "This community page doesn't exist or isn't public.",
+      "browse": "Browse communities"
     },
     "auth": {
       "signIn": "Sign in",
