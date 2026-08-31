@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
@@ -9,21 +9,16 @@ import {
   ArrowRight,
   Calendar,
   CheckCircle,
-  ChevronRight,
-  Clock,
   Globe,
   Layers,
   LayoutGrid,
   ListTodo,
-  Map,
-  Play,
+  Loader2,
   Plus,
   Settings,
   Target,
-  TrendingUp,
   Users,
   ClipboardCheck,
-  Sparkles,
   Link2,
   Zap,
 } from "lucide-react";
@@ -35,7 +30,6 @@ import { useQuery } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
 import {
   Project,
-  SprintListItem,
   SprintTask,
   projectTasksApi,
   workspaceTasksApi,
@@ -387,15 +381,42 @@ function SprintsContent({
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * The view switcher.
+ *
+ * These were `<button>`s calling `router.push`. They navigated, but they were
+ * not links: cmd-click, middle-click and "open in new tab" did nothing at all,
+ * there was no URL on hover, and nothing was prefetched — so every switch was a
+ * cold round trip that showed no sign of having started until the next tab had
+ * mounted and begun its own spinner. A click that produces no visible change
+ * for a second is indistinguishable from a click that was not registered.
+ *
+ * `<nav>` with `aria-current`, rather than a `role="tablist"`: a tablist tells
+ * a screen reader the panel is in this document and this control reveals it.
+ * These change the URL and swap the page, which is what a link does, and the
+ * honest markup gets keyboard support without a roving tabindex to maintain.
+ * ------------------------------------------------------------------ */
+const PLANNING_TABS = [
+  { id: "sprints", label: "Projects", icon: Calendar },
+  { id: "epics", label: "Epics", icon: Layers },
+  { id: "tasks", label: null, icon: ListTodo },
+  { id: "automations", label: "Automations", icon: Zap },
+] as const;
+
+/** Shown the moment a tab is clicked, for as long as the navigation is in
+ *  flight. Must be a child of the `<Link>` — that is where `useLinkStatus`
+ *  reads from. */
+function TabIcon({ icon: Icon }: { icon: typeof Calendar }) {
+  const { pending } = useLinkStatus();
+  return pending
+    ? <Loader2 className="h-4 w-4 animate-spin" />
+    : <Icon className="h-4 w-4" />;
+}
+
 function SprintsPageContent() {
   const tTabs = useTranslations("sprints.tabs");
-  const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
-  const {
-    currentWorkspaceId,
-    currentWorkspace,
-    currentWorkspaceLoading,
-    hasWorkspaces,
-  } = useWorkspace();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { currentWorkspaceId, currentWorkspaceLoading, hasWorkspaces } = useWorkspace();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -446,17 +467,16 @@ function SprintsPageContent() {
     router.push(`/sprints/${project.id}/board`);
   };
 
-  const setActiveTab = (tab: string) => {
+  const tabHref = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
     // Drop any open task detail — carrying `?task=` off the Tasks tab would
-    // re-arm the board redirect above on whatever tab the user just picked.
+    // re-arm the board redirect above on whatever tab the link points at.
     params.delete("task");
-    if (tab === "sprints") {
-      params.delete("tab");
-    } else {
-      params.set("tab", tab);
-    }
-    router.push(`/sprints${params.toString() ? `?${params.toString()}` : ""}`);
+    // Projects is the default view, so it is the bare path rather than
+    // `?tab=sprints`. Two addresses for one screen is one too many.
+    if (tab === "sprints") params.delete("tab");
+    else params.set("tab", tab);
+    return `/sprints${params.toString() ? `?${params.toString()}` : ""}`;
   };
 
   if (authLoading || currentWorkspaceLoading) {
@@ -586,61 +606,37 @@ function SprintsPageContent() {
         </motion.div>
 
         {/* Tab Bar */}
-        <motion.div
+        <motion.nav
+          aria-label="Planning views"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="flex items-center gap-2 mb-8 p-1 bg-background/50 rounded-xl border border-border w-fit"
+          className="flex flex-wrap items-center gap-2 mb-8 p-1 bg-background/50 rounded-xl border border-border w-fit max-w-full"
         >
-          <button
-            onClick={() => setActiveTab("sprints")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "sprints"
-                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-          >
-            <Calendar className="h-4 w-4" />
-            Projects
-          </button>
-          <button
-            onClick={() => setActiveTab("epics")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "epics"
-                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-          >
-            <Layers className="h-4 w-4" />
-            Epics
-          </button>
-          <button
-            onClick={() => setActiveTab("tasks")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "tasks"
-                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-          >
-            <ListTodo className="h-4 w-4" />
-            {tTabs("allTasks")}
-          </button>
-          <button
-            onClick={() => setActiveTab("automations")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "automations"
-                ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-          >
-            <Zap className="h-4 w-4" />
-            Automations
-          </button>
-        </motion.div>
+          {PLANNING_TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <Link
+                key={tab.id}
+                href={tabHref(tab.id)}
+                // Warm the next view on hover, so the click lands on data that
+                // is already on its way rather than starting the wait.
+                prefetch
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  active
+                    ? "bg-primary-500 text-white shadow-lg shadow-primary-500/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+              >
+                <TabIcon icon={tab.icon} />
+                {tab.label ?? tTabs("allTasks")}
+              </Link>
+            );
+          })}
+        </motion.nav>
 
         {/* Tab Content */}
         {activeTab === "sprints" ? (

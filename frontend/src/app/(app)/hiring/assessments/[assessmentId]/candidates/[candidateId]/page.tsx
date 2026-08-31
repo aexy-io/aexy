@@ -746,10 +746,10 @@ export default function CandidateDetailsPage() {
             <div className="bg-card rounded-lg border border-border p-6">
               <h3 className="font-semibold text-foreground mb-4">Event Timeline</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {details?.proctoring?.events.length === 0 ? (
+                {details?.proctoring?.events?.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No proctoring events recorded</p>
                 ) : (
-                  details?.proctoring?.events.map((event, idx) => (
+                  (details?.proctoring?.events ?? []).map((event, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                       <AlertTriangle
                         className={`h-4 w-4 mt-0.5 ${

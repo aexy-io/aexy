@@ -13,7 +13,13 @@ const mocks = vi.hoisted(() => ({
   total: 120,
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  // The list now keeps its filters in the address bar so that opening a
+  // ticket and coming back does not empty them. These tests start from a
+  // bare URL, which is the same starting point as before.
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/hooks/useWorkspace", () => ({
   useWorkspace: () => ({ currentWorkspace: { id: "ws-1" } }),

@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { QuotedBody } from "@/components/service-desk/QuotedBody";
+import { serviceDeskReturnTo } from "../../returnTo";
 
 import {
   useServiceDeskTicket,
@@ -72,6 +73,27 @@ export default function ServiceDeskTicketDetailPage() {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId as string;
+
+  // Back to whatever this ticket was opened from, with that screen's search,
+  // filters, sort and page intact. This used to be a hardcoded push to the
+  // dashboard, so reading a ticket cost you the queue you were working — and
+  // the dashboard was the wrong screen even when the filters were empty.
+  const goBack = () => {
+    const from = serviceDeskReturnTo(ticketId);
+    if (from) {
+      router.push(from);
+      return;
+    }
+    // Reached from somewhere that does not record a return address — My Work, a
+    // search result, a link in mail. The browser's own previous entry is the
+    // honest answer there; only a ticket opened into a fresh tab has none, and
+    // for that the list is a nearer landing than the dashboard.
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/service-desk/tickets");
+  };
 
   const { data: ticket, isLoading } = useServiceDeskTicket(ticketId);
   const {
@@ -364,7 +386,7 @@ export default function ServiceDeskTicketDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
-      <button onClick={() => router.push("/service-desk")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <button onClick={goBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> {t("detail.back")}
       </button>
 

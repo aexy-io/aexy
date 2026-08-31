@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
+import { usePathname, useParams, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useSidebarPersona, MAX_FAVORITES } from "@/hooks/useSidebarPersona";
 import { LocaleSelector } from "@/components/LocaleSelector";
-import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig } from "@/config/sidebarLayouts";
+import { SidebarItemConfig, SidebarSectionConfig, SidebarLayoutConfig, isSidebarItemActive } from "@/config/sidebarLayouts";
 import { appAccessApi } from "@/lib/api";
 import { useAccessRequests } from "@/hooks/useAccessRequests";
 import { getAppIdFromPath, getModuleIdFromPath, APP_CATALOG, CATEGORY_LABELS, PERSONA_LABELS, AppCategory, AppDefinition } from "@/config/appDefinitions";
@@ -128,6 +128,7 @@ function getItemPersonas(targetHref: string, layout: SidebarLayoutConfig): strin
 
 export function Sidebar({ className, user, logout }: SidebarProps) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const params = useParams();
     const documentId = params?.documentId as string | undefined;
     const isDocsPage = pathname.startsWith("/docs");
@@ -279,17 +280,13 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
         }));
     };
 
-    const isActive = (href: string) => {
-        if (href === "/dashboard") return pathname === "/dashboard";
-        // Handle query params in href
-        const hrefBase = href.split("?")[0];
-        return pathname.startsWith(hrefBase);
-    };
+    const isActive = (href: string, siblings: SidebarItemConfig[] = []) =>
+        isSidebarItemActive(href, pathname, searchParams, siblings);
 
     // Render a navigation item
-    const renderItem = (item: SidebarItemConfig, depth: number = 0) => {
+    const renderItem = (item: SidebarItemConfig, depth: number = 0, siblings: SidebarItemConfig[] = []) => {
         const isExpanded = expandedItems[item.href];
-        const active = isActive(item.href);
+        const active = isActive(item.href, siblings);
         const hasSubmenu = item.items && item.items.length > 0;
         const Icon = item.icon;
         const canPin = !hasSubmenu && !isCollapsed && item.href !== "/dashboard";
@@ -388,7 +385,7 @@ export function Sidebar({ className, user, logout }: SidebarProps) {
                             className="overflow-hidden"
                         >
                             <div className="ml-4 mt-1 border-l border-border/50 pl-2 space-y-1">
-                                {item.items?.map(subItem => renderItem(subItem, depth + 1))}
+                                {item.items?.map(subItem => renderItem(subItem, depth + 1, item.items ?? []))}
                             </div>
                         </motion.div>
                     )}

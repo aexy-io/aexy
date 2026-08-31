@@ -70,13 +70,13 @@ export default function AdminGhostsPage() {
         </section>
       )}
 
-      {isAdmin && !isLoading && (data?.ghosts.length ?? 0) === 0 && (
+      {isAdmin && !isLoading && (data?.ghosts?.length ?? 0) === 0 && (
         <section className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
           {t("noGhosts")}
         </section>
       )}
 
-      {isAdmin && (data?.ghosts.length ?? 0) > 0 && (
+      {isAdmin && (data?.ghosts?.length ?? 0) > 0 && (
         <section className="rounded-xl border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">

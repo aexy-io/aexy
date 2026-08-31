@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ ticketId: "ticket-1" }),
-  useRouter: () => ({ push: mocks.push }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({

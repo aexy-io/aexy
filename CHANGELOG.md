@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-08-31
+
+Navigation stopped losing your place, and a bad response stopped blanking the
+page.
+
+### Fixed: opening a ticket or an epic threw away the queue you were working
+
+Narrow six months of service-desk history down to nine tickets, open one, come
+back — and the list was empty again. Every route back did it: the ticket's own
+back link, the browser's back button, a bookmark. The list kept its search,
+filters, sort and page nowhere but in memory, so leaving the screen destroyed
+them, and the back link pointed at the dashboard rather than the list it came
+from. The epic list had the same hole.
+
+Those screens now describe themselves in the address bar. Every route back is
+fixed by the same change, because the address the browser returns to is finally
+a complete description of what you were looking at. The back link goes to
+wherever you opened the item from, rather than to a fixed page.
+
+### Fixed: the Epics tab appeared not to work
+
+Opening `/sprints?tab=epics` — from the sidebar, a bookmark, or a pasted link —
+could land you on Projects instead, with no sign anything had gone wrong. It
+looked exactly like the tab being broken.
+
+The auth gate was the cause. Reaching a page before the sign-in cookie is set
+bounces you via the landing page, and the return address it kept was the path
+only, with the query string dropped. `/sprints?tab=epics` and `/sprints` are two
+different screens, so you came back to the wrong one. Every filtered list in the
+app was affected, not only this tab: a narrowed queue, a CRM stage, a bookmarked
+page 4.
+
+### Fixed: tabs and filters that did nothing when clicked
+
+The Planning tabs were buttons dressed as links. Cmd-click, middle-click and
+"open in new tab" did nothing at all, nothing was prefetched, and no tab
+acknowledged a click until the next view had finished loading — long enough to
+read as ignored. They are real links now, warmed on hover, and each shows a
+spinner the moment it is clicked.
+
+On the epic list, the four counts across the top looked exactly like filter
+chips and were inert, while a duplicate status dropdown sat above them doing the
+job they appeared to offer. The cards are the filter now. Searching there also
+sent a request per keystroke.
+
+The sidebar had been highlighting both Planning entries at once, on every page
+beneath them, so it never said which of the two you were in.
+
+### Fixed: one bad response blanked a whole page
+
+Twenty-two places dereferenced server data one level deeper than they checked.
+Any response missing a key its type promised threw during render and replaced
+the entire page with an error card — the departments page, My Work, Drive, the
+knowledge graph, insights, hiring, identity admin, the workflow test panel, and
+the public team booking page that anonymous visitors reach. Several of these
+were written to look defensive and were not.
+
+My Work aggregates four independent sources; one of them answering oddly no
+longer takes the other three down with it.
+
+### Fixed: twenty-one sections were never behind the auth gate
+
+The gate exists so a signed-out visitor never receives app-shell HTML. Its list
+of protected paths was maintained by hand and had drifted: activity, booking,
+chat, communicator, exports, feedback, GTM, MCP, My Work, notifications,
+operations, organization, profile, review, service desk, templates, tickets,
+uptime and the task short-link resolver had no entry, and two more entries were
+misspellings that covered nothing while appearing to cover leave and email
+marketing. The list is now checked against the actual routes, so a new section
+cannot be added without one.
+
+### Fixed: two pages drew a second copy of the app's chrome
+
+The epic page and Team Analytics each rendered their own logo, navigation bar,
+avatar and sign-out button inside the shell that already provides all four —
+leftovers from before that shell existed. Both are gone.
+
+### Added: an epic can actually be edited
+
+Only its status could be changed here; everything else meant going elsewhere.
+Title, description, priority, owner, both dates and colour are now editable in
+place, existing tasks can be linked to an epic from the epic itself, and an epic
+can be cancelled.
+
+### Added: a burndown on the epic page
+
+The page claimed a completion estimate "based on current velocity" with no chart
+behind the claim. There is one now. The layout it sits in also had an empty
+column at desktop widths, which is fixed.
+
+### Added: filtered lists are shareable
+
+A narrowed service-desk queue or epic list now has an address you can bookmark
+or paste to a colleague, which the CSV export had been standing in for.
+
 ## [0.31.0] - 2026-08-25
 
 ### Community

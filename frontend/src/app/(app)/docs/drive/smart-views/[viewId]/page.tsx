@@ -23,7 +23,7 @@ export default function SmartViewPage() {
   const filesQ = useSmartViewFiles(currentWorkspaceId, params.viewId);
   const [editing, setEditing] = useState(false);
 
-  const view = viewsQ.data?.smart_views.find((v) => v.id === params.viewId);
+  const view = (viewsQ.data?.smart_views ?? []).find((v) => v.id === params.viewId);
 
   return (
     <div className="space-y-4 p-6">
@@ -55,7 +55,7 @@ export default function SmartViewPage() {
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading…
         </div>
-      ) : (filesQ.data?.files.length ?? 0) === 0 ? (
+      ) : (filesQ.data?.files?.length ?? 0) === 0 ? (
         <p className="text-sm text-muted-foreground">
           No files match this smart view&apos;s filter.
         </p>
@@ -64,7 +64,7 @@ export default function SmartViewPage() {
           data-testid="drive-smart-view-files"
           className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
-          {filesQ.data?.files.map((f) => (
+          {(filesQ.data?.files ?? []).map((f) => (
             <li key={f.id}>
               <FileCard
                 file={f}

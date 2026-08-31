@@ -260,7 +260,7 @@ function SourceTable({
 }) {
   const t = useTranslations("insights.details.sources");
   if (isLoading) return <div className="text-sm text-muted-foreground">{t("loading")}</div>;
-  if (!data?.repositories.length) {
+  if (!data?.repositories?.length) {
     return <div className="text-sm text-muted-foreground">{t("empty")}</div>;
   }
   return (
@@ -312,7 +312,7 @@ function CommitTable({
     );
   }
   if (isLoading) return <div className="text-sm text-muted-foreground">{t("loading")}</div>;
-  if (!data?.commits.length) {
+  if (!data?.commits?.length) {
     return <div className="text-sm text-muted-foreground">{t("empty")}</div>;
   }
   return (

@@ -238,7 +238,7 @@ export default function KnowledgeGraphPage() {
                 <p className="text-muted-foreground">Loading knowledge graph...</p>
               </div>
             </div>
-          ) : graphData?.nodes.length === 0 ? (
+          ) : graphData?.nodes?.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center bg-background">
               <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
                 <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center">

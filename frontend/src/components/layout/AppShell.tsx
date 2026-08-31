@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -59,7 +59,15 @@ export function AppShell({ children, user, logout }: AppShellProps) {
             >
                 Skip to main content
             </a>
-            {!embedded && <Sidebar user={user} logout={logout} className="hidden md:flex" />}
+            {/* The sidebar reads the query string — Planning's Board and Epics are
+                the same path with different params — which makes it a dynamic
+                subtree. Its own boundary, rather than every route in the app
+                becoming dynamic. */}
+            {!embedded && (
+                <Suspense fallback={<div className="hidden w-[220px] shrink-0 border-r border-border bg-muted/30 md:flex" />}>
+                    <Sidebar user={user} logout={logout} className="hidden md:flex" />
+                </Suspense>
+            )}
 
             {/*
                 The scroll container is this column, not <main>, so the topbar can
@@ -85,7 +93,9 @@ export function AppShell({ children, user, logout }: AppShellProps) {
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="left" className="w-[240px] max-w-[85vw] p-0">
-                                    <Sidebar user={user} logout={logout} className="h-full w-full border-none" />
+                                    <Suspense fallback={<div className="h-full w-full border-none" />}>
+                                        <Sidebar user={user} logout={logout} className="h-full w-full border-none" />
+                                    </Suspense>
                                 </SheetContent>
                             </Sheet>
                         }

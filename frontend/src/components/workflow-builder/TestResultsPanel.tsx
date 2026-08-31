@@ -135,7 +135,7 @@ export function TestResultsPanel({
   };
 
   const statusCounts = getStatusCounts();
-  const failureMessage = getTestFailureMessage(testResult?.error || testResult?.node_results.find(
+  const failureMessage = getTestFailureMessage(testResult?.error || (testResult?.node_results ?? []).find(
     (result) => result.status === "failed" && result.error
   )?.error);
 

@@ -189,7 +189,7 @@ export function usePermissionCatalog(workspaceId: string | null) {
   });
 
   // Group permissions by category for UI convenience
-  const permissionsByCategory = data?.permissions.reduce((acc, perm) => {
+  const permissionsByCategory = (data?.permissions ?? []).reduce((acc, perm) => {
     if (!acc[perm.category]) {
       acc[perm.category] = [];
     }

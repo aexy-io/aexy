@@ -221,7 +221,7 @@ export default function TeamBookingPage() {
   const paddingDays = Array(startDayOfWeek).fill(null);
 
   // Get members to display (filtered if member_ids specified)
-  const displayMembers = team?.members.filter(m =>
+  const displayMembers = (team?.members ?? []).filter(m =>
     memberIds.length === 0 || memberIds.includes(m.id)
   ) || [];
 

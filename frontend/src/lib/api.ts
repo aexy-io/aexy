@@ -5221,14 +5221,18 @@ export const epicApi = {
   update: async (
     workspaceId: string,
     epicId: string,
+    // `null` is meaningful and distinct from omitting a key: the server applies
+    // whatever the body actually carries (`exclude_unset`), so a key left out
+    // keeps its value while an explicit null clears it. Owner and both dates
+    // have to be clearable, which a `string | undefined` could never express.
     data: {
       title?: string;
       description?: string;
       status?: EpicStatus;
       color?: string;
-      owner_id?: string;
-      start_date?: string;
-      target_date?: string;
+      owner_id?: string | null;
+      start_date?: string | null;
+      target_date?: string | null;
       priority?: EpicPriority;
       labels?: string[];
     }

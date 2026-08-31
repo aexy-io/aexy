@@ -669,7 +669,7 @@ export default function InsightsPage() {
                 />
               ))}
             </div>
-          ) : leaderboard?.entries.length ? (
+          ) : leaderboard?.entries?.length ? (
             <div className="space-y-2">
               {leaderboard.entries.map((entry, i) => (
                 <div

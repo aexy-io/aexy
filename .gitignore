@@ -82,3 +82,6 @@ verification-screenshots/
 # Note: personal scratch files (session notes, editor vaults, one-off
 # spreadsheets) belong in .git/info/exclude or a global gitignore — this file
 # is shared, and one contributor's working habits should not be in it.
+
+# Claude Code task worktrees — local scratch, never part of a commit.
+.claude/worktrees/
