@@ -333,6 +333,17 @@ class Document(Base):
         nullable=True,
     )
 
+    # The public community thread opened to discuss this document, if any.
+    # Nullable and off by default: linking a document to a public forum is an
+    # explicit act, gated by ``workspace_community.link_docs``. SET NULL rather
+    # than CASCADE — deleting a discussion thread must not delete the document
+    # it was about.
+    community_topic_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("chat_topics.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Visual customization
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)  # Emoji or icon
     cover_image: Mapped[str | None] = mapped_column(String(500), nullable=True)

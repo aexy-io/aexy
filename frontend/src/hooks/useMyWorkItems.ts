@@ -82,6 +82,18 @@ function inBucket(item: WorkItem, bucket: StatusBucket): boolean {
  * three widgets each fetching and filtering their own copy is how the counts on
  * screen end up describing a list nobody is looking at.
  */
+/**
+ * `?? []` guards a list being absent. It does not guard it being the wrong
+ * shape, and an object is both truthy and not iterable — so one endpoint
+ * answering `{}` where an array is typed threw out of the `for…of` below and
+ * took the entire dashboard into its error boundary. This screen aggregates
+ * four independent sources; a blank page with a stack trace is the wrong answer
+ * when three of them are fine. A malformed source contributes nothing instead.
+ */
+function asArray<T>(value: T[] | undefined | null): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function useMyWorkItems() {
   const { user } = useAuth();
   const { currentWorkspace, workspaces } = useWorkspace();
@@ -199,7 +211,7 @@ export function useMyWorkItems() {
     const items: WorkItem[] = [];
 
     if (source === "all" || source === "tasks") {
-      for (const task of taskQuery.data ?? []) {
+      for (const task of asArray(taskQuery.data)) {
         items.push({
           kind: "task",
           itemType: (task.item_type ?? "task") as WorkItem["itemType"],
@@ -222,7 +234,7 @@ export function useMyWorkItems() {
 
     ticketData.forEach((data, index) => {
       const workspaceId = ticketWorkspaceIds[index];
-      const tickets: TicketListItem[] = data?.tickets ?? [];
+      const tickets: TicketListItem[] = asArray(data?.tickets);
       for (const ticket of tickets) {
         items.push({
           kind: "ticket",
@@ -245,7 +257,7 @@ export function useMyWorkItems() {
 
     serviceDeskData.forEach((data, index) => {
       const workspaceId = serviceDeskWorkspaceIds[index];
-      const tickets: ServiceDeskTicket[] = data ?? [];
+      const tickets: ServiceDeskTicket[] = asArray(data);
       for (const ticket of tickets) {
         items.push({
           kind: "ticket",

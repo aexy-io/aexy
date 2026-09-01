@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ ticketId: "ticket-1" }),
-  useRouter: () => ({ push: mocks.push }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -54,7 +54,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       ticket_number: 12,
       display_id: "SD-12",
       subject: "Testing - auto assignment",
-      requester_email: "chandan.t@bimaplan.co",
+      requester_email: "chandan.t@desk.example",
       requester_name: "Chandan Tyagi",
       status: "new",
       product_id: null,
@@ -77,6 +77,9 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       segments: [],
       correspondence: [],
       email_recipients: [],
+      reply_all: { to: "requester@example.com", cc: [] },
+      assignment_note:
+        "Assigned by fallback: no account is mapped to partner.example.",
       attachments: [
         {
           index: 0,
@@ -84,6 +87,8 @@ vi.mock("@/hooks/useServiceDesk", () => ({
           content_type: "application/vnd.ms-excel",
           size_bytes: 20480,
           can_forward: true,
+          source: "email",
+          id: null,
         },
         // Arrived before the desk kept provider handles, so there are no bytes
         // to fetch — for forwarding or for downloading.
@@ -93,6 +98,19 @@ vi.mock("@/hooks/useServiceDesk", () => ({
           content_type: "application/pdf",
           size_bytes: 4096,
           can_forward: false,
+          source: "email",
+          id: null,
+        },
+        // Uploaded here to be sent out. Belongs to the compose box, not to the
+        // request — a reader must not be told the customer sent it.
+        {
+          index: null,
+          id: "upload-1",
+          filename: "completed-proposal.pdf",
+          content_type: "application/pdf",
+          size_bytes: 8192,
+          can_forward: true,
+          source: "upload",
         },
       ],
       tat: {
@@ -107,13 +125,20 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     },
   }),
   useServiceDeskMutations: () => ({
+    publishToCommunity: { mutate: vi.fn(), isPending: false },
     splitDetectedIssues: { mutate: vi.fn(), isPending: false, isError: false, data: undefined },
     changePendingWith: { mutateAsync: vi.fn(), isPending: false },
     convertToTask: { mutate: vi.fn(), isPending: false },
     updateTicket: { mutateAsync: vi.fn(), isPending: false, isError: false },
     emailStakeholder: { mutateAsync: vi.fn(), isPending: false, isError: false },
     downloadAttachment: { mutate: mocks.download, isPending: false, variables: undefined },
+    uploadFiles: { mutate: vi.fn(), isPending: false },
+    deleteUpload: { mutate: vi.fn(), isPending: false },
+    downloadUpload: { mutate: vi.fn(), isPending: false },
   }),
+  // Publishing to the community is opt-in and off by default, so the card the
+  // ticket page renders for it is absent here — which is the default state.
+  useCommunityPublishTargets: () => ({ data: { enabled: false, community_slug: null, channels: [] } }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
   useServiceDeskTaxonomy: () => ({
     stakeholders: [],
@@ -181,6 +206,36 @@ describe("Service Desk ticket attachments", () => {
     expect(container.textContent).toContain("older-register.pdf");
     expect(container.textContent).toContain("detail.attachmentUnavailable");
     expect(downloadButtons()).toHaveLength(1);
+  });
+
+  it("keeps an uploaded file out of the request it never arrived on", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    // It is on the ticket, but under "attach a file" in the compose box — not
+    // among the files the requester sent, which is what the request card lists.
+    const request = container.querySelector("ol")!;
+    expect(request.textContent).toContain("Tata AI Loader LOT 5 AUG 2026.xlsx");
+    expect(request.textContent).not.toContain("completed-proposal.pdf");
+    expect(container.textContent).toContain("completed-proposal.pdf");
+    expect(container.textContent).toContain("detail.emailUpload");
+
+    // Ticked on arrival: an upload that then had to be selected is a file the
+    // sender believes is attached and is not.
+    const checkbox = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    ).find((box) => box.parentElement?.textContent?.includes("completed-proposal.pdf"));
+    expect(checkbox).toBeDefined();
+  });
+
+  it("says why the ticket has the owner it has", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    // Intake has always recorded this and nothing ever showed it, so a ticket on
+    // the wrong owner was indistinguishable from a deliberate assignment.
+    expect(container.textContent).toContain("detail.whyThisOwner");
+    expect(container.textContent).toContain(
+      "Assigned by fallback: no account is mapped to partner.example.",
+    );
   });
 
   it("shows every section of the ticket, both columns included", async () => {

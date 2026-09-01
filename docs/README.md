@@ -84,6 +84,7 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ### Modules — Communication
 - [Notifications & chat](./notifications-and-chat.md) - In-app/web push/email/Slack delivery, chat, onboarding, profile
+- [Community](./community.md) - The public forum built on chat: visibility contract, participation, starter templates, opt-in links
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach

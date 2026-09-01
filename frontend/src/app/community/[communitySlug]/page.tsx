@@ -24,7 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      types: { "application/rss+xml": `${url}/rss.xml` },
+    },
     robots: community.noindex ? { index: false, follow: false } : undefined,
     openGraph: { title, description, url, type: "website" },
   };
@@ -51,33 +54,35 @@ export default async function CommunityHome({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <header className="mb-10 border-b border-ledger-ink/12 pb-8">
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           {community.title || t("home.communityFallback")}
         </h1>
         {community.description && (
-          <p className="mt-2 text-gray-600 dark:text-gray-400">{community.description}</p>
+          <p className="mt-3 max-w-2xl text-[15px] leading-7 text-ledger-ink/70">
+            {community.description}
+          </p>
         )}
         {community.channels.length > 0 && (
-          <p className="mt-3 text-sm text-gray-400">
-            {t("home.channels")} · {community.channels.length} —{" "}
+          <p className="mt-5 font-brand-mono text-[11px] uppercase tracking-[0.14em] text-ledger-ink/45">
+            {t("home.channelCount", { count: community.channels.length })} ·{" "}
             {t("home.topics", { count: totalTopics })}
           </p>
         )}
-      </div>
+      </header>
 
-      <div className="mb-4 flex items-baseline gap-2">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {t("home.channels")}
-        </h2>
-        <span className="text-sm text-gray-400">{t("home.channelsSubtitle")}</span>
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="font-display text-lg font-semibold">{t("home.channels")}</h2>
+        <span className="text-sm text-ledger-ink/50">{t("home.channelsSubtitle")}</span>
       </div>
 
       {community.channels.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
-          <MessagesSquare className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600" />
-          <p className="mt-3 text-sm font-medium text-gray-500">{t("home.noChannels")}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("home.noChannelsHint")}</p>
+        <div className="rounded-[3px] border border-dashed border-ledger-ink/20 bg-ledger-card p-12 text-center">
+          <MessagesSquare className="mx-auto h-8 w-8 text-ledger-ink/25" />
+          <p className="mt-3 text-sm font-medium text-ledger-ink/70">
+            {t("home.noChannels")}
+          </p>
+          <p className="mt-1 text-xs text-ledger-ink/50">{t("home.noChannelsHint")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -85,29 +90,34 @@ export default async function CommunityHome({ params }: Props) {
             <li key={ch.slug}>
               <Link
                 href={`/community/${communitySlug}/${ch.slug}`}
-                className="group block rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 hover:border-blue-400 hover:shadow-sm transition-all"
+                className="group block rounded-[3px] border border-ledger-ink/12 bg-ledger-card p-5 transition hover:border-ledger-ink/30"
               >
                 <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors">
+                  <span
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-[2px] text-ledger-paper"
+                    style={{ background: "var(--community-accent, #0B6B3A)" }}
+                  >
                     <Hash className="h-4 w-4" />
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-display font-semibold tracking-tight">
                       {ch.name}
                     </h3>
                     {ch.description && (
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                      <p className="mt-1 text-sm leading-6 text-ledger-ink/65">
                         {ch.description}
                       </p>
                     )}
-                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+                    <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/45">
                       <span>{t("home.topics", { count: ch.topic_count })}</span>
                       <span aria-hidden>·</span>
                       <span>{t("home.messages", { count: ch.message_count })}</span>
                       {ch.last_message_at && (
                         <>
                           <span aria-hidden>·</span>
-                          <span>{t("home.updated", { date: fmtDate(ch.last_message_at) })}</span>
+                          <span>
+                            {t("home.updated", { date: fmtDate(ch.last_message_at) })}
+                          </span>
                         </>
                       )}
                     </p>

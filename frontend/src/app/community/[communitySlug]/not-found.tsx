@@ -1,24 +1,27 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 /**
  * Rendered when a community/channel/topic under /community/{slug} calls
  * notFound() (unknown slug, disabled community, or a non-public path). Friendlier
  * than the bare app 404 and points visitors to the public directory.
  */
-export default function CommunityNotFound() {
+export default async function CommunityNotFound() {
+  const t = await getTranslations("community");
+
   return (
-    <div className="mx-auto max-w-lg px-4 py-20 text-center">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-        Nothing here
+    <div className="mx-auto max-w-lg py-20 text-center">
+      <h1 className="font-display text-2xl font-semibold tracking-tight">
+        {t("notFound.title")}
       </h1>
-      <p className="mt-3 text-gray-600 dark:text-gray-400">
-        This community page doesn&apos;t exist or isn&apos;t public.
+      <p className="mt-3 text-[15px] leading-7 text-ledger-ink/70">
+        {t("notFound.body")}
       </p>
       <Link
         href="/community"
-        className="mt-6 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        className="mt-6 inline-block rounded-[3px] bg-ledger-ink px-4 py-2 text-sm text-ledger-paper transition hover:bg-ledger-ink/85"
       >
-        Browse communities
+        {t("notFound.browse")}
       </Link>
     </div>
   );

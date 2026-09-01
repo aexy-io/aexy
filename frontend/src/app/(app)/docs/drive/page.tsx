@@ -265,7 +265,7 @@ export default function DrivePage() {
                   </p>
                   <SkeletonGrid count={3} />
                 </>
-              ) : (searchQ.data?.results.length ?? 0) === 0 ? (
+              ) : (searchQ.data?.results?.length ?? 0) === 0 ? (
                 <EmptyState
                   icon={FileQuestion}
                   title={t("noMatches")}
@@ -277,7 +277,7 @@ export default function DrivePage() {
                     {t("resultsCount", { count: searchQ.data!.results.length })}
                   </p>
                   <ul className={GRID}>
-                    {searchQ.data?.results.map((hit) => (
+                    {(searchQ.data?.results ?? []).map((hit) => (
                       <li key={hit.file.id} className="flex flex-col gap-1">
                         <FileCard
                           file={hit.file}
@@ -303,7 +303,7 @@ export default function DrivePage() {
             <div className="space-y-3" data-testid="drive-source-results">
               {sourceFilesQ.isLoading ? (
                 <SkeletonGrid count={6} />
-              ) : (sourceFilesQ.data?.files.length ?? 0) === 0 ? (
+              ) : (sourceFilesQ.data?.files?.length ?? 0) === 0 ? (
                 <EmptyState
                   icon={activeSource === "task_attachment" ? ListChecks : ClipboardCheck}
                   title={t("emptySource")}
@@ -315,7 +315,7 @@ export default function DrivePage() {
                     {t("filesCount", { count: sourceFilesQ.data!.files.length })}
                   </p>
                   <ul data-testid="drive-source-grid" className={GRID}>
-                    {sourceFilesQ.data?.files.map((f) => (
+                    {(sourceFilesQ.data?.files ?? []).map((f) => (
                       <li key={`${f.source_type}:${f.source_id}`}>
                         <FileCard
                           file={f}

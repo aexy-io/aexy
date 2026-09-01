@@ -45,25 +45,31 @@ OAuth app with GitHub, Google or Microsoft — see
 [Authentication & permissions](authentication.md) and the GitHub App section
 below.
 
-**Email and AI are off in the demo, and held off.** The demo account is a
-workspace owner, so it can reach the settings that would turn them back on —
-which is why provisioning re-applies all of this on every sign-in rather than
-writing it once:
+**Email and AI are visible but inert.** Every module stays on screen — the point
+of a demo is to show what is there — and the two that cost real money refuse
+when you press the button:
 
 - The workspace **AI kill switch** (`WorkspaceAISettings.ai_enabled`) is off, so
-  the LLM gateway refuses every call for this workspace — request handlers,
-  agents and Temporal activities alike. Nothing here can spend your token budget.
-- The **email marketing** and **agents** modules are switched off in the
-  workspace's `app_settings`, the layer that is off "for everybody, admins
-  included".
+  the LLM gateway refuses every call for this workspace: request handlers,
+  agents and Temporal activities alike. You can open an agent, read its tools and
+  policy gates, and get "AI features are disabled for this workspace" if you run
+  it.
 - **Outbound email is refused at both send paths** while `AEXY_DEMO_LOGIN` is
   true, whatever provider is configured, so a stranger cannot mail anyone from
-  your domain. `AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=true` lifts that — use it for a
-  demo box pointed at the bundled Mailpit on `:8025`, not for one with real
-  credentials.
+  your domain. Campaigns, templates and the builder all work; sending answers
+  with the reason it did not. `AEXY_DEMO_ALLOW_OUTBOUND_EMAIL=true` lifts this —
+  use it for a demo box pointed at the bundled Mailpit on `:8025`, not for one
+  with real credentials.
 - The seeded automations are left **inactive**. They still show their triggers,
   actions and run history; one of them runs an agent on every lead created, and
   an enabled copy would be a way to spend your budget by filling in a form.
+
+Two things keep the kill switch off rather than one. Provisioning re-asserts it
+on every sign-in, *and* the API refuses a request to enable it for the demo
+workspace — the account is shared, so "reverted at the next sign-in" would still
+leave every session in between spending. Nothing here hides a module: hiding the
+two features most worth showing would cost the demo its point and protect
+nothing, since the gateway and the send paths are what actually refuse.
 
 `AEXY_DEMO_EMAIL` has to be a real-looking address: the developer profile
 response validates it as an email, and reserved TLDs like `.local` are

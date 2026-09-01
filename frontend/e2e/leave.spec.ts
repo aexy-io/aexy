@@ -38,6 +38,17 @@ async function setupLeaveMocks(page: Page) {
     localStorage.setItem("current_workspace_id", "ws-1");
   });
 
+  // The middleware-visible presence cookie a real signed-in browser carries.
+  // `useAuth` mirrors it from localStorage, but a test that injects the token
+  // directly never runs that, so without this the auth gate bounces every
+  // navigation through the landing page. Set on the context, not via
+  // addInitScript: init scripts run on document load, by which point the
+  // middleware has already decided.
+  await page.context().addCookies([
+    { name: "aexy_authed", value: "1", url: "http://localhost:3000" },
+  ]);
+
+
   // Catch-all FIRST (checked LAST by Playwright)
   await page.route(`${API_BASE}/**`, (route) => {
     route.fulfill({
@@ -330,9 +341,12 @@ test.describe("Leave Page — Tab Navigation", () => {
   });
 
   test("shows My Leaves tab by default", async ({ page }) => {
-    // My Leaves tab should be active
-    const myLeavesTab = page.getByRole("button", { name: "My Leaves" });
+    // Actually assert it is the selected one. The tabs carry `aria-selected`,
+    // so "is it active" is a question the markup can answer — checking only
+    // that it is visible passed no matter which tab was open.
+    const myLeavesTab = page.getByRole("tab", { name: "My Leaves" });
     await expect(myLeavesTab).toBeVisible();
+    await expect(myLeavesTab).toHaveAttribute("aria-selected", "true");
 
     // Leave balance cards should render
     await expect(page.getByRole("heading", { name: "Vacation" }).first()).toBeVisible();
@@ -340,14 +354,14 @@ test.describe("Leave Page — Tab Navigation", () => {
   });
 
   test("switches to Team Leaves tab", async ({ page }) => {
-    await page.getByRole("button", { name: "Team Leaves" }).click();
+    await page.getByRole("tab", { name: "Team Leaves" }).click();
 
     // Team leave table should show
     await expect(page.getByText("Employee").first()).toBeVisible();
   });
 
   test("switches to Approvals tab and shows pending count", async ({ page }) => {
-    await page.getByRole("button", { name: /Approvals/i }).click();
+    await page.getByRole("tab", { name: /Approvals/i }).click();
 
     // Should show pending approval cards
     await expect(page.getByText("Alice Johnson")).toBeVisible();
@@ -355,7 +369,7 @@ test.describe("Leave Page — Tab Navigation", () => {
   });
 
   test("switches to Settings tab with sub-navigation", async ({ page }) => {
-    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Settings" }).click();
 
     // Settings sub-navigation should show
     await expect(page.getByRole("button", { name: "Leave Types" })).toBeVisible();
@@ -467,7 +481,7 @@ test.describe("Leave Page — Approvals", () => {
     await setupLeaveMocks(page);
     await page.goto("/leave");
     await page.waitForSelector("text=Leave Management", { timeout: 15000 });
-    await page.getByRole("button", { name: /Approvals/i }).click();
+    await page.getByRole("tab", { name: /Approvals/i }).click();
   });
 
   test("renders pending approval cards", async ({ page }) => {
@@ -507,7 +521,7 @@ test.describe("Leave Page — Settings", () => {
     await setupLeaveMocks(page);
     await page.goto("/leave");
     await page.waitForSelector("text=Leave Management", { timeout: 15000 });
-    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Settings" }).click();
   });
 
   test("Leave Types settings shows table with types", async ({ page }) => {
@@ -557,6 +571,13 @@ test.describe("Dashboard — Leave Widgets", () => {
       localStorage.setItem("current_workspace_id", "ws-1");
     });
 
+    // As above: the presence cookie a signed-in browser carries, on the context
+    // rather than in an init script, so the middleware sees it on the first
+    // request rather than after the document has already loaded.
+    await page.context().addCookies([
+      { name: "aexy_authed", value: "1", url: "http://localhost:3000" },
+    ]);
+
     // Catch-all FIRST
     await page.route(`${API_BASE}/**`, (route) => {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
@@ -571,6 +592,12 @@ test.describe("Dashboard — Leave Widgets", () => {
     await page.route(`${API_BASE}/workspaces/**`, (route) => {
       const url = route.request().url();
 
+      // The dashboard aggregates My Work across tasks and both ticket sources.
+      // These are typed as arrays and the `{}` catch-all was answering for
+      // them, which is not a shape the page can iterate.
+      if (/\/(tasks|tickets|service-desk\/tickets)(\?|$)/.test(url)) {
+        return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      }
       if (url.includes("/leave/balance")) {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockLeaveBalances) });
       }
@@ -625,7 +652,7 @@ test.describe("Dashboard — Leave Widgets", () => {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
     });
 
-    await page.route(`${API_BASE}/dashboard/preferences`, (route) => {
+    await page.route(`${API_BASE}/dashboard/preferences**`, (route) => {
       if (route.request().method() === "GET") {
         route.fulfill({
           status: 200,
@@ -655,7 +682,10 @@ test.describe("Dashboard — Leave Widgets", () => {
 
   test("Leave Balance widget renders with balance data", async ({ page }) => {
     await setupDashboardWithLeaveWidgets(page);
-    await page.goto("/dashboard");
+    // The widget grid moved: `/dashboard` is the My Work list now, and the
+    // preference-driven widgets — these four among them — render on
+    // `/dashboard/overview`.
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     // Leave Balance widget should show
@@ -666,7 +696,10 @@ test.describe("Dashboard — Leave Widgets", () => {
 
   test("Team Calendar widget renders with month grid", async ({ page }) => {
     await setupDashboardWithLeaveWidgets(page);
-    await page.goto("/dashboard");
+    // The widget grid moved: `/dashboard` is the My Work list now, and the
+    // preference-driven widgets — these four among them — render on
+    // `/dashboard/overview`.
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     await expect(page.getByText("Team Calendar")).toBeVisible();
@@ -677,7 +710,10 @@ test.describe("Dashboard — Leave Widgets", () => {
 
   test("Pending Leave Approvals widget renders with requests", async ({ page }) => {
     await setupDashboardWithLeaveWidgets(page);
-    await page.goto("/dashboard");
+    // The widget grid moved: `/dashboard` is the My Work list now, and the
+    // preference-driven widgets — these four among them — render on
+    // `/dashboard/overview`.
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     await expect(page.getByText("Leave Approvals")).toBeVisible();
@@ -688,7 +724,10 @@ test.describe("Dashboard — Leave Widgets", () => {
 
   test("Team Availability widget renders with summary", async ({ page }) => {
     await setupDashboardWithLeaveWidgets(page);
-    await page.goto("/dashboard");
+    // The widget grid moved: `/dashboard` is the My Work list now, and the
+    // preference-driven widgets — these four among them — render on
+    // `/dashboard/overview`.
+    await page.goto("/dashboard/overview");
     await page.waitForSelector("text=Welcome back", { timeout: 15000 });
 
     await expect(page.getByText("Team Availability")).toBeVisible();
@@ -741,8 +780,10 @@ test.describe("Team Calendar Page — Unified View", () => {
   test("switching to Booking tab shows booking controls", async ({ page }) => {
     await page.getByRole("button", { name: "Booking", exact: true }).click();
 
-    // Booking-specific controls — event type selector should be present
-    const eventTypeSelect = page.locator("select").first();
+    // Addressed by its label, not its position: `select` first() picked up the
+    // app shell's language dropdown once that landed in the sidebar, which is
+    // why this asserted "en" against an event type id.
+    const eventTypeSelect = page.getByLabel("Event type");
     await expect(eventTypeSelect).toBeVisible();
     await expect(eventTypeSelect).toHaveValue("et-1");
   });

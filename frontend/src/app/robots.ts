@@ -63,6 +63,9 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
+      // The public community forum is deliberately absent from `disallow`: it is
+      // the one authenticated-adjacent area that is meant to be indexed, and a
+      // community that would rather not be sets its own `noindex` per page.
       allow: "/",
       disallow,
     },

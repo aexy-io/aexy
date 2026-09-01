@@ -27,7 +27,7 @@ from tests.conftest import seed_service_desk_taxonomy
 
 
 async def _member(db, ws_id: str, label: str, *, permissions: list[str] | None = None) -> str:
-    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@bimaplan.co", name=label)
+    dev = Developer(id=str(uuid4()), email=f"{label}-{uuid4().hex[:6]}@desk.example", name=label)
     db.add(dev)
     await db.flush()
     role_id = None
@@ -82,7 +82,7 @@ async def _in_department(db, ws_id: str, function_key: str, developer_id: str) -
 @pytest.fixture
 async def desk(db_session):
     """A workspace with three tickets: one per KAM, one pending with Finance."""
-    owner = Developer(id=str(uuid4()), email=f"owner-{uuid4().hex[:6]}@bimaplan.co", name="owner")
+    owner = Developer(id=str(uuid4()), email=f"owner-{uuid4().hex[:6]}@desk.example", name="owner")
     db_session.add(owner)
     await db_session.flush()
     ws = Workspace(id=str(uuid4()), name="BP", slug=f"bp-{uuid4().hex[:6]}", owner_id=owner.id)

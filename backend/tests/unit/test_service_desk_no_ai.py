@@ -64,7 +64,7 @@ async def _desk(
     db: AsyncSession, slug: str, kam_count: int = 2
 ) -> tuple[Workspace, ServiceDeskMailbox, list[str]]:
     """A workspace with a shared mailbox and optional KAM pool. AI vetoed."""
-    owner = Developer(email=f"owner-{slug}@bimaplan.co", name="Owner")
+    owner = Developer(email=f"owner-{slug}@desk.example", name="Owner")
     db.add(owner)
     await db.flush()
     ws = Workspace(
@@ -81,7 +81,7 @@ async def _desk(
     await seed_service_desk_taxonomy(db, ws.id)
 
     mailbox = ServiceDeskMailbox(
-        workspace_id=ws.id, address="operations@bimaplan.co", channel="webhook"
+        workspace_id=ws.id, address="operations@desk.example", channel="webhook"
     )
     db.add(mailbox)
 
@@ -93,7 +93,7 @@ async def _desk(
 
     kam_ids: list[str] = []
     for i in range(kam_count):
-        kam = Developer(email=f"kam{i}-{slug}@bimaplan.co", name=f"KAM{i}")
+        kam = Developer(email=f"kam{i}-{slug}@desk.example", name=f"KAM{i}")
         db.add(kam)
         await db.flush()
         db.add(DepartmentMember(workspace_id=ws.id, department_id=dept.id, developer_id=kam.id))
@@ -112,7 +112,7 @@ async def _desk(
 
 def _email(**kw) -> InboundEmail:
     base = dict(
-        to="operations@bimaplan.co",
+        to="operations@desk.example",
         from_email="rahul@abcfinance.com",
         subject="Policy status please",
         body_text="Any update?",

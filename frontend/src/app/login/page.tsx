@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, GitBranch, Loader2, Terminal } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
@@ -22,9 +22,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/a
 const DEFAULT_DEMO_PASSWORD = "aexy-demo";
 
 const providers = [
-  { name: "Google", href: `${API_BASE_URL}/auth/google/login`, icon: <GoogleIcon /> },
-  { name: "GitHub", href: `${API_BASE_URL}/auth/github/login`, icon: <SiGithub className="h-5 w-5" /> },
-  { name: "Microsoft", href: `${API_BASE_URL}/auth/microsoft/login`, icon: <MicrosoftIcon /> },
+  { name: "Google", slug: "google", icon: <GoogleIcon /> },
+  { name: "GitHub", slug: "github", icon: <SiGithub className="h-5 w-5" /> },
+  { name: "Microsoft", slug: "microsoft", icon: <MicrosoftIcon /> },
 ];
 
 export default function LoginPage() {
@@ -33,6 +33,24 @@ export default function LoginPage() {
   const [demoPassword, setDemoPassword] = useState(DEFAULT_DEMO_PASSWORD);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  // Extra query for the OAuth start URL, present when this page was reached
+  // from a public community. The backend has always accepted these markers and
+  // acted on them — a brand-new account becomes community-only, walled off from
+  // the internal product by the isolation middleware, non-billable, and returned
+  // to the forum instead of /dashboard. This page never forwarded them, so every
+  // visitor who signed in from a forum got a full internal account instead.
+  //
+  // Echoed onward, not trusted: `context` is pinned to the single literal the
+  // backend understands, and the slug is URL-encoded.
+  const communitySlug = searchParams.get("community");
+  const providerQuery =
+    searchParams.get("context") === "community"
+      ? communitySlug
+        ? `context=community&community=${encodeURIComponent(communitySlug)}`
+        : "context=community"
+      : "";
 
   useEffect(() => {
     // Same contract as the homepage: honour ?next= deep links by stashing
@@ -40,6 +58,7 @@ export default function LoginPage() {
     const rawNext = new URLSearchParams(window.location.search).get("next");
     const nextPath = safeInternalPath(rawNext);
     if (nextPath) stashPostLoginRedirect(nextPath);
+
     if (localStorage.getItem("token")) {
       router.replace(nextPath ?? "/dashboard");
     }
@@ -113,10 +132,10 @@ export default function LoginPage() {
             </p>
 
             <div className="mt-8 space-y-3">
-              {providers.map(({ name, href, icon }) => (
+              {providers.map(({ name, slug, icon }) => (
                 <a
                   key={name}
-                  href={href}
+                  href={`${API_BASE_URL}/auth/${slug}/login${providerQuery ? `?${providerQuery}` : ""}`}
                   className="flex w-full items-center justify-center gap-3 rounded-[2px] border border-ledger-ink/25 px-6 py-3.5 text-sm font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
                 >
                   {icon}
@@ -133,8 +152,8 @@ export default function LoginPage() {
                 </p>
                 <p className="mt-3 text-sm leading-6 text-ledger-ink/65">
                   This install has demo sign-in switched on. One shared workspace, no
-                  OAuth app to register. Email sending and AI are switched off, so
-                  nothing here can mail anyone or spend tokens.
+                  OAuth app to register. Every module is there to explore; sending
+                  email and running AI are the two that won&apos;t actually fire.
                 </p>
                 <div className="mt-4 space-y-3">
                   <div>

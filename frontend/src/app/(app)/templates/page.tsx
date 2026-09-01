@@ -22,6 +22,8 @@ import {
   TrendingUp,
   ShieldCheck,
   Bot,
+  Globe,
+  GitBranch,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 
@@ -36,6 +38,11 @@ interface Template {
   isNew?: boolean;
 }
 
+/** Stand-in for a provider mark the icon set doesn't carry. */
+function SiGithubIcon() {
+  return <GitBranch className="h-5 w-5" />;
+}
+
 const TEMPLATE_CATEGORIES = [
   { id: "all", label: "All Templates", icon: <Sparkles className="h-4 w-4" /> },
   { id: "automation", label: "Automations", icon: <Zap className="h-4 w-4" /> },
@@ -43,6 +50,7 @@ const TEMPLATE_CATEGORIES = [
   { id: "assessment", label: "Assessments", icon: <FileSpreadsheet className="h-4 w-4" /> },
   { id: "email", label: "Email", icon: <Mail className="h-4 w-4" /> },
   { id: "sprint", label: "Sprint", icon: <Calendar className="h-4 w-4" /> },
+  { id: "community", label: "Community", icon: <Globe className="h-4 w-4" /> },
 ];
 
 const TEMPLATES: Template[] = [
@@ -237,6 +245,52 @@ const TEMPLATES: Template[] = [
     icon: <AlertTriangle className="h-5 w-5" />,
     tags: ["sprint", "bugs", "quality"],
     href: "/sprints?action=new&template=bug-bash",
+  },
+
+  // Community starter shapes. Unlike the entries above — which deep-link into a
+  // module's own "new from template" flow — these all land on the community
+  // settings page, because applying one creates web-public channels and that is
+  // an admin decision made in one place. The catalogue itself lives in the
+  // backend (services/community_templates.py) and is previewed there.
+  {
+    id: "community-product-support",
+    name: "Product Support Community",
+    description: "Announcements, help, and feature requests — the shape of a forum that answers a question once and lets the next person find it.",
+    category: "community",
+    icon: <MessageSquare className="h-5 w-5" />,
+    tags: ["community", "support", "public"],
+    href: "/settings/community",
+    isNew: true,
+  },
+  {
+    id: "community-open-source",
+    name: "Open-Source Project Community",
+    description: "General, contributing, and show-and-tell — for maintainers whose issue tracker has become a support queue.",
+    category: "community",
+    icon: <SiGithubIcon />,
+    tags: ["community", "open-source", "contributors"],
+    href: "/settings/community",
+    isNew: true,
+  },
+  {
+    id: "community-customers",
+    name: "Customer Community",
+    description: "Announcements, ask, and integrations — pre-moderated, because customers post under their own names and their employer's.",
+    category: "community",
+    icon: <Users className="h-5 w-5" />,
+    tags: ["community", "customers", "moderated"],
+    href: "/settings/community",
+    isNew: true,
+  },
+  {
+    id: "community-knowledge-base",
+    name: "Public Knowledge Base",
+    description: "Read-only to start: publish the answers you already have, and open replies once there is something worth replying to.",
+    category: "community",
+    icon: <FileSpreadsheet className="h-5 w-5" />,
+    tags: ["community", "docs", "read-only"],
+    href: "/settings/community",
+    isNew: true,
   },
 ];
 

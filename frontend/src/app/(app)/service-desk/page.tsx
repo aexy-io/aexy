@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Download, Inbox, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { rememberServiceDeskReturn } from "./returnTo";
+
 import { useServiceDeskDashboard, useServiceDeskSettings, useServiceDeskTaxonomy } from "@/hooks/useServiceDesk";
 import { useFunctionCatalog } from "@/hooks/useOrganization";
 import { DashboardTicket, StakeholderBucket, serviceDeskApi } from "@/lib/service-desk-api";
@@ -307,7 +309,10 @@ export default function ServiceDeskDashboardPage() {
                   return (
                     <tr
                       key={tk.ticket_id}
-                      onClick={() => router.push(`/service-desk/tickets/${tk.ticket_id}`)}
+                      onClick={() => {
+                        rememberServiceDeskReturn(tk.ticket_id);
+                        router.push(`/service-desk/tickets/${tk.ticket_id}`);
+                      }}
                       className="cursor-pointer border-t border-border hover:bg-accent/50"
                     >
                       <td className="px-3 py-2 font-medium">

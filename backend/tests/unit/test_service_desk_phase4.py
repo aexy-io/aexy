@@ -312,10 +312,10 @@ async def test_editable_templates_default_and_override(db_session: AsyncSession)
     # default (no row yet) still renders with the built-in copy
     subject, body = await render_sd(db_session, ws.id, "receipt", {"display_id": "BSD-7", "subject": "Hi", "requester_name": "Ravi"})
     # The built-in copy signs off with the workspace's own name. It used to say
-    # "Bimaplan Operations" literally, so every other company sent
-    # Bimaplan-branded acknowledgements until someone edited three templates.
+    # "Acme Operations" literally, so every other company sent
+    # customer-branded acknowledgements until someone edited three templates.
     assert "BSD-7" in subject and "Ravi" in body
-    assert ws.name in body and "Bimaplan Operations" not in body
+    assert ws.name in body and "Acme Operations" not in body
 
     tmpls = await list_sd_templates(db_session, ws.id)
     assert {t["key"] for t in tmpls} == {"receipt", "closure", "digest"}

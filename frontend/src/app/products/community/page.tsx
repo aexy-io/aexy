@@ -32,7 +32,11 @@ const data: ProductPageData = {
       { title: "List it", description: "When it is worth arriving at." },
     ],
   },
-  cta: { heading: "Answer it once, publicly", blurb: "Open a space and publish three answers." },
+  cta: {
+    heading: "Answer it once, publicly",
+    blurb: "Open a space and publish three answers.",
+    secondary: { href: "/community", label: "Browse public communities" },
+  },
 };
 
 export const metadata: Metadata = productMetadata(data);

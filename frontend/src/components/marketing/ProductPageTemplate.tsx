@@ -51,7 +51,18 @@ export interface ProductPageData {
   how: { heading: string; blurb: string; steps: ProductStep[] };
   /** Optional dark pane of hard numbers or supported values. */
   specs?: { heading: string; items: ProductSpec[] };
-  cta: { heading: string; blurb: string };
+  cta: {
+    heading: string;
+    blurb: string;
+    /**
+     * An extra link beside "Get started free", for a product that has something
+     * live to look at. `/products/community` uses it to point at the actual
+     * forum: a page that describes a public community and then offers only a
+     * signup button is asking to be trusted about something it could simply
+     * show.
+     */
+    secondary?: { href: string; label: string };
+  };
 }
 
 /** Build the page's `metadata` from the same object that renders it. */
@@ -231,13 +242,23 @@ export function ProductPageTemplate({ data }: { data: ProductPageData }) {
             {data.cta.heading}
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-ledger-ink/60">{data.cta.blurb}</p>
-          <Link
-            href="/login"
-            className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
-          >
-            Get started free
-            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/login"
+              className="group inline-flex items-center justify-center gap-3 rounded-[2px] bg-ledger-green px-8 py-4 text-lg font-semibold text-ledger-paper transition hover:bg-[#095A31]"
+            >
+              Get started free
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+            {data.cta.secondary && (
+              <Link
+                href={data.cta.secondary.href}
+                className="inline-flex items-center justify-center gap-2 rounded-[2px] border border-ledger-ink/25 px-8 py-4 text-lg font-semibold text-ledger-ink transition hover:border-ledger-ink/50"
+              >
+                {data.cta.secondary.label}
+              </Link>
+            )}
+          </div>
         </div>
       </section>
     </LedgerPage>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Download, Inbox, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -16,6 +16,7 @@ import {
   useVendors,
 } from "@/hooks/useServiceDesk";
 import { serviceDeskApi, TicketQuery } from "@/lib/service-desk-api";
+import { rememberServiceDeskReturn } from "../returnTo";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useProjects } from "@/hooks/useProjects";
 import { ticketsApi } from "@/lib/api";
@@ -151,26 +152,133 @@ const dateInput = (iso?: string) => (iso ? iso.slice(0, 10) : "");
 const dayStart = (day: string) => (day ? `${day}T00:00:00Z` : undefined);
 const dayEnd = (day: string) => (day ? `${day}T23:59:59Z` : undefined);
 
-export default function ServiceDeskTicketsPage() {
+/* ------------------------------------------------------------------ *
+ * The filter state lives in the address bar, not only in React state.
+ *
+ * Everything on this screen — the search term, every filter, the sort and the
+ * page — used to be component state and nothing else. That made the list a
+ * dead end: opening a ticket unmounted it, and coming back by any route at all
+ * (the ticket's own back link, the browser's back button, a bookmark) rebuilt
+ * it empty. Somebody who had narrowed six months of history down to nine
+ * tickets had to narrow it again after reading each one.
+ *
+ * Putting it in the query string fixes every one of those routes at once,
+ * because the address the browser goes back to is now a complete description
+ * of the screen. It also makes a filtered queue something you can bookmark or
+ * paste to a colleague, which the CSV export was standing in for.
+ * ------------------------------------------------------------------ */
+
+/** Filters that round-trip as plain strings. Kept as a list rather than read
+ *  off the state object so a stray key can never reach the address bar. */
+const URL_STRING_FILTERS = [
+  "q", "created_from", "created_to", "account_id", "product_id", "vendor_id",
+  "request_type", "pending_with", "origin", "status", "assigned_to",
+] as const;
+
+/** Filters that round-trip as `1`/`0`. `is_open` is genuinely three-valued —
+ *  open, closed, either — so absence and `0` mean different things. */
+const URL_BOOL_FILTERS = ["is_open", "assigned_to_me", "needs_triage"] as const;
+
+/** The filters that sit behind "More". Whether any of them arrived in the URL
+ *  decides whether that panel starts open — a filter that is narrowing the
+ *  table while being folded out of sight reads as a broken list. */
+const SECONDARY_FILTERS: (keyof TicketQuery)[] = [
+  "created_from", "created_to", "account_id", "product_id", "vendor_id",
+  "assigned_to", "request_type", "pending_with", "assigned_to_me", "needs_triage",
+];
+
+type ListState = {
+  filters: TicketQuery;
+  sort: SortKey;
+  direction: "asc" | "desc";
+  page: number;
+};
+
+function stateFromParams(params: URLSearchParams): ListState {
+  const filters: TicketQuery = {};
+  for (const key of URL_STRING_FILTERS) {
+    const value = params.get(key);
+    if (value) (filters as Record<string, unknown>)[key] = value;
+  }
+  for (const key of URL_BOOL_FILTERS) {
+    const value = params.get(key);
+    if (value === "1") (filters as Record<string, unknown>)[key] = true;
+    else if (value === "0") (filters as Record<string, unknown>)[key] = false;
+  }
+  // An unknown column would sort by nothing and silently ignore the direction,
+  // so anything not in the table falls back to the default.
+  const asked = params.get("sort") as SortKey | null;
+  const sort: SortKey = asked && asked in SORT_DEFAULT_DIRECTION ? asked : "created";
+  const askedDirection = params.get("direction");
+  const direction =
+    askedDirection === "asc" || askedDirection === "desc"
+      ? askedDirection
+      : SORT_DEFAULT_DIRECTION[sort];
+  // One-based in the URL because that is the number on the pager; zero-based in
+  // state because that is what multiplies into an offset.
+  const askedPage = Number(params.get("page"));
+  const page = Number.isFinite(askedPage) && askedPage > 1 ? Math.floor(askedPage) - 1 : 0;
+  return { filters, sort, direction, page };
+}
+
+/** The inverse, written on top of whatever else is already in the address.
+ *  Building a fresh `URLSearchParams` instead would silently drop any param
+ *  this screen does not own — the mistake that turned `/sprints?tab=epics` into
+ *  `/sprints` on the epics list and put the reader on the wrong tab. */
+function paramsFromState(
+  { filters, sort, direction, page }: ListState,
+  existing = "",
+): string {
+  const params = new URLSearchParams(existing);
+  for (const key of [...URL_STRING_FILTERS, ...URL_BOOL_FILTERS, "sort", "direction", "page"]) {
+    params.delete(key);
+  }
+  for (const key of URL_STRING_FILTERS) {
+    const value = filters[key];
+    if (value) params.set(key, String(value));
+  }
+  for (const key of URL_BOOL_FILTERS) {
+    const value = filters[key];
+    if (value !== undefined) params.set(key, value ? "1" : "0");
+  }
+  if (sort !== "created") params.set("sort", sort);
+  if (direction !== SORT_DEFAULT_DIRECTION[sort]) params.set("direction", direction);
+  if (page > 0) params.set("page", String(page + 1));
+  return params.toString();
+}
+
+function ServiceDeskTicketsPageContent() {
   const t = useTranslations("serviceDesk");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // One page of a filtered set. `PAGE_SIZE` is deliberately well under the
   // server's 200 cap: the point of paging is that a desk with six months of
   // history stays usable, and an export exists for the whole set.
   const PAGE_SIZE = 50;
-  const [filters, setFilters] = useState<TicketQuery>({});
-  const [page, setPage] = useState(0);
+  // Read once, on mount. From here on the state is the source of truth and the
+  // URL follows it; re-reading the params on every render would fight the
+  // `router.replace` below and make each keystroke a round trip.
+  const [initial] = useState<ListState>(() =>
+    stateFromParams(new URLSearchParams(searchParams?.toString() ?? "")),
+  );
+  const [filters, setFilters] = useState<TicketQuery>(initial.filters);
+  const [page, setPage] = useState(initial.page);
   // The box holds what is being typed; `filters.q` holds what has been asked
   // for. Committing on every keystroke would fire a query per character and
   // make the count flicker while somebody is still mid-word.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initial.filters.q ?? "");
+  // What the box has already been credited with. Without it the debounce fires
+  // once on mount and resets the page — which is how a bookmarked page 4 landed
+  // on page 1 before anybody had typed anything.
+  const committed = useRef(search.trim());
   useEffect(() => {
     const id = setTimeout(() => {
+      const term = search.trim();
+      if (term === committed.current) return;
+      committed.current = term;
       setPage(0);
       setFilters((f) => {
-        const term = search.trim();
-        if (term === (f.q ?? "")) return f;
         const next = { ...f };
         if (term) next.q = term;
         else delete next.q;
@@ -190,8 +298,8 @@ export default function ServiceDeskTicketsPage() {
       return next;
     });
   };
-  const [sort, setSort] = useState<SortKey>("created");
-  const [direction, setDirection] = useState<"asc" | "desc">("desc");
+  const [sort, setSort] = useState<SortKey>(initial.sort);
+  const [direction, setDirection] = useState<"asc" | "desc">(initial.direction);
   // Clicking the column already in force reverses it; a new column starts in
   // whichever direction reads as "the interesting end" for that kind of value.
   const onSort = (column: SortKey) => {
@@ -204,7 +312,25 @@ export default function ServiceDeskTicketsPage() {
   };
   // Whether the secondary filters are on screen. Open by default only when
   // something inside is already set, so a filtered view never hides why.
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useState(() =>
+    SECONDARY_FILTERS.some((key) => initial.filters[key] !== undefined),
+  );
+
+  // The other half of the round trip: state out to the address bar. `replace`
+  // rather than `push` — a history entry per keystroke would bury the page the
+  // reader actually came from under a hundred near-identical ones, and the back
+  // button is precisely what this is here to protect. Opening a ticket pushes
+  // from whatever address this last wrote, so back returns the whole screen.
+  useEffect(() => {
+    const next = paramsFromState(
+      { filters, sort, direction, page },
+      window.location.search,
+    );
+    if (next === window.location.search.replace(/^\?/, "")) return;
+    router.replace(next ? `${window.location.pathname}?${next}` : window.location.pathname, {
+      scroll: false,
+    });
+  }, [filters, sort, direction, page, router]);
 
   const activeFilterCount = Object.keys(filters).length;
   const query: TicketQuery = {
@@ -246,7 +372,15 @@ export default function ServiceDeskTicketsPage() {
   const clearAll = () => {
     setFilters({});
     setSearch("");
+    committed.current = "";
     setPage(0);
+  };
+  // Removing the search chip has to empty the box as well. Clearing only the
+  // filter left the term sitting in the input, looking like it still applied.
+  const clearSearch = () => {
+    setSearch("");
+    committed.current = "";
+    setFilter("q", undefined);
   };
 
   // One description per applied filter: what it narrowed, to what, and how to
@@ -259,7 +393,8 @@ export default function ServiceDeskTicketsPage() {
     if (!value) return;
     chips.push({ key, label, value, remove: () => setFilter(key, undefined) });
   };
-  if (filters.q) chip("q", t("filters.search"), filters.q);
+  if (filters.q)
+    chips.push({ key: "q", label: t("filters.search"), value: filters.q, remove: clearSearch });
   if (filters.created_from) chip("created_from", t("filters.from"), dateInput(filters.created_from));
   if (filters.created_to) chip("created_to", t("filters.to"), dateInput(filters.created_to));
   if (filters.account_id)
@@ -593,7 +728,7 @@ export default function ServiceDeskTicketsPage() {
             filteredToNothing
               ? [{
                   label: t("filters.clear"),
-                  onClick: () => { setFilters({}); setSearch(""); setPage(0); },
+                  onClick: clearAll,
                   icon: X,
                 }]
               : [{ label: t("manual.logTicket"), onClick: () => setOpen(true), icon: Plus }]
@@ -624,7 +759,10 @@ export default function ServiceDeskTicketsPage() {
                 return (
                   <tr
                     key={tk.ticket_id}
-                    onClick={() => router.push(`/service-desk/tickets/${tk.ticket_id}`)}
+                    onClick={() => {
+                      rememberServiceDeskReturn(tk.ticket_id);
+                      router.push(`/service-desk/tickets/${tk.ticket_id}`);
+                    }}
                     className="cursor-pointer border-t border-border hover:bg-accent/50"
                   >
                     <td className="px-3 py-2 font-medium">
@@ -837,5 +975,17 @@ export default function ServiceDeskTicketsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** `useSearchParams` makes this tree depend on the request's query string, and
+ *  Next needs a boundary saying so before it will render the rest of the route
+ *  without it. The screen it guards is one client component, so the fallback is
+ *  only ever seen for the length of a hydration. */
+export default function ServiceDeskTicketsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
+      <ServiceDeskTicketsPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,75 @@
 {
   "settingsCommunity": {
     "title": "Public community",
-    "description": "Publish selected chat channels as a public, SEO-friendly forum."
+    "description": "Publish selected chat channels as a public, SEO-friendly forum.",
+    "templates": {
+      "title": "Start from a template",
+      "description": "A forum with three good answers is more useful than an empty one with perfect categories. Pick a shape and we'll lay out the channels and seed the first threads.",
+      "use": "Use this template",
+      "openReplies": "Anyone signed in can reply and start threads",
+      "premoderated": "Replies and new threads are held for your approval",
+      "readOnly": "Read-only to start — open replies later",
+      "footnote": "Applying a template creates channels and threads. Nothing becomes public until you switch the community on below. Safe to click twice — channels that already exist are left alone."
+    },
+    "enable": {
+      "label": "Enable public community",
+      "hint": "Master switch. While off, nothing is visible to the public even if individual channels are marked public.",
+      "warning": "Channels you mark web public — and their history from the moment you publish — become visible to anyone on the internet and may be indexed by search engines."
+    },
+    "details": {
+      "title": "Forum details",
+      "publicUrl": "Public URL",
+      "openPublicUrl": "Open the public forum",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Acme Community",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What this community is about (used as the meta description).",
+      "noindex": "Public but not indexed by search engines (noindex)",
+      "listed": "List this community in the public directory at /community"
+    },
+    "participation": {
+      "title": "Participation",
+      "repliesLabel": "Let signed-in visitors reply",
+      "repliesHint": "Anyone signed in to Aexy can post in public channels. When off, the forum is read-only.",
+      "newTopicsLabel": "Let them start new threads too",
+      "newTopicsHint": "Answering in a thread you started and opening one themselves are different amounts of trust. Off means visitors can only reply.",
+      "moderationTitle": "How new posts are handled",
+      "moderationPost": "Publish immediately (moderate afterwards)",
+      "moderationPre": "Hold for my approval before publishing"
+    },
+    "connections": {
+      "title": "Connections",
+      "description": "Publish answers you have already written elsewhere in Aexy. Both are off until you turn them on, because publishing moves text somebody else wrote onto a page anyone can read.",
+      "serviceDeskLabel": "Publish answers from Service Desk tickets",
+      "serviceDeskHint": "Adds a \"Publish as community answer\" action to a ticket. It opens a composer pre-filled with the answer — you edit it before anything is posted. Customer email is never published as-is.",
+      "docsLabel": "Discuss documents in the community",
+      "docsHint": "Adds a \"Discuss this page\" action to a published document, opening one public thread per document."
+    },
+    "moderation": {
+      "title": "Pending review ({count})",
+      "approve": "Approve",
+      "reject": "Reject",
+      "wholeThread": "This opens a new thread — approving publishes its title too, and rejecting removes the whole thread."
+    },
+    "appearance": {
+      "title": "How you appear publicly",
+      "description": "Controls the name shown next to your messages on public pages.",
+      "realName": "My real name",
+      "alias": "An alias",
+      "anonymous": "Anonymous (\"Community member\")",
+      "aliasPlaceholder": "Your public alias"
+    },
+    "toast": {
+      "saved": "Community settings saved",
+      "saveFailed": "Could not save settings (admin required?)",
+      "approved": "Post approved",
+      "rejected": "Post rejected",
+      "moderateFailed": "Could not update the post",
+      "prefFailed": "Could not save your display preference",
+      "templateApplied": "Created {channels, plural, one {# channel} other {# channels}} and {threads, plural, one {# thread} other {# threads}}",
+      "templateNothingToDo": "Those channels already exist — nothing to add",
+      "templateFailed": "Could not apply the template (admin required?)",
+      "templateSettingsKept": "Your existing participation settings were kept"
+    }
   }
 }

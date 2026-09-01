@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ ticketId: "ticket-1" }),
-  useRouter: () => ({ push: mocks.push }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -80,6 +80,11 @@ vi.mock("@/hooks/useServiceDesk", () => ({
       email_recipients: [
         { email: "requester@example.com", label: "Requester", stage: null },
       ],
+      reply_all: {
+        to: "requester@example.com",
+        cc: ["colleague@example.com", "broker@partner.example"],
+      },
+      assignment_note: null,
       attachments: [],
       tat: {
         overall_seconds: 0,
@@ -93,12 +98,19 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     },
   }),
   useServiceDeskMutations: () => ({
+    publishToCommunity: { mutate: vi.fn(), isPending: false },
     splitDetectedIssues: { mutate: vi.fn(), isPending: false, isError: false, data: undefined },
     changePendingWith: { mutateAsync: vi.fn(), isPending: false },
     convertToTask: { mutate: vi.fn(), isPending: false },
     updateTicket: { mutateAsync: vi.fn(), isPending: false, isError: false },
     emailStakeholder: { mutateAsync: mocks.email, isPending: false, isError: false },
+    uploadFiles: { mutate: vi.fn(), isPending: false },
+    deleteUpload: { mutate: vi.fn(), isPending: false },
+    downloadUpload: { mutate: vi.fn(), isPending: false },
   }),
+  // Publishing to the community is opt-in and off by default, so the card the
+  // ticket page renders for it is absent here — which is the default state.
+  useCommunityPublishTargets: () => ({ data: { enabled: false, community_slug: null, channels: [] } }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
   useServiceDeskTaxonomy: () => ({
     stakeholders: [],
@@ -126,6 +138,16 @@ function type(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
       : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/** The first button whose aria-label starts with `prefix` — the Cc chips label
+ *  themselves per address, so the exact text is not a stable handle. */
+function buttonWith2(container: HTMLElement, prefix: string): HTMLButtonElement {
+  const found = Array.from(container.querySelectorAll("button")).find((button) =>
+    (button.getAttribute("aria-label") ?? "").startsWith(prefix),
+  );
+  expect(found, prefix).toBeDefined();
+  return found as HTMLButtonElement;
 }
 
 function buttonWith(container: HTMLElement, label: string): HTMLButtonElement {
@@ -168,8 +190,10 @@ describe("Service Desk outbound email card", () => {
     await act(async () => root.render(<ServiceDeskTicketDetailPage />));
 
     const form = fields();
-    await act(async () => type(form.to, "bhanu423@gmail.com"));
-    await act(async () => type(form.cc, "ops@bimaplan.co, broker@partner.example"));
+    // Typing a different recipient drops the thread's chain — see the
+    // redirect test below — so this send carries only what is typed here.
+    await act(async () => type(form.to, "surveyor@example.net"));
+    await act(async () => type(form.cc, "ops@desk.example, broker@partner.example"));
     await act(async () => type(form.subject!, "Following up"));
     await act(async () => type(form.body, "Here is the update."));
 
@@ -180,14 +204,92 @@ describe("Service Desk outbound email card", () => {
     expect(mocks.email.mock.calls[0][0]).toEqual({
       id: "ticket-1",
       data: {
-        to: "bhanu423@gmail.com",
-        cc: ["ops@bimaplan.co", "broker@partner.example"],
+        to: "surveyor@example.net",
+        cc: ["ops@desk.example", "broker@partner.example"],
         subject: "Following up",
         body: "Here is the update.",
         attachment_filenames: [],
+        attachment_ids: [],
         move_ticket: true,
       },
     });
+  });
+
+  it("opens addressed to the thread, with everyone on it already copied", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    // The whole of the reply-all ask: answering the ticket keeps the people the
+    // requester had on the mail, instead of reaching one address out of three.
+    expect(fields().to.value).toBe("requester@example.com");
+    expect(container.textContent).toContain("colleague@example.com");
+    expect(container.textContent).toContain("broker@partner.example");
+
+    const form = fields();
+    await act(async () => type(form.body, "On it."));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    await act(async () => buttonWith(container, "detail.emailConfirmSend").click());
+
+    expect(mocks.email.mock.calls[0][0].data.cc).toEqual([
+      "colleague@example.com",
+      "broker@partner.example",
+    ]);
+  });
+
+  it("lets one person be taken off the chain without disturbing the rest", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    await act(async () =>
+      buttonWith2(container, "detail.emailCcRemove").click(),
+    );
+
+    const form = fields();
+    await act(async () => type(form.body, "On it."));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    await act(async () => buttonWith(container, "detail.emailConfirmSend").click());
+
+    expect(mocks.email.mock.calls[0][0].data.cc).toEqual(["broker@partner.example"]);
+  });
+
+  it("re-seeds from the thread the send returned, not the copy before it", async () => {
+    // Somebody looped in by hand is on the conversation from that moment. Waiting
+    // for the background refetch to say so would re-seed the box from the copy
+    // that predates the very message being sent.
+    mocks.email.mockResolvedValue({
+      subject: "Test Ticket",
+      requester_email: "requester@example.com",
+      reply_all: {
+        to: "requester@example.com",
+        cc: ["colleague@example.com", "broker@partner.example", "surveyor@example.net"],
+      },
+    });
+
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    const form = fields();
+    await act(async () => type(form.body, "On it."));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    await act(async () => buttonWith(container, "detail.emailConfirmSend").click());
+
+    expect(container.textContent).toContain("surveyor@example.net");
+    expect(fields().to.value).toBe("requester@example.com");
+  });
+
+  it("drops the chain when the reply is redirected to somebody else", async () => {
+    await act(async () => root.render(<ServiceDeskTicketDetailPage />));
+
+    // Copying a partner's colleagues onto a message to an insurer is a
+    // disclosure the sender never asked for, so changing the recipient clears
+    // what was carried over rather than quietly taking it along.
+    await act(async () => type(fields().to, "claims@insurer.example"));
+
+    expect(container.textContent).not.toContain("colleague@example.com");
+
+    const form = fields();
+    await act(async () => type(form.body, "Please quote."));
+    await act(async () => buttonWith(container, "detail.emailReview").click());
+    await act(async () => buttonWith(container, "detail.emailConfirmSend").click());
+
+    expect(mocks.email.mock.calls[0][0].data.cc).toEqual([]);
   });
 
   it("fills the recipient from a configured address in one click", async () => {
@@ -204,7 +306,7 @@ describe("Service Desk outbound email card", () => {
     await act(async () => root.render(<ServiceDeskTicketDetailPage />));
 
     const form = fields();
-    await act(async () => type(form.to, "bhanu423@gmail.com"));
+    await act(async () => type(form.to, "surveyor@example.net"));
     await act(async () => type(form.body, "Here is the update."));
 
     // No id typed: the desk adds it.
@@ -225,7 +327,7 @@ describe("Service Desk outbound email card", () => {
     await act(async () => root.render(<ServiceDeskTicketDetailPage />));
 
     const form = fields();
-    await act(async () => type(form.to, "bhanu423@gmail.com"));
+    await act(async () => type(form.to, "surveyor@example.net"));
     await act(async () => type(form.subject!, "Following up"));
     await act(async () => type(form.body, "Here is the update."));
 
@@ -238,7 +340,7 @@ describe("Service Desk outbound email card", () => {
     await act(async () => root.render(<ServiceDeskTicketDetailPage />));
 
     const form = fields();
-    await act(async () => type(form.to, "bhanu423@gmail.com"));
+    await act(async () => type(form.to, "surveyor@example.net"));
     await act(async () => type(form.subject!, "Following up"));
     await act(async () => type(form.body, "Here is the update."));
     await act(async () => type(form.cc, "not-an-address"));

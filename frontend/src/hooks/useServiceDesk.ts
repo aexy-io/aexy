@@ -30,6 +30,7 @@ import {
   ServiceDeskTicket,
   TicketQuery,
   ServiceDeskTicketDetail,
+  PublishTargets,
 } from "@/lib/service-desk-api";
 
 /**
@@ -85,7 +86,27 @@ const keys = {
   stakeholders: (ws: string) => ["service-desk", "stakeholders", ws] as const,
   requestTypes: (ws: string) => ["service-desk", "request-types", ws] as const,
   industryTemplates: (ws: string) => ["service-desk", "industry-templates", ws] as const,
+  publishTargets: (ws: string) => ["service-desk", "community-publish-targets", ws] as const,
 };
+
+/**
+ * Where a ticket answer may be published, if publishing is switched on at all.
+ *
+ * Returns `enabled: false` with no channels for every workspace that has not
+ * opted in — which is the default — so the ticket UI can simply not render the
+ * action rather than render one that 403s.
+ */
+export function useCommunityPublishTargets() {
+  const ws = useWs();
+  return useQuery<PublishTargets>({
+    queryKey: keys.publishTargets(ws ?? ""),
+    queryFn: () => serviceDeskApi.communityPublishTargets(ws!),
+    enabled: !!ws,
+    // A workspace's community wiring does not change between page views.
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
 
 export function useServiceDeskSettings() {
   const ws = useWs();
@@ -347,8 +368,32 @@ export function useServiceDeskMutations() {
       mutationFn: (data: Parameters<typeof serviceDeskApi.createManual>[1]) => serviceDeskApi.createManual(ws!, data),
       onSuccess: () => invalidateTickets(),
     }),
+    /** Put files on the ticket ahead of the send that will attach them. */
+    uploadFiles: useDeskMutation({
+      mutationFn: ({ id, files }: { id: string; files: File[] }) =>
+        serviceDeskApi.uploadFiles(ws!, id, files),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
+    deleteUpload: useDeskMutation({
+      mutationFn: ({ id, attachmentId }: { id: string; attachmentId: string }) =>
+        serviceDeskApi.deleteUpload(ws!, id, attachmentId),
+      onSuccess: (_r, v) => invalidateTickets(v.id),
+    }),
+    /** Same shape and the same blob-error handling as `downloadAttachment`. */
+    downloadUpload: useDeskMutation({
+      mutationFn: async ({ id, attachmentId, filename }: { id: string; attachmentId: string; filename: string }) => {
+        let blob: Blob;
+        try {
+          blob = await serviceDeskApi.downloadUpload(ws!, id, attachmentId);
+        } catch (error) {
+          await revealBlobError(error);
+          throw error;
+        }
+        saveBlob(blob, filename);
+      },
+    }),
     emailStakeholder: useDeskMutation({
-      mutationFn: ({ id, data }: { id: string; data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; move_ticket?: boolean } }) =>
+      mutationFn: ({ id, data }: { id: string; data: { to: string; cc?: string[]; subject: string; body: string; attachment_filenames?: string[]; attachment_ids?: string[]; move_ticket?: boolean } }) =>
         serviceDeskApi.emailStakeholder(ws!, id, data),
       onSuccess: (_r, v) => invalidateTickets(v.id),
     }),
@@ -428,6 +473,20 @@ export function useServiceDeskMutations() {
     deleteRequestType: useDeskMutation({
       mutationFn: (id: string) => serviceDeskApi.deleteRequestType(ws!, id),
       onSuccess: invalidateTaxonomy,
+    }),
+
+    publishToCommunity: useDeskMutation({
+      mutationFn: ({
+        id,
+        data,
+      }: {
+        id: string;
+        data: { channel_id: string; title: string; content: string };
+      }) => serviceDeskApi.publishTicketToCommunity(ws!, id, data),
+      // The ticket now carries a pointer to the thread it produced.
+      onSuccess: (_result, vars) => {
+        if (ws) qc.invalidateQueries({ queryKey: keys.ticket(ws, vars.id) });
+      },
     }),
 
     applyIndustryTemplate: useDeskMutation({

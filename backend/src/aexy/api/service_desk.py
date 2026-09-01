@@ -8,7 +8,17 @@ through this router — it is driven by the inbound webhook / Gmail sync hooks
 import asyncio
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.developers import get_current_developer
@@ -47,7 +57,11 @@ from aexy.schemas.service_desk import (
     ServiceDeskTemplate,
     ServiceDeskTemplateUpdate,
     ServiceDeskTicketDetail,
+    PublishToCommunityRequest,
+    PublishTargetsResponse,
+    TicketCommunityTopic,
     StakeholderEmailRequest,
+    TicketAttachment,
     AIAccuracy,
     DigestPreview,
     ServiceDeskTicketResponse,
@@ -619,6 +633,85 @@ async def download_ticket_attachment(
     )
 
 
+# Registered on their own path rather than under `attachments/`, whose remaining
+# segment is an int: a name there would 422 before it could ever reach a handler.
+@router.post(
+    "/tickets/{ticket_id}/uploads",
+    response_model=list[TicketAttachment],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_ticket_files(
+    workspace_id: str,
+    ticket_id: str,
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Take files to attach to a reply from this ticket.
+
+    Streamed to storage from their spooled temp files, so a large upload is never
+    held in memory. Requires write authority on the ticket, as the send does.
+    """
+
+    def _size(upload: UploadFile) -> int:
+        if upload.size is not None:
+            return upload.size
+        upload.file.seek(0, 2)
+        size = upload.file.tell()
+        upload.file.seek(0)
+        return size
+
+    return await ServiceDeskTicketService(db).add_outbound_attachments(
+        workspace_id,
+        ticket_id,
+        [(f.filename or "attachment", f.content_type, f.file, _size(f)) for f in files],
+        scope_developer_id=current.id,
+    )
+
+
+@router.delete(
+    "/tickets/{ticket_id}/uploads/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_ticket_upload(
+    workspace_id: str,
+    ticket_id: str,
+    attachment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Drop a file uploaded to this ticket but not yet sent."""
+    await ServiceDeskTicketService(db).remove_outbound_attachment(
+        workspace_id, ticket_id, attachment_id, scope_developer_id=current.id
+    )
+
+
+@router.get("/tickets/{ticket_id}/uploads/{attachment_id}")
+async def download_ticket_upload(
+    workspace_id: str,
+    ticket_id: str,
+    attachment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Hand back a file uploaded to this ticket, staged or already sent."""
+    filename, content_type, raw = await ServiceDeskTicketService(
+        db
+    ).load_uploaded_attachment(
+        workspace_id, ticket_id, attachment_id, scope_developer_id=current.id
+    )
+    return Response(
+        content=raw,
+        media_type=content_type,
+        headers={
+            # Same reasoning as the emailed files: saved, never rendered on our
+            # own origin, and not cached by anything shared.
+            "Content-Disposition": content_disposition(filename, "attachment"),
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.post("/tickets/{ticket_id}/split", response_model=HumanSplitResponse)
 async def split_detected_issues(
     workspace_id: str,
@@ -684,6 +777,7 @@ async def email_stakeholder(
         data.body,
         sender_id=str(current.id),
         attachment_filenames=data.attachment_filenames,
+        attachment_ids=data.attachment_ids,
         move_ticket=data.move_ticket,
         scope_developer_id=current.id,
         cc_emails=data.cc,
@@ -709,6 +803,59 @@ async def convert_to_task(
         pending_with=data.pending_with,
         scope_developer_id=current.id,
     )
+
+
+@router.get("/community/publish-targets", response_model=PublishTargetsResponse)
+async def community_publish_targets(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Where a ticket answer may be published, if publishing is switched on.
+
+    Returns ``enabled=false`` with no channels when the workspace has not opted
+    in — which is the default — so the ticket UI simply doesn't offer the action
+    rather than offering one that 403s.
+    """
+    from aexy.services.community_publishing_service import CommunityPublishingService
+
+    service = CommunityPublishingService(db)
+    channels = await service.target_channels(workspace_id, "service_desk")
+    community = await service.linked_community(workspace_id, "service_desk")
+    return PublishTargetsResponse(
+        enabled=community is not None,
+        community_slug=community.community_slug if community is not None else None,
+        channels=channels,
+    )
+
+
+@router.post("/tickets/{ticket_id}/publish-to-community", response_model=TicketCommunityTopic)
+async def publish_ticket_to_community(
+    workspace_id: str,
+    ticket_id: str,
+    data: PublishToCommunityRequest,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Publish this ticket's answer as a public community thread.
+
+    The body is whatever the operator reviewed and edited in the composer — the
+    ticket's own correspondence is never posted as-is, because a customer's email
+    contains the customer.
+    """
+    service = ServiceDeskTicketService(db)
+    try:
+        return await service.publish_to_community(
+            workspace_id,
+            ticket_id,
+            channel_id=data.channel_id,
+            title=data.title,
+            content=data.content,
+            developer_id=str(current.id),
+            scope_developer_id=current.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.patch("/tickets/{ticket_id}", response_model=ServiceDeskTicketDetail)

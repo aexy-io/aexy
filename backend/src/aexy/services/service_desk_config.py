@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from email.utils import getaddresses
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -384,6 +385,43 @@ def forwarded_sender(
         if candidate and _domain(candidate) != internal_domain:
             return candidate
     return None
+
+
+# The headers that name everybody a message was addressed to. `Bcc` is
+# deliberately absent: it does not survive delivery, and an address that reached
+# the desk invisibly must not be re-exposed by a reply-all.
+_RECIPIENT_HEADERS = ("to", "cc")
+
+
+def message_recipients(headers: Mapping[str, str], limit: int = 25) -> list[str]:
+    """Every address this message was addressed to, To first, then Cc.
+
+    Two things need this and neither can get it anywhere else. Replying from the
+    desk has to keep the people already on the thread — the ticket knows who
+    wrote in, not who they copied. And routing has to read them: a colleague
+    writing *out* to a counterparty, with the desk copied, names that
+    counterparty nowhere except here.
+
+    Bounded, deduplicated and lower-cased, because the value ends up both in an
+    outbound Cc line and in a Master Data lookup. Header keys must be lower-cased
+    by the caller, as everywhere else in this module.
+    """
+    out: list[str] = []
+    for name in _RECIPIENT_HEADERS:
+        raw = headers.get(name)
+        if not raw:
+            continue
+        # `getaddresses` over a regex because a display name may itself contain
+        # commas ("Doe, Jane" <jane@partner.com>), and splitting on those turns
+        # one recipient into two malformed ones.
+        for _, candidate in getaddresses([str(raw)]):
+            address = (candidate or "").strip().lower()
+            if not address or not _ADDRESS_RE.fullmatch(address) or address in out:
+                continue
+            out.append(address)
+            if len(out) >= limit:
+                return out
+    return out
 
 
 def _first_address(value: str | None) -> str | None:

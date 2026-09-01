@@ -63,7 +63,7 @@ def _issues() -> list[dict]:
 @pytest_asyncio.fixture
 async def split_context(client, db_session: AsyncSession):
     developer = Developer(
-        id=str(uuid4()), email=f"split-{uuid4().hex[:6]}@bimaplan.co", name="Triage User"
+        id=str(uuid4()), email=f"split-{uuid4().hex[:6]}@desk.example", name="Triage User"
     )
     db_session.add(developer)
     await db_session.flush()

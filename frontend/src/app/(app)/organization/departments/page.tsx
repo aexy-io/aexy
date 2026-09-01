@@ -297,7 +297,12 @@ export default function DepartmentsPage() {
 function useFunctionLabel() {
   const { data: catalog } = useFunctionCatalog();
   return (key: string) => {
-    const option = catalog?.options.find((o) => o.key === key);
+    // `catalog?.options` — not `catalog?.options.find`. The optional chain
+    // guarded the catalogue being absent but not its `options` being absent,
+    // so any response without that key threw here, and the throw took the
+    // whole departments page into its error boundary rather than degrading to
+    // raw function keys. `FunctionPicker` gets this right in three places.
+    const option = (catalog?.options ?? []).find((o) => o.key === key);
     return option && !option.is_custom ? option.label : key;
   };
 }

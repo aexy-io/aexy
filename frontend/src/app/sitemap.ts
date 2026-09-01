@@ -108,6 +108,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Read from the same index the pages render from, so a new doc is listed
     // the moment it exists rather than when someone remembers to edit this file.
     ...getAllDocSlugs().map((slug) => entry(`/handbook/${slug}`, 0.5, "monthly")),
+    // The public forum directory. Only the directory belongs in this static
+    // sitemap: the communities under it are created at runtime and each serves
+    // its own /community/{slug}/sitemap.xml, which is what a crawler follows
+    // from here. Before this, the whole forum was reachable only by chance.
+    entry("/community", 0.7, "daily"),
     entry("/blog", 0.7, "weekly"),
     entry("/changelog", 0.6, "weekly"),
     entry("/careers", 0.6, "weekly"),

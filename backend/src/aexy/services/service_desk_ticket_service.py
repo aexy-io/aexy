@@ -21,6 +21,7 @@ from aexy.models.developer import Developer
 from aexy.models.google_integration import GoogleIntegration
 from aexy.models.service_desk import (
     ServiceDeskAccount,
+    ServiceDeskProduct,
     ServiceDeskTicket,
     TicketPendingSegment,
 )
@@ -31,14 +32,21 @@ from aexy.schemas.service_desk import (
     ServiceDeskCorrespondence,
     ServiceDeskTicketDetail,
     TicketAttachment,
+    TicketCommunityTopic,
     TicketEmailRecipient,
     TicketFieldsUpdate,
+    TicketReplyAll,
     TicketTAT,
 )
 
 logger = logging.getLogger(__name__)
 
 _DAY = 86400.0
+
+# How a routing note written at intake begins. Only needed to read the notes of
+# tickets created before the note was also kept on the ticket itself — see
+# ``_assignment_note``. New tickets never take this path.
+_ROUTING_NOTE_PREFIXES = ("Assigned by fallback", "Attributed to")
 
 
 def _aware(dt: datetime) -> datetime:
@@ -866,6 +874,239 @@ class ServiceDeskTicketService:
         return out
 
     @staticmethod
+    def _reply_all(ticket: Ticket, desk_address: str | None) -> TicketReplyAll:
+        """Who a reply from this ticket goes to, and who else stays on it.
+
+        Answering a thread from the desk used to drop everybody the requester had
+        copied — their colleague, their broker, the person actually handling it —
+        so the reply reached one address out of five and the rest of the chain
+        never saw it. Intake keeps the addresses now; this turns them into the
+        two fields a compose box needs.
+
+        The desk's own address is excluded twice over (intake never records it,
+        and it is dropped again here) because a desk in its own Cc receives its
+        own reply back through the sync as new correspondence.
+        """
+        values = ticket.field_values or {}
+        stored = values.get("thread_participants")
+        participants = [
+            item.strip().lower()
+            for item in (stored if isinstance(stored, list) else [])
+            if isinstance(item, str) and "@" in item
+        ]
+        # Falls back to the requester: a ticket that predates participant capture
+        # can still answer the person who opened it, which is what it did before.
+        from aexy.services.service_desk_intake_service import MANUAL_SENDER_ADDRESS
+
+        raw_to = values.get("thread_reply_to") or ticket.submitter_email or ""
+        to = str(raw_to).strip().lower() or None
+        # A ticket logged by phone has no requester address, only the sentinel
+        # standing in for one. Prefilling it would put an undeliverable address
+        # in the To box, which reads as a real recipient until the send fails.
+        if to == MANUAL_SENDER_ADDRESS:
+            to = None
+        desk = (desk_address or "").strip().lower()
+        return TicketReplyAll(
+            to=to,
+            cc=[address for address in participants if address != to and address != desk],
+        )
+
+    @staticmethod
+    def _absorb_outbound_participants(
+        ticket: Ticket,
+        recipient: str,
+        cc: list[str],
+        mailbox: object | None,
+    ) -> None:
+        """Keep everyone this reply went to on the ticket's thread.
+
+        The mirror of what intake does for mail arriving: a surveyor the KAM
+        looped in by hand is on the conversation from that moment, and the next
+        reply from the ticket has to offer them without being told again.
+
+        Who a reply goes *to* is untouched — that is still the last person who
+        wrote in, not the last person the desk wrote to.
+        """
+        from aexy.services.service_desk_intake_service import THREAD_PARTICIPANT_LIMIT
+
+        desk = ""
+        address = getattr(mailbox, "address", None)
+        if isinstance(address, str):
+            desk = address.strip().lower()
+
+        values = dict(ticket.field_values or {})
+        stored = values.get("thread_participants")
+        participants = [
+            item.strip().lower()
+            for item in (stored if isinstance(stored, list) else [])
+            if isinstance(item, str) and "@" in item
+        ]
+
+        changed = False
+        for candidate in [recipient, *cc]:
+            value = (candidate or "").strip().lower()
+            if not value or value == desk or value in participants:
+                continue
+            if len(participants) >= THREAD_PARTICIPANT_LIMIT:
+                break
+            participants.append(value)
+            changed = True
+
+        if changed:
+            values["thread_participants"] = participants
+            ticket.field_values = values
+
+    @staticmethod
+    def _uploaded_attachments(ticket: Ticket) -> list[dict]:
+        """Files uploaded to this ticket to be sent out, not files that arrived.
+
+        Stored on ``Ticket.attachments`` — the storage-backed list the rest of
+        ticketing uses — rather than in ``field_values``, which holds handles
+        into the mailbox and no bytes of its own.
+        """
+        raw = ticket.attachments or []
+        return [item for item in raw if isinstance(item, dict) and item.get("id")]
+
+    @classmethod
+    def _detail_attachments(cls, ticket: Ticket) -> list[TicketAttachment]:
+        """Both kinds of file on the ticket, each saying which kind it is."""
+        out = [
+            TicketAttachment(
+                index=index,
+                filename=str(item.get("filename") or "attachment"),
+                content_type=item.get("content_type"),
+                size_bytes=item.get("size_bytes"),
+                can_forward=bool(item.get("attachment_id")),
+                source="email",
+            )
+            for index, item in enumerate(cls._ticket_attachments(ticket))
+        ]
+        out.extend(
+            TicketAttachment(
+                # No index: positions address the emailed list, and uploads must
+                # not be able to shift what a download URL points at.
+                index=None,
+                id=str(item.get("id")),
+                filename=str(item.get("filename") or "attachment"),
+                content_type=item.get("type"),
+                size_bytes=item.get("size"),
+                # Held in the desk's own storage, so there is no mailbox to be
+                # unreachable and nothing that can make one unforwardable.
+                can_forward=True,
+                source="upload",
+            )
+            for item in cls._uploaded_attachments(ticket)
+        )
+        return out
+
+    @staticmethod
+    def _community_topic(ticket: Ticket) -> TicketCommunityTopic | None:
+        """The public thread this ticket's answer became, if it has one.
+
+        Stored on the ticket rather than derived, because the thread is in
+        another module's tables and the useful question here — "has this already
+        been answered in public?" — should not need a join to answer.
+        """
+        raw = (ticket.field_values or {}).get("community_topic")
+        if not isinstance(raw, dict):
+            return None
+        try:
+            return TicketCommunityTopic(**raw)
+        except ValidationError:
+            # A hand-edited or half-written value should not take down the whole
+            # ticket detail; the pointer is a convenience, not the record.
+            logger.warning("Ticket %s has an unreadable community_topic", ticket.id)
+            return None
+
+    async def publish_to_community(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        *,
+        channel_id: str,
+        title: str,
+        content: str,
+        developer_id: str,
+        scope_developer_id: str | None = None,
+    ) -> TicketCommunityTopic:
+        """Publish a reviewed answer from this ticket as a public thread.
+
+        The body is what the operator edited and looked at, not the ticket's
+        correspondence — see ``CommunityPublishingService`` for why nothing here
+        auto-publishes what a customer wrote.
+        """
+        from aexy.services.community_publishing_service import (
+            CommunityPublishingService,
+            PublishingError,
+        )
+
+        # for_edit: publishing an answer from a ticket is a write on that ticket,
+        # so it takes the same authority as editing one. A read-only role that can
+        # see every queue must not be able to put any of it on the internet.
+        await self._sd(
+            workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True
+        )
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        try:
+            published = await CommunityPublishingService(self.db).publish(
+                workspace_id,
+                source="service_desk",
+                channel_id=channel_id,
+                title=title,
+                content=content,
+                developer_id=developer_id,
+            )
+        except PublishingError as exc:
+            raise ValueError(exc.message) from exc
+
+        pointer = TicketCommunityTopic(
+            topic_id=published["topic_id"],
+            channel_slug=published["channel_slug"],
+            channel_name=published["channel_name"],
+            community_slug=published["community_slug"],
+            path=published["path"],
+            published_at=published["published_at"],
+            live=published["live"],
+        )
+        values = dict(ticket.field_values or {})
+        values["community_topic"] = pointer.model_dump(mode="json")
+        ticket.field_values = values
+        await self.db.flush()
+        return pointer
+
+    async def _assignment_note(self, ticket: Ticket) -> str | None:
+        """Why this ticket has the owner it has, when that needed explaining.
+
+        Read from the ticket, where intake now writes it. Tickets created before
+        that fall back to their earliest internal note, which is where the same
+        sentence has always been recorded — recognised by how a routing note
+        opens, so an AI-match note or an operator's comment is not mistaken for
+        one. That fallback is what lets an existing desk answer "why did this go
+        to the wrong person?" about tickets it already has.
+        """
+        stored = (ticket.field_values or {}).get("assignment_note")
+        if isinstance(stored, str) and stored.strip():
+            return stored.strip()
+
+        earliest = (
+            await self.db.execute(
+                select(TicketResponse.content)
+                .where(
+                    TicketResponse.ticket_id == ticket.id,
+                    TicketResponse.is_internal.is_(True),
+                )
+                .order_by(TicketResponse.created_at)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if isinstance(earliest, str) and earliest.startswith(_ROUTING_NOTE_PREFIXES):
+            return earliest
+        return None
+
+    @staticmethod
     def _ticket_attachments(ticket: Ticket) -> list[dict]:
         raw = (ticket.field_values or {}).get("attachments")
         return [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
@@ -1027,6 +1268,185 @@ class ServiceDeskTicketService:
             loaded.append((filename, item.get("content_type"), raw))
         return loaded
 
+    # ------------------------------------------------- files uploaded to send
+
+    async def add_outbound_attachments(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        files: list[tuple[str, str | None, object, int]],
+        scope_developer_id: str | None = None,
+    ) -> list[TicketAttachment]:
+        """Take files from the person answering the ticket, ready to be attached.
+
+        Until now the only file the desk could send was one that had arrived on
+        the ticket, so answering "please find the completed form attached" meant
+        leaving Aexy for a personal mailbox — and the reply, with the file,
+        stopped being part of the record.
+
+        Streamed to the desk's own storage rather than held in the browser, so a
+        large file does not have to survive until the KAM finishes writing, and
+        so the ticket holds what was sent even if the send fails.
+        """
+        from aexy.services.ticket_service import TicketService
+
+        await self._sd(workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True)
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        try:
+            created = await TicketService(self.db).add_ticket_attachments(ticket, files)
+        except ValueError as exc:
+            code = str(exc)
+            if code == "too_large":
+                from aexy.core.config import settings
+
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File exceeds the {settings.ticket_max_attachment_mb} MB limit",
+                ) from exc
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "File storage is not configured on this deployment, so files cannot "
+                    "be attached"
+                    if code == "storage_unconfigured"
+                    else "The file could not be uploaded"
+                ),
+            ) from exc
+
+        return [
+            TicketAttachment(
+                index=None,
+                id=str(item.get("id")),
+                filename=str(item.get("filename") or "attachment"),
+                content_type=item.get("type"),
+                size_bytes=item.get("size"),
+                can_forward=True,
+                source="upload",
+            )
+            for item in created
+        ]
+
+    async def remove_outbound_attachment(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        attachment_id: str,
+        scope_developer_id: str | None = None,
+    ) -> None:
+        """Drop a file uploaded to this ticket but not yet sent.
+
+        Only ever an unsent one: sending moves the file onto the message it went
+        out with, and what the desk has already emailed is a fact about the
+        ticket that nobody gets to delete from it afterwards.
+        """
+        from aexy.services.ticket_service import TicketService
+
+        await self._sd(workspace_id, ticket_id, developer_id=scope_developer_id, for_edit=True)
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        if not await TicketService(self.db).remove_ticket_attachment(ticket, attachment_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This ticket has no such uploaded file",
+            )
+
+    async def load_uploaded_attachment(
+        self,
+        workspace_id: str,
+        ticket_id: str,
+        attachment_id: str,
+        scope_developer_id: str | None = None,
+    ) -> tuple[str, str, bytes]:
+        """One uploaded file, whether it is still staged or has been sent.
+
+        Same read rule as the emailed files: anyone who may see the ticket may
+        open what is on it. ``find_ticket_attachment`` looks at the ticket and at
+        its outgoing messages, so a file stays downloadable after the send that
+        moved it there.
+        """
+        from aexy.services.ticket_service import TicketService
+
+        await self._sd(workspace_id, ticket_id, developer_id=scope_developer_id)
+        ticket = await self.db.get(Ticket, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        service = TicketService(self.db)
+        await self.db.refresh(ticket, ["responses"])
+        meta = service.find_ticket_attachment(ticket, attachment_id, include_internal=True)
+        if meta is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This ticket has no such uploaded file",
+            )
+        filename = str(meta.get("filename") or "attachment")
+        raw = self._upload_bytes(meta, filename)
+        return filename, str(meta.get("type") or "application/octet-stream"), raw
+
+    @staticmethod
+    def _upload_bytes(meta: dict, filename: str) -> bytes:
+        """The stored bytes of one uploaded file."""
+        from aexy.services.storage_service import get_storage_service
+        from aexy.services.ticket_service import TicketService as _TicketService
+
+        key = _TicketService.attachment_key(meta)
+        stored = get_storage_service().get_object(key) if key else None
+        if stored is None:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"'{filename}' could not be read back from storage",
+            )
+        return stored[0]
+
+    def _load_upload_bytes(
+        self, ticket: Ticket, attachment_ids: list[str], already_loaded: int = 0
+    ) -> tuple[list[tuple[str, str | None, bytes]], list[dict], int]:
+        """Read chosen uploads for sending, and say which rows they were.
+
+        The caller names ids, never bytes — the same rule the emailed files
+        follow. An id is looked up in this ticket's own uploads, so a caller
+        cannot use a send to attach a file belonging to another ticket, and a
+        file that has already gone out (it lives on that message now, not on the
+        ticket) cannot be silently attached again.
+
+        The rows come back with the bytes because the send has to move them onto
+        the message it wrote, and re-finding them afterwards by id would be a
+        second chance to get the match wrong.
+        """
+        if not attachment_ids:
+            return [], [], already_loaded
+        from aexy.services.gmail_sync_service import (
+            SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT,
+        )
+
+        by_id = {str(item.get("id")): item for item in self._uploaded_attachments(ticket)}
+        loaded: list[tuple[str, str | None, bytes]] = []
+        rows: list[dict] = []
+        total = already_loaded
+        for attachment_id in attachment_ids:
+            item = by_id.get(attachment_id)
+            if item is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="One of the chosen files is not an upload on this ticket",
+                )
+            filename = str(item.get("filename") or "attachment")
+            raw = self._upload_bytes(item, filename)
+            total += len(raw)
+            if total > SERVICE_DESK_ATTACHMENT_FORWARD_BYTE_LIMIT:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The chosen files are too large to send together",
+                )
+            loaded.append((filename, item.get("type"), raw))
+            rows.append(item)
+        return loaded, rows, total
+
     async def email_stakeholder(
         self,
         workspace_id: str,
@@ -1036,6 +1456,7 @@ class ServiceDeskTicketService:
         body: str,
         sender_id: str,
         attachment_filenames: list[str] | None = None,
+        attachment_ids: list[str] | None = None,
         move_ticket: bool = True,
         scope_developer_id: str | None = None,
         cc_emails: list[str] | None = None,
@@ -1107,8 +1528,14 @@ class ServiceDeskTicketService:
         thread_id = sd.thread_ref if requester and recipient == requester else None
 
         # Fetched before the send, so a missing file fails the whole action
-        # rather than delivering a message that promises an attachment.
+        # rather than delivering a message that promises an attachment. Both
+        # kinds share one size budget: what matters to the recipient's mail
+        # server is the size of the message, not where the desk got the parts.
         files = await self._load_forward_bytes(sd, ticket, attachment_filenames or [])
+        uploads, upload_rows, _ = self._load_upload_bytes(
+            ticket, attachment_ids or [], already_loaded=sum(len(raw) for _, _, raw in files)
+        )
+        files.extend(uploads)
 
         mailbox = await self.db.get(ServiceDeskMailbox, sd.mailbox_id) if sd.mailbox_id else None
         # Copying the To address twice, or the desk itself, makes the reply read
@@ -1134,6 +1561,12 @@ class ServiceDeskTicketService:
                 detail=f"The email could not be sent: {exc}",
             ) from exc
 
+        # Only now that a message has actually left: whoever the sender kept or
+        # added is on this conversation from here on, so the next reply from the
+        # ticket offers them without being told again. A failed send rolls this
+        # back with everything else, which is the point of doing it after.
+        self._absorb_outbound_participants(ticket, recipient, cc, mailbox)
+
         attached_line = (
             "\nAttached: " + ", ".join(name for name, _, _ in files) if files else ""
         )
@@ -1150,8 +1583,20 @@ class ServiceDeskTicketService:
                 author_email=mailbox.address if mailbox else None,
                 content=f"To: {recipient}{cc_line}\nSubject: {subject}{attached_line}\n\n{body}",
                 is_internal=False,
+                # The uploads move from the ticket onto the message they left
+                # with. A file the desk sent belongs to that message — leaving it
+                # staged on the ticket would offer it again on the next reply and
+                # lose which mail it actually went out on.
+                attachments=upload_rows,
             )
         )
+        if upload_rows:
+            sent_ids = {str(item.get("id")) for item in upload_rows}
+            ticket.attachments = [
+                item
+                for item in (ticket.attachments or [])
+                if not (isinstance(item, dict) and str(item.get("id")) in sent_ids)
+            ]
         await self.db.flush()
 
         # Reuse the one transition path rather than writing the ledger by hand,
@@ -1300,6 +1745,40 @@ class ServiceDeskTicketService:
                 )
             ).scalar_one_or_none()
 
+        # Resolved here because the list endpoint has always resolved them, and a
+        # detail page that shows the owner as blank where the list beside it shows
+        # a name reads as an unassigned ticket.
+        product_name = None
+        if sd.product_id:
+            product_name = (
+                await self.db.execute(
+                    select(ServiceDeskProduct.name).where(ServiceDeskProduct.id == sd.product_id)
+                )
+            ).scalar_one_or_none()
+
+        vendor_name = None
+        if sd.vendor_id:
+            from aexy.models.service_desk import ServiceDeskVendor
+
+            vendor_name = (
+                await self.db.execute(
+                    select(ServiceDeskVendor.name).where(ServiceDeskVendor.id == sd.vendor_id)
+                )
+            ).scalar_one_or_none()
+
+        owner_name = None
+        if ticket.assignee_id:
+            owner_row = (
+                await self.db.execute(
+                    select(Developer.name, Developer.email).where(
+                        Developer.id == ticket.assignee_id
+                    )
+                )
+            ).first()
+            # Falls back to the address, as the list does: a developer row synced
+            # from GitHub may have no name.
+            owner_name = (owner_row[0] or owner_row[1]) if owner_row else None
+
         segments = (
             await self.db.execute(
                 select(TicketPendingSegment)
@@ -1360,10 +1839,13 @@ class ServiceDeskTicketService:
             requester_name=ticket.submitter_name,
             status=ticket.status,
             product_id=sd.product_id,
+            product_name=product_name,
             account_id=sd.account_id,
             account_name=account_name,
             vendor_id=sd.vendor_id,
+            vendor_name=vendor_name,
             assigned_owner_id=ticket.assignee_id,
+            assigned_owner_name=owner_name,
             request_type=sd.request_type,
             pending_with=sd.pending_with,
             origin=sd.origin,
@@ -1394,16 +1876,10 @@ class ServiceDeskTicketService:
                 for response, author_name, author_email in correspondence
             ],
             email_recipients=await self._email_recipients(workspace_id, sd, ticket),
-            attachments=[
-                TicketAttachment(
-                    index=index,
-                    filename=str(item.get("filename") or "attachment"),
-                    content_type=item.get("content_type"),
-                    size_bytes=item.get("size_bytes"),
-                    can_forward=bool(item.get("attachment_id")),
-                )
-                for index, item in enumerate(self._ticket_attachments(ticket))
-            ],
+            reply_all=self._reply_all(ticket, desk_address),
+            attachments=self._detail_attachments(ticket),
+            assignment_note=await self._assignment_note(ticket),
+            community_topic=self._community_topic(ticket),
             tat=tat,
             can_edit=can_edit,
             can_send_email=can_send_email,

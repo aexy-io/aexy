@@ -369,6 +369,12 @@
           "slug": "notifications-and-chat",
           "path": "notifications-and-chat.md",
           "description": "In-app/web push/email/Slack delivery, chat, onboarding, profile"
+        },
+        {
+          "title": "Community",
+          "slug": "community",
+          "path": "community.md",
+          "description": "The public forum built on chat: visibility contract, participation, starter templates, opt-in links"
         }
       ]
     },
@@ -380,6 +386,17 @@
           "slug": "testing/testing-strategy",
           "path": "testing/testing-strategy.md",
           "description": "Overall testing approach"
+        }
+      ]
+    },
+    {
+      "title": "Modules",
+      "items": [
+        {
+          "title": "Billing",
+          "slug": "billing",
+          "path": "billing.md",
+          "description": ""
         }
       ]
     }
@@ -697,11 +714,23 @@
       "description": "In-app/web push/email/Slack delivery, chat, onboarding, profile",
       "path": "notifications-and-chat.md"
     },
+    "community": {
+      "title": "Community",
+      "section": "Modules — Communication",
+      "description": "The public forum built on chat: visibility contract, participation, starter templates, opt-in links",
+      "path": "community.md"
+    },
     "testing/testing-strategy": {
       "title": "Testing Strategy",
       "section": "Testing",
       "description": "Overall testing approach",
       "path": "testing/testing-strategy.md"
+    },
+    "billing": {
+      "title": "Billing",
+      "section": "Modules",
+      "description": "",
+      "path": "billing.md"
     }
   },
   "pager": {
@@ -1218,14 +1247,34 @@
         "slug": "oncall"
       },
       "next": {
+        "title": "Community",
+        "slug": "community"
+      }
+    },
+    "community": {
+      "prev": {
+        "title": "Notifications & chat",
+        "slug": "notifications-and-chat"
+      },
+      "next": {
         "title": "Testing Strategy",
         "slug": "testing/testing-strategy"
       }
     },
     "testing/testing-strategy": {
       "prev": {
-        "title": "Notifications & chat",
-        "slug": "notifications-and-chat"
+        "title": "Community",
+        "slug": "community"
+      },
+      "next": {
+        "title": "Billing",
+        "slug": "billing"
+      }
+    },
+    "billing": {
+      "prev": {
+        "title": "Testing Strategy",
+        "slug": "testing/testing-strategy"
       },
       "next": null
     }

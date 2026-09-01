@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
     redirect("/");
   }
 
-  const maxValue = leaderboard?.entries.length
+  const maxValue = leaderboard?.entries?.length
     ? Math.max(...leaderboard.entries.map((e) => e.value))
     : 1;
 
@@ -131,7 +131,7 @@ export default function LeaderboardPage() {
             />
           ))}
         </div>
-      ) : leaderboard?.entries.length ? (
+      ) : leaderboard?.entries?.length ? (
         <div className="space-y-2">
           {leaderboard.entries.map((entry, i) => (
             <div

@@ -167,11 +167,11 @@ const crmItems: SidebarItemConfig[] = [
 const serviceDeskItems: SidebarItemConfig[] = [
     { href: "/service-desk", label: "Dashboard", icon: LayoutDashboard },
     { href: "/service-desk/tickets", label: "Tickets", icon: Ticket },
-    // The desk's settings now live in main Settings alongside Escalation
-    // Matrix and Ticket Forms. Kept in this sidebar too, pointing at the new
-    // home: somebody working in the desk should not have to know the
-    // configuration moved house to find it.
-    { href: "/settings/service-desk/master-data", label: "Master Data", icon: Settings },
+    // No Master Data entry. It lives in Settings, alongside Escalation Matrix
+    // and Ticket Forms, and listing it here as well put the same page in two
+    // navigations — one of which highlighted a Settings route while the reader
+    // was, by the sidebar's own account, still inside Service Desk. Setting the
+    // desk up is not part of working it.
 ];
 
 const emailItems: SidebarItemConfig[] = [
@@ -610,3 +610,41 @@ export const SIDEBAR_LAYOUTS: Record<SidebarLayoutType, SidebarLayoutConfig> = {
 };
 
 export const DEFAULT_SIDEBAR_LAYOUT: SidebarLayoutType = "grouped";
+
+/**
+ * Whether a sidebar entry describes the screen currently on show.
+ *
+ * `siblings` are the other entries in the same submenu, and they are what make
+ * this more than a path comparison. An href that names a query param is a
+ * different screen from the same path without it — Planning has both, Board at
+ * `/sprints` and Epics at `/sprints?tab=epics`. Matching on path alone lit both
+ * of them at once, on every `/sprints/...` route, so the sidebar never said
+ * which of the two you were looking at. The query-bearing entry has to match
+ * the query; the bare entry has to lose whenever a sibling's query is the one
+ * in force.
+ *
+ * Lives here rather than in the Sidebar component because it is a fact about
+ * this configuration — two entries sharing a path — and it is worth testing
+ * without mounting the whole navigation to do it.
+ */
+export function isSidebarItemActive(
+    href: string,
+    pathname: string,
+    searchParams: URLSearchParams,
+    siblings: SidebarItemConfig[] = [],
+): boolean {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    const [hrefBase, hrefQuery] = href.split("?");
+    if (!pathname.startsWith(hrefBase)) return false;
+    const matchesQuery = (query: string) => {
+        for (const [key, value] of new URLSearchParams(query)) {
+            if (searchParams.get(key) !== value) return false;
+        }
+        return true;
+    };
+    if (hrefQuery) return matchesQuery(hrefQuery);
+    return !siblings.some((sibling) => {
+        const [siblingBase, siblingQuery] = sibling.href.split("?");
+        return !!siblingQuery && siblingBase === hrefBase && matchesQuery(siblingQuery);
+    });
+}

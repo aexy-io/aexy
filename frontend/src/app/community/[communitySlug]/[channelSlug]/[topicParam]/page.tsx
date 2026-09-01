@@ -1,51 +1,50 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
+  PAGE_SIZE,
   getCommunity,
   getCommunityTopic,
+  parsePage,
   siteBaseUrl,
-  type PublicMessage,
 } from "@/lib/community-api";
-import { CommunityReply } from "./CommunityReply";
+import { Pagination } from "@/components/community/Pagination";
+import { TopicThread } from "./TopicThread";
 
 export const revalidate = 300;
 
 interface Props {
   params: Promise<{ communitySlug: string; channelSlug: string; topicParam: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { communitySlug, channelSlug, topicParam } = await params;
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
+  const [{ communitySlug, channelSlug, topicParam }, { page: rawPage }] =
+    await Promise.all([params, searchParams]);
+  const page = parsePage(rawPage);
   const [community, topic] = await Promise.all([
     getCommunity(communitySlug),
-    getCommunityTopic(communitySlug, channelSlug, topicParam),
+    getCommunityTopic(communitySlug, channelSlug, topicParam, page),
   ]);
   if (!community || !topic) return { title: "Topic not found" };
 
   const title = topic.name;
   const first = topic.messages[0]?.content?.slice(0, 180);
   const description = first || `Discussion in #${topic.channel_name}.`;
-  const url = `${siteBaseUrl()}/community/${communitySlug}/${channelSlug}/${topicParam}`;
+  const base = `${siteBaseUrl()}/community/${communitySlug}/${channelSlug}/${topicParam}`;
   // A near-empty topic isn't worth indexing.
   const thin = topic.total < 1;
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: page === 0 ? base : `${base}?page=${page + 1}` },
     robots: community.noindex || thin ? { index: false, follow: false } : undefined,
-    openGraph: { title, description, url, type: "article" },
+    openGraph: { title, description, url: base, type: "article" },
   };
-}
-
-function fmt(date: string): string {
-  return new Date(date).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 /**
@@ -64,82 +63,99 @@ function safeJsonLd(value: unknown): string {
     .replace(/\u2029/g, "\\u2029");
 }
 
-/**
- * Render message text safely: React escapes by default, so we only split on
- * newlines to preserve line breaks. (Rich formatting / attachment rewriting is
- * a later hardening step.)
- */
-function MessageBody({ content }: { content: string }) {
-  const lines = content.split("\n");
-  return (
-    <div className="whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
-      {lines.map((line, i) => (
-        <span key={i}>
-          {line}
-          {i < lines.length - 1 && <br />}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function MessageItem({ message }: { message: PublicMessage }) {
-  return (
-    <li className="p-4">
-      <div className="flex items-baseline gap-2 mb-1">
-        <span className="font-semibold text-gray-900 dark:text-white">
-          {message.author}
-        </span>
-        <time
-          dateTime={message.created_at}
-          className="text-xs text-gray-400"
-        >
-          {fmt(message.created_at)}
-        </time>
-        {message.is_edited && <span className="text-xs text-gray-400">(edited)</span>}
-      </div>
-      <MessageBody content={message.content} />
-    </li>
-  );
-}
-
-export default async function TopicPage({ params }: Props) {
-  const { communitySlug, channelSlug, topicParam } = await params;
-  const topic = await getCommunityTopic(communitySlug, channelSlug, topicParam);
+export default async function TopicPage({ params, searchParams }: Props) {
+  const [{ communitySlug, channelSlug, topicParam }, { page: rawPage }] =
+    await Promise.all([params, searchParams]);
+  const page = parsePage(rawPage);
+  const [topic, t] = await Promise.all([
+    getCommunityTopic(communitySlug, channelSlug, topicParam, page),
+    getTranslations("community"),
+  ]);
   if (!topic) notFound();
 
   const base = siteBaseUrl();
   const url = `${base}/community/${communitySlug}/${channelSlug}/${topicParam}`;
 
-  // Structured data: a forum thread + its breadcrumb trail.
-  const forumJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "DiscussionForumPosting",
-    headline: topic.name,
-    url,
-    ...(topic.messages[0] && {
-      datePublished: topic.messages[0].created_at,
-      author: { "@type": "Person", name: topic.messages[0].author },
-      text: topic.messages[0].content,
-    }),
-    interactionStatistic: {
-      "@type": "InteractionCounter",
-      interactionType: "https://schema.org/CommentAction",
-      userInteractionCount: topic.total,
-    },
-    comment: topic.messages.slice(1).map((m) => ({
-      "@type": "Comment",
-      text: m.content,
-      datePublished: m.created_at,
-      author: { "@type": "Person", name: m.author },
-    })),
-  };
+  const question = topic.messages[0];
+  const answer = topic.accepted_message_id
+    ? topic.messages.find((m) => m.id === topic.accepted_message_id)
+    : undefined;
+  const others = topic.messages.slice(1).filter((m) => m.id !== answer?.id);
+
+  // Structured data. A thread with a marked answer is described as a QAPage with
+  // an acceptedAnswer rather than a plain forum posting — that distinction is
+  // what earns the answer its own treatment in search results, and it is the
+  // whole reason marking one is worth a UI.
+  const threadJsonLd = answer
+    ? {
+        "@context": "https://schema.org",
+        "@type": "QAPage",
+        mainEntity: {
+          "@type": "Question",
+          name: topic.name,
+          url,
+          answerCount: topic.total - 1,
+          ...(question && {
+            text: question.content,
+            datePublished: question.created_at,
+            author: { "@type": "Person", name: question.author },
+          }),
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: answer.content,
+            datePublished: answer.created_at,
+            url: `${url}#${answer.id}`,
+            author: { "@type": "Person", name: answer.author },
+          },
+          ...(others.length > 0 && {
+            suggestedAnswer: others.map((m) => ({
+              "@type": "Answer",
+              text: m.content,
+              datePublished: m.created_at,
+              author: { "@type": "Person", name: m.author },
+            })),
+          }),
+        },
+      }
+    : {
+        "@context": "https://schema.org",
+        "@type": "DiscussionForumPosting",
+        headline: topic.name,
+        url,
+        ...(question && {
+          datePublished: question.created_at,
+          author: { "@type": "Person", name: question.author },
+          text: question.content,
+        }),
+        interactionStatistic: {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/CommentAction",
+          userInteractionCount: topic.total,
+        },
+        comment: topic.messages.slice(1).map((m) => ({
+          "@type": "Comment",
+          text: m.content,
+          datePublished: m.created_at,
+          author: { "@type": "Person", name: m.author },
+        })),
+      };
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Community", item: `${base}/community/${communitySlug}` },
-      { "@type": "ListItem", position: 2, name: `#${topic.channel_name}`, item: `${base}/community/${communitySlug}/${channelSlug}` },
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Community",
+        item: `${base}/community/${communitySlug}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: `#${topic.channel_name}`,
+        item: `${base}/community/${communitySlug}/${channelSlug}`,
+      },
       { "@type": "ListItem", position: 3, name: topic.name, item: url },
     ],
   };
@@ -148,50 +164,52 @@ export default async function TopicPage({ params }: Props) {
     <div>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(forumJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(threadJsonLd) }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
       />
 
-      <nav className="mb-4 text-sm text-gray-500">
-        <Link href={`/community/${communitySlug}`} className="hover:underline">
-          Community
+      <nav
+        aria-label={t("nav.breadcrumb")}
+        className="mb-5 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/45"
+      >
+        <Link
+          href={`/community/${communitySlug}`}
+          className="transition hover:text-ledger-ink"
+        >
+          {t("nav.community")}
         </Link>{" "}
         /{" "}
         <Link
           href={`/community/${communitySlug}/${channelSlug}`}
-          className="hover:underline"
+          className="transition hover:text-ledger-ink"
         >
           #{topic.channel_name}
-        </Link>{" "}
-        / <span className="text-gray-900 dark:text-white">{topic.name}</span>
+        </Link>
       </nav>
 
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+      <h1 className="mb-7 font-display text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
         {topic.name}
       </h1>
 
-      <ul className="divide-y divide-gray-200 dark:divide-gray-800 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        {topic.messages.map((m) => (
-          <MessageItem key={m.id} message={m} />
-        ))}
-      </ul>
+      <TopicThread
+        communitySlug={communitySlug}
+        channelSlug={channelSlug}
+        topicParam={topicParam}
+        messages={topic.messages}
+        acceptedMessageId={topic.accepted_message_id}
+        allowParticipation={topic.allow_participation}
+        isFirstPage={page === 0}
+      />
 
-      {topic.allow_participation ? (
-        <CommunityReply
-          communitySlug={communitySlug}
-          channelSlug={channelSlug}
-          topicParam={topicParam}
-        />
-      ) : (
-        <div className="mt-8 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 text-center">
-          <p className="text-gray-600 dark:text-gray-400">
-            This is a read-only community.
-          </p>
-        </div>
-      )}
+      <Pagination
+        basePath={`/community/${communitySlug}/${channelSlug}/${topicParam}`}
+        page={page}
+        total={topic.total}
+        pageSize={PAGE_SIZE}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 """The Service Desk is a product, not one customer's insurance desk.
 
-Everything here guards a specific way the module used to be Bimaplan-shaped:
+Everything here guards a specific way the module used to be single-customer-shaped:
 
 * ``RequestType`` and ``PendingWith`` were Python enums, so no workspace could
   add a stakeholder or a request type without a release.
@@ -73,9 +73,9 @@ def test_no_template_carries_company_identifying_data():
 
     The script this replaced shipped four real staff first names, three named
     partner companies, eight of one broker's product lines and an
-    ``@bimaplan.co`` mailbox — in a file every deployment ran.
+    ``@desk.example`` mailbox — in a file every deployment ran.
     """
-    banned = ("bimaplan", "neha", "nehal", "aakanksha", "paramita", "abc finance", "xyz nbfc", "pqr")
+    banned = ("desk.example", "neha", "nehal", "aakanksha", "paramita", "abc finance", "xyz nbfc", "pqr")
     for template in INDUSTRY_TEMPLATES:
         haystack = " ".join(
             [template.slug, template.name, template.description]

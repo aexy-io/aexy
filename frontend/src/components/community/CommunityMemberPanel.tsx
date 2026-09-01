@@ -52,7 +52,7 @@ export function CommunityMemberPanel({ communitySlug }: { communitySlug: string 
   if (isLoading) {
     return (
       <div className="mt-10 flex items-center justify-center py-10">
-        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-ledger-ink/40" />
       </div>
     );
   }
@@ -69,22 +69,22 @@ export function CommunityMemberPanel({ communitySlug }: { communitySlug: string 
   }
 
   return (
-    <section className="mt-10 border-t border-gray-200 dark:border-gray-800 pt-8">
+    <section className="mt-12 border-t border-ledger-ink/12 pt-8">
       <div className="mb-4 flex items-center gap-2">
-        <Lock className="h-4 w-4 text-gray-400" />
+        <Lock className="h-4 w-4 text-ledger-ink/40" />
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="font-display text-lg font-semibold tracking-tight">
             {t("internal.title")}
           </h2>
-          <p className="text-sm text-gray-500">{t("internal.subtitle")}</p>
+          <p className="text-sm text-ledger-ink/60">{t("internal.subtitle")}</p>
         </div>
         {data.can_create_thread && data.workspace_id && (
           <button
             type="button"
             onClick={() => setComposerOpen(true)}
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-[3px] bg-ledger-ink px-3 py-1.5 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-paper transition hover:bg-ledger-ink/85"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             {t("compose.newThread")}
           </button>
         )}

@@ -21,6 +21,9 @@ MailboxChannel = Literal["webhook", "gmail_sync"]
 StakeholderSemantics = Literal["internal", "external", "closed"]
 # Which master-data table an external stakeholder speaks for.
 MasterDataLink = Literal["account", "vendor"]
+# A ticket file either arrived on the conversation or was uploaded here to be
+# sent out from it.
+AttachmentSource = Literal["email", "upload"]
 
 
 # ==================== Taxonomy: stakeholders ====================
@@ -576,16 +579,26 @@ class TicketEmailRecipient(BaseModel):
 
 
 class TicketAttachment(BaseModel):
-    """A file that arrived on the ticket's original email."""
+    """A file on the ticket: one that arrived by email, or one uploaded to send."""
 
-    # Position in the ticket's own attachment list — the handle the download
-    # endpoint takes. A filename would be friendlier in the URL but two replies
-    # can attach files with the same name, and a path segment carrying arbitrary
-    # user-supplied text is a worse thing to route on.
-    index: int
+    # Position in the ticket's *emailed* attachment list — the handle the
+    # download endpoint takes. A filename would be friendlier in the URL but two
+    # replies can attach files with the same name, and a path segment carrying
+    # arbitrary user-supplied text is a worse thing to route on. None on an
+    # uploaded file, which is addressed by ``id``: positions belong to the
+    # emailed list alone, so uploading a file can never shift what an existing
+    # download URL points at.
+    index: int | None = None
     filename: str
     content_type: str | None = None
     size_bytes: int | None = None
+    # Where this file came from, which is not cosmetic: "arrived from the
+    # requester" and "somebody here uploaded it to send out" are different facts
+    # about a ticket, and a list that blurs them misleads whoever reads it later.
+    source: AttachmentSource = "email"
+    # Set on uploaded files only — the handle the compose box and the delete
+    # endpoint use. Emailed files are addressed by ``index``.
+    id: str | None = None
     # False when the provider gave us no handle for the bytes, e.g. mail that
     # arrived before attachment ids were captured. Without that handle the file
     # can be neither forwarded nor downloaded — both re-fetch from the original
@@ -594,6 +607,18 @@ class TicketAttachment(BaseModel):
 
 
 _ADDRESS_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]{2,}$")
+
+
+class TicketReplyAll(BaseModel):
+    """Everyone on this ticket's email thread, ready to be replied to.
+
+    ``to`` is the last person who wrote in and ``cc`` is the rest of the chain,
+    the desk's own address excluded. Empty on a ticket logged by hand, and on one
+    whose mail arrived before the desk started keeping the addresses.
+    """
+
+    to: str | None = None
+    cc: list[str] = Field(default_factory=list)
 
 
 class StakeholderEmailRequest(BaseModel):
@@ -642,9 +667,48 @@ class StakeholderEmailRequest(BaseModel):
     # payload: the bytes are re-fetched from the original email, so a caller
     # cannot use the desk to send a file that never arrived on the ticket.
     attachment_filenames: list[str] = Field(default_factory=list, max_length=10)
+    # Ids of files uploaded to this ticket for sending. Also not a payload: the
+    # id is looked up on the ticket and the bytes come from the desk's own
+    # storage, so a caller cannot attach a file it did not first upload here.
+    attachment_ids: list[str] = Field(default_factory=list, max_length=10)
     # Sending is usually the hand-off, so the stage follows the recipient by
     # default. A KAM sending an update rather than a request unticks it.
     move_ticket: bool = True
+
+
+class TicketCommunityTopic(BaseModel):
+    """Pointer to the public thread this ticket's answer became."""
+
+    topic_id: str
+    channel_slug: str
+    channel_name: str | None = None
+    community_slug: str
+    path: str
+    published_at: datetime | None = None
+    # Whether the community is currently served publicly. A thread can be
+    # published into a community that has not gone live yet.
+    live: bool = True
+
+
+class PublishToCommunityRequest(BaseModel):
+    channel_id: str
+    title: str = Field(..., min_length=3, max_length=200)
+    # The body the operator actually reviewed. Deliberately required rather than
+    # derived from the ticket's messages: a customer's email contains the
+    # customer, and nothing here is clever enough to redact that unattended.
+    content: str = Field(..., min_length=1, max_length=20_000)
+
+
+class PublishTargetsResponse(BaseModel):
+    """Where this workspace may publish, if it may at all.
+
+    An empty ``channels`` means the link is switched off or there is nowhere
+    public to publish to — either way the UI should not offer the action.
+    """
+
+    enabled: bool = False
+    community_slug: str | None = None
+    channels: list[dict] = Field(default_factory=list)
 
 
 class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
@@ -655,7 +719,17 @@ class ServiceDeskTicketDetail(ServiceDeskTicketResponse):
     segments: list[SegmentResponse] = Field(default_factory=list)
     correspondence: list[ServiceDeskCorrespondence] = Field(default_factory=list)
     email_recipients: list[TicketEmailRecipient] = Field(default_factory=list)
+    reply_all: TicketReplyAll = Field(default_factory=TicketReplyAll)
     attachments: list[TicketAttachment] = Field(default_factory=list)
+    # Why the ticket has the owner it has, when the answer was not simply Master
+    # Data. Written at intake and, until now, only ever visible in the database —
+    # so "assignment is not following our master data" could not be answered from
+    # the ticket that prompted it. None when nothing had to be explained.
+    assignment_note: str | None = None
+    # Set once this ticket's answer has been published to the public community
+    # forum, so the next person to open it can link to the public thread instead
+    # of writing the same answer again. None until somebody publishes.
+    community_topic: TicketCommunityTopic | None = None
     tat: TicketTAT
     # Server-computed write authority for the requesting caller, so the UI never
     # re-derives (and drifts from) the ``can_edit_ticket`` rule.

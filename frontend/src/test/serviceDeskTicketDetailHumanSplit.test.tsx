@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ ticketId: "primary-1" }),
-  useRouter: () => ({ push: mocks.push }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -109,6 +109,7 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     },
   }),
   useServiceDeskMutations: () => ({
+    publishToCommunity: { mutate: vi.fn(), isPending: false },
     splitDetectedIssues: {
       mutate: mocks.split,
       isPending: false,
@@ -119,7 +120,13 @@ vi.mock("@/hooks/useServiceDesk", () => ({
     convertToTask: { mutate: vi.fn(), isPending: false },
     updateTicket: { mutateAsync: vi.fn(), isPending: false, isError: false },
     emailStakeholder: { mutateAsync: vi.fn(), isPending: false, isError: false },
+    uploadFiles: { mutate: vi.fn(), isPending: false },
+    deleteUpload: { mutate: vi.fn(), isPending: false },
+    downloadUpload: { mutate: vi.fn(), isPending: false },
   }),
+  // Publishing to the community is opt-in and off by default, so the card the
+  // ticket page renders for it is absent here — which is the default state.
+  useCommunityPublishTargets: () => ({ data: { enabled: false, community_slug: null, channels: [] } }),
   useServiceDeskSettings: () => ({ data: { can_manage: false } }),
   useServiceDeskTaxonomy: () => ({
     stakeholders: [],

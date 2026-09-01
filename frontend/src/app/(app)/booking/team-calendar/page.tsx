@@ -241,8 +241,13 @@ export default function TeamCalendarPage() {
         <>
           {/* Booking calendar controls */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
-            {/* Event type selector */}
+            {/* Event type selector. `aria-label` because the control has no
+                visible label of its own — without it a screen reader announces
+                an unnamed combobox, and nothing in a test can address it
+                except by position, which broke the moment another select
+                appeared earlier in the page. */}
             <select
+              aria-label="Event type"
               value={selectedEventTypeId || ""}
               onChange={(e) => setSelectedEventTypeId(e.target.value || null)}
               className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -255,9 +260,10 @@ export default function TeamCalendarPage() {
               ))}
             </select>
 
-            {/* Team selector */}
+            {/* Team selector — same, it is the other unnamed combobox here. */}
             {selectedEventTypeId && teams.length > 0 && (
               <select
+                aria-label="Team"
                 value={selectedTeamId || ""}
                 onChange={(e) => setSelectedTeamId(e.target.value || null)}
                 className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"

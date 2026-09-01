@@ -28,7 +28,7 @@ export function InternalThreadsList({
 
   if (channels.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center text-sm text-gray-500">
+      <div className="rounded-[3px] border border-dashed border-ledger-ink/20 bg-ledger-card p-8 text-center text-sm text-ledger-ink/60">
         {t("internal.empty")}
       </div>
     );
@@ -39,43 +39,43 @@ export function InternalThreadsList({
       {channels.map((ch) => (
         <div
           key={ch.id}
-          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+          className="overflow-hidden rounded-[3px] border border-ledger-ink/12 bg-ledger-card"
         >
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            <Hash className="h-4 w-4 text-gray-400 shrink-0" />
-            <span className="font-medium text-gray-900 dark:text-white truncate">
+          <div className="flex items-center gap-2 border-b border-ledger-ink/10 px-4 py-3">
+            <Hash className="h-4 w-4 shrink-0 text-ledger-ink/40" />
+            <span className="truncate font-display font-semibold tracking-tight">
               {ch.name}
             </span>
-            <span className="ml-auto shrink-0 text-xs text-gray-400">
+            <span className="ml-auto shrink-0 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/45">
               {t("internal.topicCount", { count: ch.topic_count })}
             </span>
           </div>
 
           {ch.topics.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-400">{t("internal.empty")}</p>
+            <p className="px-4 py-3 text-sm text-ledger-ink/45">{t("internal.empty")}</p>
           ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            <ul className="divide-y divide-ledger-ink/10">
               {ch.topics.map((topic) => (
                 <li key={topic.id}>
                   <Link
                     href={`/chat/${ch.slug}/${topic.id}`}
-                    className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 transition hover:bg-ledger-ink/[0.03]"
                   >
-                    <span className="truncate text-sm text-gray-800 dark:text-gray-200">
+                    <span className="truncate text-sm text-ledger-ink/85">
                       {topic.name}
                     </span>
                     {topic.is_web_public && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-ledger-mint/20 px-1.5 py-0.5 text-[10px] font-medium text-ledger-green">
                         <Globe className="h-3 w-3" />
                         {t("internal.publicBadge")}
                       </span>
                     )}
                     {topic.unread_count > 0 && (
-                      <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      <span className="rounded-full bg-ledger-ink px-1.5 py-0.5 text-[10px] font-semibold text-ledger-paper">
                         {topic.unread_count}
                       </span>
                     )}
-                    <span className="ml-auto shrink-0 text-xs text-gray-400">
+                    <span className="ml-auto shrink-0 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/45">
                       {topic.message_count} · {fmt(topic.last_message_at)}
                     </span>
                   </Link>
@@ -86,7 +86,7 @@ export function InternalThreadsList({
         </div>
       ))}
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
+      <p className="flex items-center justify-center gap-1.5 font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/45">
         <Lock className="h-3 w-3" />
         {t("internal.membersOnly")}
       </p>

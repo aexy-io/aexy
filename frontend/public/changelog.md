@@ -5,6 +5,287 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-08-25
+
+### Community
+
+The forum has existed since 0.8.57, and the part of it that was finished was the
+part nobody could see: a read model that carries its visibility rules as SQL, so
+nothing leaks even from an endpoint that forgot to filter. Everything between
+"the API is correct" and "a stranger arrives and stays" was missing.
+
+**A visitor can ask a question.** Replying to a thread the vendor started was the
+only thing an outsider could do, which is a comment section, not a forum. New
+threads are their own switch — off by default, and separate from replies, because
+answering in a thread somebody opened and opening one yourself are different
+amounts of trust.
+
+Under pre-moderation the *whole thread* is held, not just its first post. Holding
+the post alone still published the thread's title, which is the half a spammer
+wants published. Approving the opener publishes the thread; rejecting it removes
+the thread — unless answers arrived while the moderator was deciding, in which
+case only the post goes.
+
+**Search.** The product page has always claimed answers here were findable, and
+there was no search. There is now: threads matching a title or a body, with the
+same visibility rules as everything else — so a private thread, a redacted
+message, and anything before a channel's history cutoff stay out of the results
+as well as out of the page.
+
+**Accepted answers.** The person who asked, or an admin, can mark the reply that
+answered it. The thread badges it, lifts it under the question, and describes
+itself to search engines as a question with an accepted answer rather than as a
+generic discussion — which is what earns the answer its own treatment in results.
+
+**Reactions**, from a small fixed palette. The cheapest way for a reader with
+nothing to add to say "this one helped", and what lets a long thread show which
+of its replies was useful.
+
+**Member profiles**, for the people who chose to be named. Somebody posting
+anonymously has no profile and no link to one: a link is exactly how anonymity
+comes undone — follow it once and every other post by the same person is
+attributed. Handles are derived per community, so one forum's handle cannot be
+used to find the same person in another.
+
+**The team hears about it.** A post by an outsider created no notification at
+all, so a question sat on a public page until an admin happened to look. New
+threads, new replies, and posts held for review now reach the channel's members —
+falling back to the workspace's admins — in their own notification category, so
+community traffic can be routed separately from internal chat.
+
+**A reply appears immediately.** Pages are cached, so the author was returned to a
+thread that did not contain what they had just written and read it as a failed
+save. Their post now renders straight away, and the shared page is invalidated so
+the next visitor sees it too.
+
+**Page 2 exists.** The API had always taken a page and an offset; no page ever
+read one, so topic 51 and message 51 existed and could not be visited — by a
+person or by a crawler. Paging is ordinary links with a page-aware canonical.
+
+**It looks like Aexy.** The public pages were generic grey and blue while the
+rest of the site is not, so following a link from the product to its forum felt
+like landing on somewhere else. They are on the brand now — while the header
+still carries the *tenant's* name, logo and accent colour, because most of these
+forums belong to somebody else. That accent was stored, served over the API, and
+had never been applied to a single pixel.
+
+Plus: a social card per thread, so a shared link stops showing the same generic
+image for every question; an RSS feed; the directory in the sitemap and in the
+site's own navigation, which is how a forum stops being reachable only by
+accident; and every string on the public and settings pages translated, which
+four of the five pages were not.
+
+### Added: a community starts with something on it
+
+Enabling a community used to mean a checkbox followed by an empty page. There are
+starter shapes now — product support, open-source project, customer community,
+public knowledge base — each laying out a few channels, seeding the first threads,
+and setting participation defaults that suit that kind of forum. A workspace with
+no community sees the picker first, because an empty forum with a perfect settings
+page is not a forum.
+
+Applying one is idempotent by channel name, so a second click reports what it
+skipped instead of leaving you with `help` and `help-a1b2c3`. And it publishes
+nothing by itself: laying out a forum and going live are separate decisions.
+
+### Added: publish an answer you have already written (off by default)
+
+A team that answers the same question ten times a month over email has the
+answers and nowhere public to put them. A resolved Service Desk ticket can now
+become a public thread, and a published document can get one for discussing it.
+
+Both are per-workspace switches and both ship **off**. Publishing moves text
+somebody else wrote onto a page anyone can read, so it is never a default — and
+the two are separate, because a workspace may well want its docs public and its
+customer ticket traffic emphatically not.
+
+Nothing is published as it arrived. The action opens a composer pre-filled with
+the ticket's subject and the desk's own last reply, and a person edits it before
+anything goes out. A customer's email contains the customer, and no automatic
+redaction is trustworthy enough to run that unattended onto a public page. The
+thread is recorded on the ticket afterwards, so the next person to open it can
+see the answer is already public instead of writing a second one.
+
+A document gets "Discuss this page" instead, opening one public thread per
+document — and the thread's opening post is an intro somebody writes, not a copy
+of the document. A document is edited after it is published, and a stale copy of
+it sitting on a public forum page is worse than no copy, so the thread links back
+to the living document.
+
+A community that has not gone live still accepts published threads; they are
+simply not served yet. "Publish the answers, go live on Monday" is an ordinary
+way to launch.
+
+### Changed: a channel called "Members" keeps working
+
+`/community/{slug}/search` and `/community/{slug}/members/…` are fixed paths, and
+a fixed path always wins over the channel slug beside it. A channel slugged
+exactly `search` or `members` would therefore have worked everywhere inside the
+product and 404'd on the forum — and "Members" is an entirely reasonable channel
+for a community to want. Those two names now get a short suffix when the slug is
+minted, and any channel already carrying one is repaired. Nothing that ever
+resolved can break: those URLs never resolved.
+
+### Changed: public search has a per-address budget
+
+It is the one anonymous page that runs a query rather than serving a cached copy.
+Thirty searches a minute per address — loose on purpose, because an office behind
+one connection is many readers sharing an address, and a limit set too low makes
+a working forum look broken.
+
+### Fixed: signing in from a forum no longer creates an internal account
+
+The backend has always accepted the markers that make a forum-only sign-in a
+*community* account — walled off from the internal product, non-billable, and
+returned to the thread rather than dumped on the dashboard. The login page never
+forwarded them. So every visitor who signed in to ask one question received a full
+internal account, and the isolation middleware written to contain them never fired
+once.
+
+## [0.30.0] - 2026-08-25
+
+### Fixed: mail a colleague sent no longer picks an owner at random
+
+Three tickets arrived from the same person, about the same client, on the same
+afternoon, and landed on three different owners. All three were mail *from* the
+desk's own domain — a KAM writing out to the client with the desk copied — and
+intake treated its own domain as a dead end. It looked for a forwarded message
+and, finding none, handed the ticket to whoever the fallback picked.
+
+Both answers were already in Master Data and neither was ever read:
+
+* **The counterparty the message was addressed to.** A colleague writing out
+  names the client in `To:` or `Cc:` and nowhere else. Recipients are matched
+  against accounts and vendors now, so that mail files against the right client
+  and reaches its owner.
+* **A row mapping the colleague's own address.** Mapping a whole internal
+  address is a desk saying where that person's mail belongs. Those rows existed
+  on live desks and had never once been consulted.
+
+And when nothing identifies a counterparty at all, **the colleague who wrote in
+owns it**. A request somebody here raised is theirs until it is moved, and that
+answer needs no configuration — it holds for a desk that has mapped nothing and
+for a colleague who joined this morning. Membership is checked rather than merely
+having a developer record: a ticket sitting in a departed employee's queue is
+worse than one assigned at random, because nobody is watching it at all.
+
+The specific answer wins: the counterparty written to beats a standing row for
+the sender, which beats the forwarded-message inference, which beats the person
+who wrote in, which beats the fallback. So a KAM chasing another KAM's client
+does not take the ticket off them by writing about it. Two addresses are
+deliberately never allowed to decide anything — a colleague among the recipients
+(two colleagues on a thread are not a counterparty) and the desk's own domain as
+an account row, which would otherwise capture every internal message ever sent.
+
+### Added: the ticket says why it has the owner it has
+
+Intake has always written the reason — "no account is mapped to this domain",
+"this account has no assigned owner" — as an internal note that nothing
+displayed. So a ticket on the wrong owner was indistinguishable from a
+deliberate assignment, and "routing is not following our master data" could not
+be answered from the ticket that prompted it. It is on the ticket now, above the
+save button. Tickets created before this shipped read their reason from the note
+that was already recorded, so an existing desk can answer the question about
+mail it already has.
+
+It follows the owner rather than the first decision made about it: when an
+account/product pairing reassigns a ticket after classification, that becomes the
+reason on show. A line explaining an owner the ticket no longer has is worse than
+no line.
+
+### Added: replying from a ticket keeps everyone on the thread
+
+The ticket knew who wrote in and nothing about who they had copied — intake read
+`To:` and `Cc:` only to decide which mailbox a message belonged to, then dropped
+them. A reply from the desk reached one address out of five, and the colleague
+actually chasing the request never saw the answer.
+
+Those addresses are kept as each message arrives, in every direction: the
+original request, stakeholder replies, and replies typed in the mail client,
+which is where somebody is most often added to a chain. The compose box opens
+addressed to whoever wrote in last, with the rest of the conversation already
+copied as chips that can be removed one at a time, and a box for adding anyone
+else. Anyone kept or added by hand joins the conversation from that moment, so
+they are still there on the reply after next.
+
+A ticket logged by phone has no requester address to answer, and the compose box
+says so by staying empty rather than offering the placeholder one.
+
+One deliberate limit: redirecting the reply to a different party clears what was
+carried over. Copying a partner's colleagues onto a message to an insurer is a
+disclosure, and the confirmation panel would have shown it only after the sender
+had stopped reading.
+
+### Added: attach a file of your own when replying
+
+The only file the desk could send was one that had already arrived on the
+ticket, because the bytes were re-fetched from the mailbox. Answering a partner
+with a completed form meant leaving the product for a personal inbox — and that
+reply, with its attachment, left the record entirely.
+
+Files can be uploaded to a ticket and attached to a reply. What made forwarding
+safe is unchanged: the client names a file and never sends bytes with the send,
+and a named file has to be one that ticket actually holds. Sending moves the
+file onto the message it left with, so a later reader can see which mail it went
+out on, and it is no longer offered on the next reply. Uploads are listed apart
+from the files that arrived — telling a reader the customer sent something they
+never sent is worse than not showing it at all.
+
+### Fixed: the ticket detail left names blank that the list resolved
+
+`product_name`, `vendor_name` and `assigned_owner_name` were never filled in on
+the detail endpoint, so a page could show a blank owner beside a list showing
+their name — which reads as an unassigned ticket.
+
+## [0.29.1] - 2026-08-23
+
+A follow-up on the demo account: it now shows the two modules it refuses to run,
+and the refusal is no longer something the demo user can lift.
+
+### Changed: the demo shows the modules it will not run
+
+Demo provisioning switched `email_marketing` and `agents` off in the workspace's
+`app_settings` — the outermost layer of app access, off "for everybody, admins
+included". The reasoning was that a shared account should not be able to send
+mail or spend tokens, which is right; hiding the modules was the wrong way to
+get there.
+
+It cost the demo its point. Those two are among the three things the marketing
+site leads with, so a visitor who opened the demo to see the agent story found
+it absent — and "Request Access" on a module you own reads as broken or
+paywalled, not as a safety measure. It also quietly contradicted the claim that
+self-hosting is not a crippled edition.
+
+It also protected nothing. What actually refuses is the workspace AI kill switch,
+which the LLM gateway resolves through on every path, and the outbound-email
+block on the two send paths. Both work with every module on screen. Hiding
+`agents` did not even close the hole it appeared to: the AI setting lives under
+Settings, not inside that module, so it was reachable either way.
+
+So nothing is hidden now. Open an agent and read its tools and policy gates;
+build a campaign in the builder. Pressing the button is where it stops, with
+"AI features are disabled for this workspace" or a send that answers with the
+reason it did not go. The seeded automations stay inactive for the same reason
+they always were — one of them runs an agent on every lead created, so an enabled
+copy is a way to spend the operator's budget by filling in a form — but they
+still show their triggers, actions and run history.
+
+### Fixed: the demo could switch AI back on for everybody
+
+Re-asserting the kill switch at sign-in was the whole enforcement, and that is
+not enough for an account that is shared. The demo user is an owner, so one
+visitor turning AI on in Settings left it on for every session after them until
+somebody signed in again — and each of those sessions spent the operator's
+credential. "Reverted at the next sign-in" is too late when the sign-in is not
+yours.
+
+`WorkspaceAISettingsService.update` now refuses a request to enable AI for the
+demo workspace outright, scoped by owner so that anyone signing in through OAuth
+on the same install still configures their own workspaces normally. The
+re-assertion stays as the floor underneath it. On a free-plan install the
+existing plan gate already refuses first with a 402; this is what catches a
+hosted demo on a plan that would otherwise allow the write.
+
 ## [0.29.0] - 2026-08-23
 
 Post-login craft: the boards, the dashboard, the sidebar, and a render loop
