@@ -25,6 +25,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * Let a file upload be a file upload.
+ *
+ * The `Content-Type: application/json` default above is right for the ~99% of
+ * calls that send an object, but it is actively destructive to the ones that
+ * send a `FormData`. Axios picks its serialiser from the header before it looks
+ * at the body, so under a JSON content type it runs the FormData through
+ * `formDataToJSON` — the files are dropped and the body leaves as
+ * `{"files":{}}`, which any multipart endpoint answers with a 422.
+ *
+ * Naming the type here rather than relying on each call site to remember it
+ * makes that failure unreachable. It has to happen in a request interceptor:
+ * those run ahead of `dispatchRequest`, which is what applies
+ * `transformRequest`. Note this sets multipart rather than clearing the header
+ * — `dispatchRequest` backfills `x-www-form-urlencoded` on any POST/PUT/PATCH
+ * that reaches it with no content type, so deleting would just trade one wrong
+ * answer for another. The missing `boundary=…` is not our problem to solve:
+ * the browser adapter drops this header once it sees a FormData body and
+ * writes its own, boundary included.
+ */
+api.interceptors.request.use((config) => {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    config.headers.setContentType("multipart/form-data");
+  }
+  return config;
+});
+
 // Top-level paths that live inside the (app) / (admin) route groups and require auth.
 // On 401, only those paths get a hard redirect to "/"; public marketing pages (/, /pricing,
 // /about, /blog, /products/*, etc.) just clear the stale token and keep rendering, since

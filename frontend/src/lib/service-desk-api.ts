@@ -617,7 +617,17 @@ export const serviceDeskApi = {
   uploadFiles: async (ws: string, id: string, files: File[]): Promise<TicketAttachment[]> => {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
-    return (await api.post(`${base(ws)}/tickets/${id}/uploads`, form)).data;
+    // The header has to be set explicitly. The shared client defaults to
+    // `application/json`, and axios reads that default *before* it looks at the
+    // body: seeing a JSON content type it runs FormData through
+    // `formDataToJSON`, so the files leave as `{"files":{}}` and the multipart
+    // endpoint 422s. Naming multipart here makes axios pass the FormData
+    // through, and the browser then fills in the boundary.
+    return (
+      await api.post(`${base(ws)}/tickets/${id}/uploads`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    ).data;
   },
   deleteUpload: async (ws: string, id: string, attachmentId: string): Promise<void> => {
     await api.delete(`${base(ws)}/tickets/${id}/uploads/${attachmentId}`);

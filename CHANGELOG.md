@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1] - 2026-09-01
+
+Attaching a file to a service-desk reply works again.
+
+### Fixed: every file attached to a ticket reply failed with a 422
+
+Choosing a file on a service-desk ticket — "Attach a file", then any document
+at all — failed immediately with `Request failed with status code 422`. No file
+could be attached to a reply by any route, and nothing about the message said
+what was wrong with the file, because nothing was.
+
+The file never left the browser. Our API client declares that it sends JSON,
+which is true of nearly every call it makes, and the HTTP library it is built
+on picks how to encode the body from that declaration before it looks at what
+the body actually is. Handed a file upload under a JSON declaration, it quietly
+re-encoded the upload as JSON — dropping the file's contents on the way — and
+sent `{"files":{}}`. The server was right to reject that: it had been promised a
+file and received an empty object. The 422 was the last honest step in the
+chain.
+
+Uploads now declare themselves correctly, and the client refuses to mislabel a
+file upload as JSON no matter which screen sends it. The second half matters
+more than the first: the same mistake was one forgotten line away on every
+upload in the app — avatars, imports, ticket attachments — and it failed
+silently rather than at the call site, so it would have been found the same way
+this was, by someone hitting a 422 in production.
+
 ## [0.32.0] - 2026-08-31
 
 Navigation stopped losing your place, and a bad response stopped blanking the
