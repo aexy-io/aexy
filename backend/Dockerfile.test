@@ -1,0 +1,33 @@
+# Test image. The runtime Dockerfile installs no test dependencies, so there is
+# otherwise no way to run pytest against this code without standing up the whole
+# of docker-compose. Same base environment, plus the `dev` extra.
+#
+# The layer order is the point of the file. The runtime Dockerfile copies the
+# source before it installs, so touching any one file re-runs a dependency
+# resolve that takes about twenty minutes. Here the install layer keys on
+# pyproject.toml alone, so editing src/ or tests/ rebuilds in seconds.
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dependencies first, from the metadata alone. README.md comes along because
+# `readme = "README.md"` makes hatchling insist on it, and the stub package
+# because `packages = ["src/aexy"]` makes it resolve a directory — which the
+# COPY below then fills in for real.
+COPY pyproject.toml README.md ./
+RUN mkdir -p src/aexy && touch src/aexy/__init__.py
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Source last: this is the layer that actually changes.
+COPY . .
+
+ENV PYTHONPATH=/app/src
+
+# `addopts` turns coverage on for every run. It costs real time on a targeted
+# run, so pass --no-cov when you only want a file or two.
+CMD ["pytest"]

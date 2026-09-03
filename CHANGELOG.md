@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.2] - 2026-09-03
+
+A broken GitHub connection stopped filling your inbox, and now says whose it is.
+
+### Fixed: one disconnected GitHub account sent hundreds of emails a day
+
+When GitHub stopped accepting a saved connection, everyone who could act on it
+— the developer whose account it was, plus the workspace's owner and admins —
+was told. Correctly, once. Then told again five minutes later, and every five
+minutes after that, for as long as nobody had reconnected. A connection that
+broke overnight produced a few hundred identical emails by morning, to each of
+them.
+
+The check that found the breakage ran on a five-minute schedule, and a broken
+connection stays broken until a person fixes it, so every pass rediscovered the
+same problem and reported it as though it were new. The one guard against
+repeats was thrown away at the end of each pass, so it only ever suppressed
+duplicates within a single run.
+
+The notice is now sent at most once per person per account per day. It still
+arrives daily while the account is still broken, because that is a real reminder
+rather than a repeat, and the day's first one now arrives the moment the
+connection fails instead of up to five minutes later. Developers who sync by
+hand rather than on a schedule get told at all, which they previously did not.
+
+### Fixed: the disconnection notice named the wrong account, and the wrong problem
+
+The email identified the broken connection by the person's Aexy email address,
+which is not how the account is named on GitHub. An admin reading it about a
+colleague had nothing to go on. It uses the GitHub username now.
+
+Two smaller pieces of the same message were also untrue. It said work had
+stopped "including service desk tickets from this mailbox" — wording written for
+a disconnected email inbox, which makes no sense about a code repository. And
+when the cause was that no GitHub account had ever been connected, it reported
+that GitHub had refused credentials that did not exist.
+
+### Fixed: only one workspace was told when a shared contributor's account broke
+
+A developer whose repositories are adopted into more than one workspace has one
+GitHub connection, and when it breaks, syncing stops in all of them. Only one
+workspace's admins were notified, chosen arbitrarily. The others saw syncing
+stop with no explanation. Every affected workspace is told now.
+
 ## [0.32.1] - 2026-09-01
 
 Attaching a file to a service-desk reply works again.

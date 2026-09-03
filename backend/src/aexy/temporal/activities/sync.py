@@ -153,7 +153,7 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     syncs_triggered = 0
     skipped_auth = 0
-    notified_auth: set[str] = set()
+    notified_auth: set[tuple[str, str]] = set()
     skipped_in_flight = 0
 
     async with async_session_maker() as db:
@@ -197,12 +197,19 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
             if not connection or connection.auth_status == "error":
                 skipped_auth += 1
                 wr.sync_status = "no_credentials"
-                # Once per broken account, not once per repository per hour: a
-                # developer with thirty repos would otherwise get thirty
-                # notifications an hour and mute the channel, which loses the
-                # one message that mattered.
-                if developer.id not in notified_auth:
-                    notified_auth.add(developer.id)
+                # Collapse the thirty repos a developer adopted into one report
+                # per workspace. Keyed on the workspace too, not the developer
+                # alone: recipients are that workspace's owners and admins, so a
+                # developer-only key told whichever workspace sorted first and
+                # left the others' admins wondering why syncing had stopped.
+                #
+                # This is a within-pass guard only. The pass runs every five
+                # minutes and the connection stays broken until a human fixes
+                # it, so what keeps this to one mail a day is the throttle
+                # inside notify_integration_disconnected.
+                report_key = (str(developer.id), str(wr.workspace_id))
+                if report_key not in notified_auth:
+                    notified_auth.add(report_key)
                     from aexy.services.integration_health import (
                         notify_integration_disconnected,
                     )
@@ -211,8 +218,21 @@ async def check_repo_auto_sync(input: CheckRepoAutoSyncInput) -> dict[str, Any]:
                         db,
                         workspace_id=str(wr.workspace_id),
                         provider="GitHub",
-                        account_label=developer.email or developer.name or "GitHub account",
-                        reason="GitHub refused the saved credentials",
+                        # The GitHub login, not the Aexy address: this reaches
+                        # workspace admins, and the account they have to chase
+                        # is the one named on GitHub.
+                        account_label=(
+                            f"@{connection.github_username}"
+                            if connection
+                            else developer.email or developer.name or "GitHub account"
+                        ),
+                        reason=(
+                            "GitHub refused the saved credentials"
+                            if connection
+                            # No row was ever written, and nothing deletes one,
+                            # so there are no credentials to have been refused.
+                            else "no GitHub account is connected"
+                        ),
                         connected_by_id=str(developer.id),
                         settings_path="/settings/integrations",
                     )

@@ -372,6 +372,15 @@ class SyncService:
             if connection.auth_status != "error":
                 connection.auth_status = "error"
                 connection.auth_error = "GitHub token is invalid or has been revoked. Please reconnect your GitHub account."
+                # Only inside the guard: this is the active -> error edge, and
+                # telling people is a thing to do once per breakage, not once
+                # per failed sync of an account already known to be broken.
+                await self._report_connection_broken(
+                    self.db,
+                    developer_id=developer_id,
+                    github_username=connection.github_username,
+                    reason="GitHub refused the saved credentials",
+                )
             await self.db.flush()
             raise
         except GitHubNotFoundError as e:
@@ -447,6 +456,40 @@ class SyncService:
         )
         return dev_repo
 
+    async def _report_connection_broken(
+        self,
+        db: AsyncSession,
+        *,
+        developer_id: str,
+        github_username: str | None,
+        reason: str,
+    ) -> None:
+        """Announce a connection this sync just marked broken.
+
+        Takes the session explicitly because the two callers do not share one:
+        the refresh path holds its own transaction so it can lock the row.
+
+        Swallows everything. A sync that already failed on auth must not fail a
+        second time, or differently, because the notification did.
+        """
+        try:
+            from aexy.services.integration_health import (
+                notify_github_connection_broken,
+            )
+
+            await notify_github_connection_broken(
+                db,
+                developer_id=str(developer_id),
+                github_username=github_username,
+                reason=reason,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "Could not report broken GitHub connection for %s: %s",
+                developer_id,
+                exc,
+            )
+
     async def _ensure_valid_token(self, connection: GitHubConnection) -> None:
         """Refresh the GitHub token if it's expired or about to expire.
 
@@ -500,12 +543,30 @@ class SyncService:
                 logger.error(
                     f"Failed to refresh GitHub token for @{locked_conn.github_username}: {e}"
                 )
+                # Guarded, and reported here rather than left to the caller:
+                # this re-raises into the GitHubAuthError handler in
+                # `sync_repository`, which finds the status already flipped and
+                # so stays quiet. Without this the refresh-token path — the way
+                # a connection most often dies, since these tokens expire every
+                # eight hours — would never announce itself.
+                first_failure = locked_conn.auth_status != "error"
                 locked_conn.auth_status = "error"
                 locked_conn.auth_error = (
                     "GitHub refresh token is invalid or expired. "
                     "Please reconnect your GitHub account."
                 )
                 await refresh_db.commit()
+                # After the commit, not before: the notification writes rows of
+                # its own, and this transaction holds a FOR UPDATE lock on the
+                # connection that every concurrent sync of this developer is
+                # queued behind.
+                if first_failure:
+                    await self._report_connection_broken(
+                        refresh_db,
+                        developer_id=locked_conn.developer_id,
+                        github_username=locked_conn.github_username,
+                        reason="GitHub rejected the refresh token",
+                    )
                 connection.auth_status = locked_conn.auth_status
                 connection.auth_error = locked_conn.auth_error
                 raise
