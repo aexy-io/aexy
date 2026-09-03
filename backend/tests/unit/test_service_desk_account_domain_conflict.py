@@ -19,7 +19,7 @@ from tests.unit.test_service_desk_intake import _workspace
 async def test_a_domain_another_account_holds_is_refused_by_name(db_session: AsyncSession):
     ws = await _workspace(db_session, "dom-conflict")
     svc = ServiceDeskService(db_session)
-    await svc.create_account(ws.id, AccountCreate(name="ABC Finance", domains=["acme.com"]))
+    await svc.create_account(ws.id, AccountCreate(name="Northwind Ltd", domains=["acme.com"]))
     await db_session.commit()
 
     with pytest.raises(HTTPException) as exc:
@@ -28,7 +28,7 @@ async def test_a_domain_another_account_holds_is_refused_by_name(db_session: Asy
     assert exc.value.status_code == 409
     # Both halves of "what happened" are in the message: the domain, and who has it.
     assert "acme.com" in exc.value.detail
-    assert "ABC Finance" in exc.value.detail
+    assert "Northwind Ltd" in exc.value.detail
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_an_account_may_keep_its_own_domain_on_update(db_session: AsyncSes
     """The obvious way to break this fix: rejecting a row against itself."""
     ws = await _workspace(db_session, "dom-self")
     svc = ServiceDeskService(db_session)
-    account = await svc.create_account(ws.id, AccountCreate(name="ABC Finance", domains=["abc.com"]))
+    account = await svc.create_account(ws.id, AccountCreate(name="Northwind Ltd", domains=["abc.com"]))
     await db_session.commit()
 
     updated = await svc.update_account(

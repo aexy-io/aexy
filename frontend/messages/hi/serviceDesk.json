@@ -5,7 +5,8 @@
     "tabs": {
       "dashboard": "डैशबोर्ड",
       "tickets": "टिकट",
-      "settings": "मास्टर डेटा"
+      "settings": "मास्टर डेटा",
+      "reports": "रिपोर्ट"
     },
     "stats": {
       "totalOpen": "खुले टिकट",
@@ -414,6 +415,110 @@
       "moveUp": "ऊपर ले जाएँ",
       "moveDown": "नीचे ले जाएँ",
       "delete": "श्रेणी हटाएँ"
+    },
+    "reports": {
+      "title": "रिपोर्ट",
+      "subtitle": "प्रति टिकट टर्नअराउंड, और डेस्क के owners का प्रदर्शन।",
+      "tabs": {
+        "tat": "TAT रिपोर्ट",
+        "scorecard": "Scorecard"
+      },
+      "clockNote": "Stage के आंकड़े इस डेस्क की घड़ी पर working time हैं: एक दिन {hours} घंटे का है, और breach target {days} working days है। Overall TAT बीता हुआ समय है।",
+      "cohort": "{owners, plural, one {# owner} other {# owners}} के बीच तुलना की गई।",
+      "ownRowOnly": "आपकी अपनी पंक्ति। स्कोर की तुलना अब भी डेस्क के सभी {owners, plural, one {# owner} other {# owners}} से की जाती है।",
+      "weightTip": "Weight: कुल का {weight}%",
+      "partialTip": "{pct}% weight पर स्कोर किया गया — बाकी के लिए कोई योग्य टिकट नहीं था।",
+      "columns": {
+        "owner": "Owner",
+        "closed": "बंद / कुल",
+        "total": "Weighted Score",
+        "rating": "Rating"
+      },
+      "empty": {
+        "tat": "इस अवधि में कोई टिकट नहीं",
+        "tatHint": "तिथि सीमा बढ़ाएँ, या टर्नअराउंड देखने के लिए टिकट लॉग करें।",
+        "scorecard": "अभी स्कोर करने के लिए कुछ नहीं",
+        "scorecardHint": "Scorecard असाइन किए गए टिकटों को ग्रेड करता है। टिकटों के owners होने पर उनके KPI यहाँ दिखेंगे।"
+      },
+      "config": {
+        "title": "Scorecard",
+        "description": "Owner scorecard क्या मापता है, हर KPI का कितना weight है, और rating सीमाएँ कहाँ हैं। Weights का योग 100% होना चाहिए।",
+        "kpi": "KPI",
+        "weight": "Weight",
+        "benchmark": "Benchmark (घंटे)",
+        "penalty": "प्रति इकाई penalty",
+        "target": "Target",
+        "enabled": "सक्षम",
+        "bands": "Rating bands",
+        "minScore": "न्यूनतम स्कोर",
+        "label": "लेबल",
+        "total": "कुल weight",
+        "totalOk": "योग 100%",
+        "totalBad": "योग 100% होना चाहिए — अभी {pct}%",
+        "save": "Scorecard सहेजें",
+        "saved": "Scorecard सहेजा गया",
+        "readOnly": "आप देख सकते हैं कि डेस्क किस पर ग्रेड करता है, पर बदल नहीं सकते।",
+        "higher": "अधिक बेहतर है",
+        "lower": "कम बेहतर है",
+        "howCalculated": "गणना कैसे होती है",
+        "threshold": "सीमा",
+        "benchmarkHint": "इस तक पूरे अंक",
+        "penaltyHint": "हर अतिरिक्त इकाई पर कटौती",
+        "targetHint": "वह मान जो 100 पाता है",
+        "addCustom": "कस्टम KPI जोड़ें",
+        "draft": "ड्राफ़्ट",
+        "edit": "संपादित करें",
+        "remove": "हटाएँ",
+        "customKpi": "इस डेस्क के अपने डेटा से बना एक कस्टम KPI।"
+      },
+      "formula": {
+        "newTitle": "नया KPI",
+        "editTitle": "KPI संपादित करें",
+        "description": "डेस्क के अपने डेटा से KPI बनाएँ। हर विकल्प एक सूची से आता है, इसलिए कोई formula syntax गलत नहीं हो सकता।",
+        "name": "नाम",
+        "namePlaceholder": "जैसे Escalation rate",
+        "measure": "माप",
+        "of": "का",
+        "ofTickets": "टिकटों का",
+        "thatMatch": "जो इनसे मेल खाते हैं",
+        "among": "इन टिकटों में से जहाँ",
+        "overTickets": "उन टिकटों पर जहाँ",
+        "addCondition": "शर्त जोड़ें",
+        "useSetting": "सेटिंग का उपयोग करें",
+        "relative": "हर owner की तुलना डेस्क औसत से करें",
+        "scoring": "स्कोरिंग",
+        "higher": "अधिक बेहतर है",
+        "lower": "कम बेहतर है",
+        "benchmark": "Benchmark",
+        "penalty": "प्रति इकाई penalty",
+        "target": "Target",
+        "weight": "Weight",
+        "preview": "पूर्वावलोकन",
+        "runPreview": "पूर्वावलोकन चलाएँ",
+        "previewing": "स्कोर किया जा रहा है…",
+        "previewHint": "सहेजने से पहले इसे वास्तविक टिकटों पर जाँचें।",
+        "previewEmpty": "इस अवधि में किसी owner के पास टिकट नहीं हैं, इसलिए स्कोर करने को कुछ नहीं है।",
+        "owner": "Owner",
+        "thisKpi": "यह KPI",
+        "score": "स्कोर",
+        "total": "Weighted कुल",
+        "impact": "इससे {count, plural, one {# rating} other {# ratings}} बदलती हैं:",
+        "saveDraft": "ड्राफ़्ट सहेजें",
+        "publish": "प्रकाशित करें",
+        "yes": "हाँ",
+        "no": "नहीं",
+        "ops": {
+          "lt": "इससे कम है",
+          "lte": "अधिकतम है",
+          "gt": "इससे अधिक है",
+          "gte": "कम से कम है",
+          "eq": "है",
+          "ne": "नहीं है"
+        },
+        "allTickets": "(सभी टिकट)",
+        "finishFilters": "हर शर्त के लिए एक मान चाहिए।",
+        "finishKpi": "KPI को नाम, 0 से अधिक weight और पूरा माप दें।"
+      }
     }
   }
 }

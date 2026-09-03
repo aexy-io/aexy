@@ -356,6 +356,15 @@ export const settingsNavigation: SettingsNavCategory[] = [
         keywords: ["hours", "shift", "sla", "breach", "clock", "working", "timezone", "target"],
       },
       {
+        id: "service-desk-scorecard",
+        label: "Owner Scorecard",
+        href: "/settings/service-desk/scorecard",
+        icon: Clock,
+        description: "KPI weights, benchmarks and rating bands the owner scorecard grades on",
+        permission: PERMISSIONS.CAN_MANAGE_TICKETS,
+        keywords: ["scorecard", "kpi", "weight", "benchmark", "rating", "performance", "sim", "owner", "productivity"],
+      },
+      {
         id: "service-desk-intake",
         label: "Ticket Intake",
         href: "/settings/service-desk/intake",

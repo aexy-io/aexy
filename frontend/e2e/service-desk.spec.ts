@@ -5,8 +5,8 @@ const API_BASE = "http://localhost:8000/api/v1";
 
 const mockWorkspace = {
   id: "ws-1",
-  name: "Bimaplan",
-  slug: "bimaplan",
+  name: "Northwind",
+  slug: "northwind",
   type: "business",
   avatar_url: null,
   owner_id: "test-user-123",
@@ -37,14 +37,14 @@ const mockDashboard = {
   ],
   tickets: [
     {
-      ticket_id: "t-1", display_id: "BSD-1042", subject: "Policy status", product_name: "Credit Life",
-      account_name: "ABC Finance", request_type: "claims", pending_with: "insurer",
+      ticket_id: "t-1", display_id: "BSD-1042", subject: "Policy status", product_name: "Standard Cover",
+      account_name: "Northwind Ltd", request_type: "claims", pending_with: "insurer",
       assigned_owner_id: "test-user-123", days_in_stage: 3.2, overall_days: 3.2, breach_level: "red",
       needs_triage: false, status: "in_progress",
     },
     {
       ticket_id: "t-2", display_id: "BSD-1043", subject: "New borrower batch", product_name: "GPA",
-      account_name: "XYZ NBFC", request_type: "policy_issuance", pending_with: "kam",
+      account_name: "Eastvale Credit", request_type: "policy_issuance", pending_with: "kam",
       assigned_owner_id: "test-user-123", days_in_stage: 0.2, overall_days: 0.2, breach_level: "green",
       needs_triage: true, status: "new",
     },
@@ -53,7 +53,7 @@ const mockDashboard = {
 
 const mockAccounts = [
   {
-    id: "p-1", workspace_id: "ws-1", name: "ABC Finance", assigned_owner_id: "test-user-123",
+    id: "p-1", workspace_id: "ws-1", name: "Northwind Ltd", assigned_owner_id: "test-user-123",
     assigned_owner_name: null, assigned_owner_email: null, is_active: true,
     domains: ["abcfinance.com"], products: [], created_at: "2026-07-01T00:00:00Z",
   },
@@ -145,7 +145,7 @@ test.describe("Service Desk UI", () => {
 
     // Individual ticket rows
     await expect(page.getByText("BSD-1042")).toBeVisible();
-    await expect(page.getByText("ABC Finance").first()).toBeVisible();
+    await expect(page.getByText("Northwind Ltd").first()).toBeVisible();
     await expect(page.getByText("Triage").first()).toBeVisible(); // BSD-1043 needs_triage
   });
 
@@ -191,7 +191,7 @@ test.describe("Service Desk UI", () => {
     await page.goto("/settings/service-desk/master-data");
     await page.waitForSelector("text=Master Data", { timeout: 15000 });
 
-    await expect(page.getByText("ABC Finance").first()).toBeVisible();
+    await expect(page.getByText("Northwind Ltd").first()).toBeVisible();
     // A manager sees the editing affordances.
     await expect(page.getByRole("button", { name: "Add" }).first()).toBeVisible();
     await expect(page.getByText(/read-only access/i)).toHaveCount(0);
@@ -276,7 +276,7 @@ test.describe("Service Desk UI", () => {
     await page.waitForSelector("text=Master Data", { timeout: 15000 });
 
     // Data is still visible ...
-    await expect(page.getByText("ABC Finance").first()).toBeVisible();
+    await expect(page.getByText("Northwind Ltd").first()).toBeVisible();
     // ... but nothing is editable, and the reason is stated.
     await expect(page.getByText(/read-only access/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Add" })).toHaveCount(0);

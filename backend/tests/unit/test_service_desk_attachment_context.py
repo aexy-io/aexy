@@ -15,7 +15,7 @@ from aexy.services.gmail_sync_service import GmailSyncService
 
 
 def test_csv_preview_contains_header_and_three_sample_rows():
-    raw = b"policy_no,member_name\nP-1,Asha\nP-2,Ravi\nP-3,Neha\nP-4,Ignored\n"
+    raw = b"policy_no,member_name\nP-1,Asha\nP-2,Ravi\nP-3,Dana\nP-4,Ignored\n"
 
     preview = GmailSyncService._service_desk_preview("borrowers.csv", "text/csv", raw)
 
@@ -23,7 +23,7 @@ def test_csv_preview_contains_header_and_three_sample_rows():
         ["policy_no", "member_name"],
         ["P-1", "Asha"],
         ["P-2", "Ravi"],
-        ["P-3", "Neha"],
+        ["P-3", "Dana"],
     ]
 
 
@@ -302,7 +302,7 @@ def test_ordinary_file_is_never_decoded_a_second_time():
 
 
 def test_double_encoded_csv_previews_as_readable_rows():
-    real = b"claim_ref,member_name\nCLM-1,Asha\nCLM-2,Ravi\nCLM-3,Neha\n"
+    real = b"claim_ref,member_name\nCLM-1,Asha\nCLM-2,Ravi\nCLM-3,Dana\n"
     decoded = GmailSyncService._decode_if_still_base64(
         base64.b64encode(real), filename="claims.csv", content_type="text/csv"
     )

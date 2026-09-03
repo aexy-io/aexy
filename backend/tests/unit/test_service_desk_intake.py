@@ -199,10 +199,10 @@ async def _ai_workspace(
 async def test_partner_domain_match_assigns_mapped_kam(db_session: AsyncSession):
     ws = await _workspace(db_session, "sd-a")
     mb = await _mailbox(db_session, ws)
-    kam = Developer(email="neha@example.com", name="Neha")
+    kam = Developer(email="neha@example.com", name="Dana")
     db_session.add(kam)
     await db_session.flush()
-    account = ServiceDeskAccount(workspace_id=ws.id, name="ABC Finance", assigned_owner_id=kam.id)
+    account = ServiceDeskAccount(workspace_id=ws.id, name="Northwind Ltd", assigned_owner_id=kam.id)
     db_session.add(account)
     await db_session.flush()
     db_session.add(ServiceDeskAccountDomain(workspace_id=ws.id, account_id=account.id, domain="abcfinance.com"))
@@ -1373,10 +1373,10 @@ async def test_a_mapped_account_leaves_no_fallback_note(db_session: AsyncSession
     """Master Data answered, so there is nothing to explain."""
     ws = await _workspace(db_session, "why-mapped")
     mb = await _mailbox(db_session, ws)
-    kam = Developer(email="neha-why@example.com", name="Neha")
+    kam = Developer(email="neha-why@example.com", name="Dana")
     db_session.add(kam)
     await db_session.flush()
-    account = ServiceDeskAccount(workspace_id=ws.id, name="ABC Finance", assigned_owner_id=kam.id)
+    account = ServiceDeskAccount(workspace_id=ws.id, name="Northwind Ltd", assigned_owner_id=kam.id)
     db_session.add(account)
     await db_session.flush()
     db_session.add(

@@ -25,7 +25,9 @@ screenshots
 
 # Playwright artifacts (regenerated each test run)
 frontend/playwright-report/
-frontend/test-results/
+# Unanchored so it catches a run started from any directory — output has
+# landed under backend/ and the repo root as well as frontend/.
+test-results/
 frontend/e2e/debug-screenshot*.png
 # Screenshot capture intermediates: e2e/tools/capture-marketing-shots.ts writes
 # PNGs that are converted to the WebP which actually ships. The PNGs are ~3x

@@ -31,6 +31,13 @@ import {
   TicketQuery,
   ServiceDeskTicketDetail,
   PublishTargets,
+  TatReport,
+  Scorecard,
+  ScorecardConfig,
+  ScorecardKPI,
+  ScorecardBand,
+  FormulaVocabulary,
+  ScorecardPreview,
 } from "@/lib/service-desk-api";
 
 /**
@@ -87,6 +94,10 @@ const keys = {
   requestTypes: (ws: string) => ["service-desk", "request-types", ws] as const,
   industryTemplates: (ws: string) => ["service-desk", "industry-templates", ws] as const,
   publishTargets: (ws: string) => ["service-desk", "community-publish-targets", ws] as const,
+  tatReport: (ws: string) => ["service-desk", "tat-report", ws] as const,
+  scorecard: (ws: string) => ["service-desk", "scorecard", ws] as const,
+  scorecardConfig: (ws: string) => ["service-desk", "scorecard-config", ws] as const,
+  formulaVocabulary: (ws: string) => ["service-desk", "formula-vocabulary", ws] as const,
 };
 
 /**
@@ -297,6 +308,67 @@ export function useServiceDeskTaxonomy() {
   };
 }
 
+/**
+ * The per-ticket TAT report.
+ *
+ * Takes the same query the ticket list takes, so the report and the rows behind
+ * it are one question asked two ways.
+ */
+export function useTatReport(query?: TicketQuery) {
+  const ws = useWs();
+  return useQuery<TatReport>({
+    // The filters are part of the key, or changing one would serve the previous
+    // filter's rows from cache until the refetch landed.
+    queryKey: [...keys.tatReport(ws ?? ""), query ?? {}],
+    queryFn: () => serviceDeskApi.getTatReport(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/**
+ * The owner scorecard.
+ *
+ * A manager gets every owner; anyone else gets their own row with the cohort
+ * still measured across the desk — check `restricted_to_self` before captioning
+ * the table as the whole team.
+ */
+export function useScorecard(query?: TicketQuery) {
+  const ws = useWs();
+  return useQuery<Scorecard>({
+    queryKey: [...keys.scorecard(ws ?? ""), query ?? {}],
+    queryFn: () => serviceDeskApi.getScorecard(ws!, query),
+    enabled: !!ws,
+  });
+}
+
+/** The KPI weights, curves and rating bands — plus whether the caller may edit them. */
+export function useScorecardConfig() {
+  const ws = useWs();
+  return useQuery<ScorecardConfig>({
+    queryKey: keys.scorecardConfig(ws ?? ""),
+    queryFn: () => serviceDeskApi.getScorecardConfig(ws!),
+    enabled: !!ws,
+  });
+}
+
+/**
+ * What a custom KPI may be built out of.
+ *
+ * `enabled` is opt-in because the endpoint is manager-only — fetching it for a
+ * reader who cannot build would be a guaranteed 403 in their console.
+ */
+export function useFormulaVocabulary(enabled = true) {
+  const ws = useWs();
+  return useQuery<FormulaVocabulary>({
+    queryKey: keys.formulaVocabulary(ws ?? ""),
+    queryFn: () => serviceDeskApi.getFormulaVocabulary(ws!),
+    enabled: !!ws && enabled,
+    // The desk's own fields change only when somebody edits the taxonomy, and
+    // the builder re-reads it on every open otherwise.
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useServiceDeskMutations() {
   const ws = useWs();
   const qc = useQueryClient();
@@ -347,6 +419,56 @@ export function useServiceDeskMutations() {
           throw error;
         }
         saveBlob(blob, filename);
+      },
+    }),
+    /**
+     * Download a report as CSV.
+     *
+     * A mutation for the same reasons `downloadAttachment` is one: it has a
+     * side effect on the browser, must not be cached, and a failed fetch needs
+     * the shared error toast rather than a silently empty file.
+     */
+    exportReportCsv: useDeskMutation({
+      mutationFn: async ({
+        report,
+        query,
+        filename,
+      }: { report: "tat" | "scorecard"; query?: TicketQuery; filename: string }) => {
+        let blob: Blob;
+        try {
+          blob =
+            report === "tat"
+              ? await serviceDeskApi.exportTatCsv(ws!, query)
+              : await serviceDeskApi.exportScorecardCsv(ws!, query);
+        } catch (error) {
+          // The response body is a Blob on an errored blob request, so it is
+          // decoded back into the shape `getApiErrorMessage` expects.
+          await revealBlobError(error);
+          throw error;
+        }
+        saveBlob(blob, filename);
+      },
+    }),
+    /**
+     * Score an unsaved config against real tickets.
+     *
+     * A mutation rather than a query because it is a POST with a body that
+     * changes on every keystroke — caching it by key would mean either a stale
+     * preview or a cache entry per edit.
+     */
+    previewScorecard: useDeskMutation({
+      mutationFn: (data: { kpis: Omit<ScorecardKPI, "unit">[]; bands: ScorecardBand[] }) =>
+        serviceDeskApi.previewScorecard(ws!, data),
+    }),
+    saveScorecardConfig: useDeskMutation({
+      mutationFn: (data: { kpis: Omit<ScorecardKPI, "unit">[]; bands: ScorecardBand[] }) =>
+        serviceDeskApi.updateScorecardConfig(ws!, data),
+      onSuccess: () => {
+        if (!ws) return;
+        qc.invalidateQueries({ queryKey: keys.scorecardConfig(ws) });
+        // Every score on the scorecard is computed from the config, so a saved
+        // weight has to invalidate the report as well as the settings form.
+        qc.invalidateQueries({ queryKey: keys.scorecard(ws) });
       },
     }),
     splitDetectedIssues: useDeskMutation({

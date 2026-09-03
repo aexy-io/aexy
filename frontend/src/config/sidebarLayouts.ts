@@ -167,6 +167,7 @@ const crmItems: SidebarItemConfig[] = [
 const serviceDeskItems: SidebarItemConfig[] = [
     { href: "/service-desk", label: "Dashboard", icon: LayoutDashboard },
     { href: "/service-desk/tickets", label: "Tickets", icon: Ticket },
+    { href: "/service-desk/reports", label: "Reports", icon: BarChart3 },
     // No Master Data entry. It lives in Settings, alongside Escalation Matrix
     // and Ticket Forms, and listing it here as well put the same page in two
     // navigations — one of which highlighted a Settings route while the reader

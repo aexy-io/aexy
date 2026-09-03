@@ -131,7 +131,7 @@ async def _sd(db: AsyncSession, ticket_id: str) -> ServiceDeskTicket:
 async def test_known_partner_domain_assigns_its_mapped_kam_without_ai(db_session: AsyncSession):
     ws, mailbox, kam_ids = await _desk(db_session, "noai-partner")
     mapped, other = kam_ids
-    partner = ServiceDeskAccount(workspace_id=ws.id, name="ABC Finance", assigned_owner_id=mapped)
+    partner = ServiceDeskAccount(workspace_id=ws.id, name="Northwind Ltd", assigned_owner_id=mapped)
     db_session.add(partner)
     await db_session.flush()
     db_session.add(
