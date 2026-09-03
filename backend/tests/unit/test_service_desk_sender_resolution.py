@@ -44,7 +44,7 @@ from tests.conftest import seed_service_desk_taxonomy
 _FORWARD_BODY = """Hi team, please handle this one.
 
 ---------- Forwarded message ---------
-From: Priya Sharma <priya@partner.example>
+From: Sam Sharma <priya@partner.example>
 Date: Wed, 19 Aug 2026 at 11:04
 Subject: Endorsement request
 To: <ops@desk.example>
@@ -262,7 +262,7 @@ async def test_a_resent_from_header_is_preferred_over_the_body(
             from_email="colleague@desk.example",
             subject="Fwd: Endorsement request",
             body_text="(no quoted headers here)",
-            headers={"Resent-From": "Priya <priya@partner.example>"},
+            headers={"Resent-From": "Sam <priya@partner.example>"},
             message_id="fwd-2",
         ),
         mailbox,

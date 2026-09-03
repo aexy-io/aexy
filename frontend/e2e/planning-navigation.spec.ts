@@ -4,7 +4,7 @@ import { mockUser } from "./fixtures/mock-data";
 const API_BASE = "http://localhost:8000/api/v1";
 
 const mockWorkspace = {
-  id: "ws-1", name: "Bimaplan", slug: "bimaplan", type: "business", avatar_url: null,
+  id: "ws-1", name: "Northwind", slug: "northwind", type: "business", avatar_url: null,
   owner_id: "test-user-123", member_count: 6, team_count: 3, is_active: true,
 };
 
@@ -20,7 +20,7 @@ const mockEffectiveAccess = {
 const EPICS = [
   {
     id: "e-1", workspace_id: "ws-1", key: "EPIC-1", title: "Billing rewrite",
-    status: "in_progress", color: "#6366F1", owner_id: null, owner_name: "Priya",
+    status: "in_progress", color: "#6366F1", owner_id: null, owner_name: "Sam",
     priority: "high", target_date: "2026-06-01",
     total_tasks: 10, completed_tasks: 4, progress_percentage: 40,
   },

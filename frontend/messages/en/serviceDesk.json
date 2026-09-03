@@ -5,7 +5,8 @@
     "tabs": {
       "dashboard": "Dashboard",
       "tickets": "Tickets",
-      "settings": "Master Data"
+      "settings": "Master Data",
+      "reports": "Reports"
     },
     "stats": {
       "totalOpen": "Open tickets",
@@ -414,6 +415,110 @@
       "moveUp": "Move up",
       "moveDown": "Move down",
       "delete": "Delete bucket"
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Turnaround per ticket, and how the desk's owners are performing.",
+      "tabs": {
+        "tat": "TAT Report",
+        "scorecard": "Scorecard"
+      },
+      "clockNote": "Stage figures are working time on this desk's clock: one day is {hours} hours, and the breach target is {days} working days. Overall TAT is elapsed time.",
+      "cohort": "Scores compared across {owners, plural, one {# owner} other {# owners}}.",
+      "ownRowOnly": "Your own row. Scores are still compared across all {owners, plural, one {# owner} other {# owners}} on the desk.",
+      "weightTip": "Weight: {weight}% of the total",
+      "partialTip": "Scored on {pct}% of the weight — the rest had no eligible tickets.",
+      "columns": {
+        "owner": "Owner",
+        "closed": "Closed / Total",
+        "total": "Weighted Score",
+        "rating": "Rating"
+      },
+      "empty": {
+        "tat": "No tickets in this period",
+        "tatHint": "Widen the date range, or log a ticket to see turnaround figures here.",
+        "scorecard": "Nothing to score yet",
+        "scorecardHint": "The scorecard grades assigned tickets. Once tickets have owners, their KPIs appear here."
+      },
+      "config": {
+        "title": "Scorecard",
+        "description": "What the owner scorecard measures, how much each KPI is worth, and where the rating boundaries sit. Weights must total 100%.",
+        "kpi": "KPI",
+        "weight": "Weight",
+        "benchmark": "Benchmark (hrs)",
+        "penalty": "Penalty per unit",
+        "target": "Target",
+        "enabled": "Enabled",
+        "bands": "Rating bands",
+        "minScore": "Minimum score",
+        "label": "Label",
+        "total": "Total weight",
+        "totalOk": "Totals 100%",
+        "totalBad": "Must total 100% — currently {pct}%",
+        "save": "Save scorecard",
+        "saved": "Scorecard saved",
+        "readOnly": "You can see what the desk grades on, but not change it.",
+        "higher": "Higher is better",
+        "lower": "Lower is better",
+        "howCalculated": "How it's calculated",
+        "threshold": "Threshold",
+        "benchmarkHint": "Full marks at or under this",
+        "penaltyHint": "Points off per unit over",
+        "targetHint": "The value that scores 100",
+        "addCustom": "Add custom KPI",
+        "draft": "Draft",
+        "edit": "Edit",
+        "remove": "Remove",
+        "customKpi": "A custom KPI built from this desk's own data."
+      },
+      "formula": {
+        "newTitle": "New KPI",
+        "editTitle": "Edit KPI",
+        "description": "Build a KPI from the desk's own data. Every choice comes from a list, so there is no formula syntax to get wrong.",
+        "name": "Name",
+        "namePlaceholder": "e.g. Escalation rate",
+        "measure": "Measure",
+        "of": "of",
+        "ofTickets": "of tickets",
+        "thatMatch": "that match",
+        "among": "among tickets where",
+        "overTickets": "over tickets where",
+        "addCondition": "Add condition",
+        "useSetting": "use a setting",
+        "relative": "Compare each owner to the desk average",
+        "scoring": "Scoring",
+        "higher": "Higher is better",
+        "lower": "Lower is better",
+        "benchmark": "Benchmark",
+        "penalty": "Penalty per unit",
+        "target": "Target",
+        "weight": "Weight",
+        "preview": "Preview",
+        "runPreview": "Run preview",
+        "previewing": "Scoring…",
+        "previewHint": "Score this against real tickets before you save it.",
+        "previewEmpty": "No owners have tickets in this period, so there is nothing to score yet.",
+        "owner": "Owner",
+        "thisKpi": "This KPI",
+        "score": "Score",
+        "total": "Weighted total",
+        "impact": "This changes {count, plural, one {# rating} other {# ratings}}:",
+        "saveDraft": "Save as draft",
+        "publish": "Publish",
+        "yes": "Yes",
+        "no": "No",
+        "ops": {
+          "lt": "is less than",
+          "lte": "is at most",
+          "gt": "is more than",
+          "gte": "is at least",
+          "eq": "is",
+          "ne": "is not"
+        },
+        "allTickets": "(all tickets)",
+        "finishFilters": "Every condition needs a value.",
+        "finishKpi": "Give the KPI a name, a weight above 0, and a complete measure."
+      }
     }
   }
 }

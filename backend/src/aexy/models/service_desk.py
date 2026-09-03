@@ -36,7 +36,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
@@ -153,6 +153,112 @@ class ServiceDeskRequestType(Base):
             postgresql_where=text("is_default"),
             sqlite_where=text("is_default"),
         ),
+    )
+
+
+class ServiceDeskScorecardKPI(Base):
+    """One weighted KPI on the owner performance scorecard, per workspace.
+
+    Seeded from the workspace's industry template
+    (``service_desk_industry_templates.DEFAULT_SCORECARD_KPIS``) and editable
+    afterwards. The weights, benchmarks and penalty slopes were numbers typed
+    numbers somebody edits; storing them as rows is what keeps them
+    out of the code, where changing "the first-response target is 4 hours"
+    would have meant a deploy.
+
+    ``metric_key`` names a computation registered in
+    ``services/service_desk_scorecard.py``. It is the one column a workspace
+    cannot invent a value for — everything else about the KPI is theirs.
+    """
+
+    __tablename__ = "service_desk_scorecard_kpis"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    metric_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Share of the weighted total. Enabled weights must sum to 1 — validated on
+    # write, because a set summing to 0.9 deflates every score by a tenth and
+    # looks exactly like a working report.
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    direction: Mapped[str] = mapped_column(String(20), nullable=False, default="higher_is_better")
+
+    # The scoring curve. `benchmark` + `penalty_per_unit` for lower-is-better
+    # (full marks up to the benchmark, then a linear penalty); `target` for
+    # higher-is-better (the value that scores 100). Nullable because each
+    # direction uses one pair and ignores the other.
+    benchmark: Mapped[float | None] = mapped_column(Float, nullable=True)
+    penalty_per_unit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    target: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # A number inside the metric's own question — "resolved in at most N
+    # hand-offs" — as opposed to `benchmark`, which grades the figure that
+    # question produces. Only metrics declaring `uses_threshold` read it.
+    threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # "builtin" — `metric_key` names a computation in service_desk_scorecard.
+    # "custom"  — `definition` holds a sentence over the closed vocabulary in
+    # service_desk_formula, and `metric_key` is a workspace-chosen slug that
+    # only has to be unique here.
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="builtin")
+    definition: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Bumped whenever `definition` changes. Editing a KPI retroactively changes
+    # what last quarter's scores meant, so a rendered scorecard reports the
+    # version it was computed under and a review conversation stays reproducible.
+    definition_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # A draft is visible in the builder and its preview, and is never scored.
+    # Half-built KPIs must not move anybody's rating while somebody is still
+    # deciding what the KPI means.
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="published")
+
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "metric_key", name="uq_service_desk_scorecard_kpi_metric"),
+    )
+
+
+class ServiceDeskScorecardBand(Base):
+    """One rating band: a floor on the weighted total, and what to call it.
+
+    Separate rows rather than a JSON blob on the workspace for the same reason
+    the stakeholders are rows — a band has a label a workspace words itself, and
+    "Exceeds Expectations" is exactly the sort of string that ends up needing to
+    read differently at a company that grades on a different vocabulary.
+    """
+
+    __tablename__ = "service_desk_scorecard_bands"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    # 5..1 by convention, but only the ordering is load-bearing: bands are read
+    # highest floor first and the first match wins.
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    min_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "rating", name="uq_service_desk_scorecard_band_rating"),
     )
 
 

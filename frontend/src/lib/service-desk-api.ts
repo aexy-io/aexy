@@ -333,6 +333,189 @@ export interface ServiceDeskDashboard {
  * this shape exists to prevent. Every field narrows — none of them widen what
  * the caller is allowed to see, which the server enforces separately.
  */
+/**
+ * The TAT report's shape, served rather than compiled in.
+ *
+ * There is one stakeholder column per row in the workspace's taxonomy, so a
+ * component that held its own column list would be right for one desk and wrong
+ * for every other. Render from `columns`; index each row by `column.key`.
+ */
+export interface ReportColumn {
+  key: string;
+  label: string;
+  /** How to read the figure: text, datetime, count, boolean, `rate`, or one of
+   *  the clock-sensitive units. `working_*` accrues only during the desk's
+   *  working hours; `elapsed_*` is wall clock, which is what the requester
+   *  actually waited. */
+  unit: string;
+  /** Present only on the per-stakeholder columns. */
+  stakeholder?: string;
+}
+
+export interface TatReport {
+  columns: ReportColumn[];
+  rows: Record<string, string | number | boolean | null>[];
+  total: number;
+  /** What one "day" is worth on this desk's clock, so the UI can explain a
+   *  figure without sending anyone to the settings page. */
+  working_day_hours: number;
+  breach_red_days: number;
+}
+
+export type ScorecardDirection = "higher_is_better" | "lower_is_better";
+
+export interface ScorecardKPI {
+  metric_key: string;
+  label: string;
+  weight: number;
+  direction: ScorecardDirection;
+  /** lower_is_better: full marks at or under this, then `penalty_per_unit` off
+   *  per unit over. */
+  benchmark: number | null;
+  penalty_per_unit: number | null;
+  /** higher_is_better: the value that scores 100. */
+  target: number | null;
+  /** A number inside the metric's own question ("resolved in at most N
+   *  hand-offs"). Only metrics whose catalogue entry says `uses_threshold`
+   *  read it — show the field for those and nothing for the rest. */
+  threshold: number | null;
+  enabled: boolean;
+  unit: string;
+  /** "builtin" — `metric_key` names a shipped computation. "custom" —
+   *  `definition` holds a sentence over the closed vocabulary. */
+  source: "builtin" | "custom";
+  definition: FormulaDefinition | null;
+  /** Bumped when the definition changes, so a rendered scorecard can say which
+   *  version produced it. */
+  definition_version?: number;
+  /** A draft is previewable and never scored. */
+  status: "draft" | "published";
+}
+
+// -- the custom-KPI vocabulary ---------------------------------------------
+
+/** How a field may be compared, and how its figures read. */
+export type FieldKind = "duration" | "number" | "boolean" | "category";
+
+export type Aggregation =
+  | "share" | "count" | "average" | "median" | "min" | "max" | "sum";
+
+/** A filter's right-hand side: a literal, or a pointer at a live setting.
+ *  The pointer exists so a threshold cannot go stale when Ops changes the
+ *  shift — see the settings list on `FormulaVocabulary`. */
+export type FormulaValue = string | number | boolean | { setting: string };
+
+export interface FormulaFilter {
+  field: string;
+  op: string;
+  value: FormulaValue;
+}
+
+export interface FormulaDefinition {
+  aggregation: Aggregation;
+  /** Required for the aggregations that reduce a field; absent for
+   *  `share`/`count`, which measure tickets. */
+  field?: string | null;
+  /** `share` only: what makes a ticket count toward the numerator. */
+  condition?: FormulaFilter[];
+  /** Which tickets are in scope at all — the denominator for a share. */
+  population?: FormulaFilter[];
+  /** Divide by the desk-wide mean. The cohort is always the whole desk, even
+   *  when one row is shown. */
+  relative_to_desk_average?: boolean;
+}
+
+/** What the builder may be built out of. Served per workspace, so a desk that
+ *  adds a Legal bucket gets "Time in Legal" with no frontend release. */
+export interface FormulaVocabulary {
+  fields: { key: string; label: string; kind: FieldKind }[];
+  aggregations: { key: Aggregation; label: string; takes_field: boolean; unit: string | null }[];
+  operators: Record<FieldKind, string[]>;
+  settings: { key: string; label: string; value: number; unit: string }[];
+  options: Record<string, { value: string; label: string }[]>;
+}
+
+export interface ScorecardPreviewRow extends ScorecardRow {
+  /** What this owner scored under the config that is actually live. The
+   *  blast radius: adding a KPI re-grades named people. */
+  previous_score: number | null;
+  previous_rating_label: string | null;
+}
+
+export interface ScorecardPreview {
+  kpis: { metric_key: string; label: string; unit: string }[];
+  rows: ScorecardPreviewRow[];
+  cohort: { owners: number; average_closed: number | null };
+}
+
+/** A metric this build can compute, with the prose that explains it. */
+export interface ScorecardMetric {
+  key: string;
+  label: string;
+  unit: string;
+  direction: ScorecardDirection;
+  /** What the KPI means, and how the figure is arrived at. Read-only: they
+   *  describe what the code computes, so an editable version could drift into
+   *  saying something untrue. */
+  description: string;
+  how_calculated: string;
+  uses_threshold: boolean;
+  /** What to call the threshold box, e.g. "Max hand-offs". Null when unused. */
+  threshold_label: string | null;
+}
+
+/** A KPI as the settings page and the builder pass it around.
+ *
+ *  `unit` is served for display and is not part of the stored row, so it is
+ *  dropped on the way back. Shared here rather than declared in each component:
+ *  two local types with the same name are not the same type, and the compiler
+ *  says so at the moment one is handed to the other. */
+export type ScorecardKPIDraft = Omit<ScorecardKPI, "unit">;
+
+export interface ScorecardBand {
+  rating: number;
+  min_score: number;
+  label: string;
+}
+
+export interface ScorecardRow {
+  owner_id: string | null;
+  owner: string;
+  tickets: number;
+  tickets_closed: number;
+  /** Raw figures per metric key. `null` means "no eligible tickets", which is
+   *  deliberately not zero — see the scorecard service. */
+  values: Record<string, number | null>;
+  scores: Record<string, number | null>;
+  sim_score: number | null;
+  /** How much of the total weight had data behind it. Below 1 means the score
+   *  was renormalised over the KPIs that applied. */
+  weight_scored: number;
+  rating: number | null;
+  rating_label: string | null;
+}
+
+export interface Scorecard {
+  kpis: ScorecardKPI[];
+  bands: ScorecardBand[];
+  rows: ScorecardRow[];
+  /** Always measured across the whole desk, even when `rows` holds one person —
+   *  a cohort of one would score Productivity 100 forever. */
+  cohort: { owners: number; average_closed: number | null; owner_stakeholder: string | null };
+  restricted_to_self: boolean;
+  working_day_hours: number;
+  breach_red_days: number;
+}
+
+export interface ScorecardConfig {
+  kpis: ScorecardKPI[];
+  bands: ScorecardBand[];
+  /** What this build can compute, with the prose describing each. The settings
+   *  page offers these rather than a list of its own. */
+  available_metrics: ScorecardMetric[];
+  can_manage: boolean;
+}
+
 export interface TicketQuery {
   /** Free text over subject, requester and ticket number. Not the body — see
    *  `TicketFilters.q` on the server for why. */
@@ -708,4 +891,44 @@ export const serviceDeskApi = {
   createMailbox: async (ws: string, data: { address: string; channel?: MailboxChannel; integration_id?: string | null }): Promise<Mailbox> =>
     (await api.post(`${base(ws)}/mailboxes`, data)).data,
   deleteMailbox: async (ws: string, id: string): Promise<void> => { await api.delete(`${base(ws)}/mailboxes/${id}`); },
+
+  // reporting — the TAT report and the owner scorecard
+  getTatReport: async (ws: string, params?: TicketQuery): Promise<TatReport> =>
+    (await api.get(`${base(ws)}/reports/tat`, { params })).data,
+  /** Fetched through the client, not an `<a href>`: the bearer token does not
+   *  travel on a plain navigation, so a link downloads an HTML 401 named .csv. */
+  exportTatCsv: async (ws: string, params?: TicketQuery): Promise<Blob> =>
+    (await api.get(`${base(ws)}/reports/tat/export`, { params, responseType: "blob" })).data,
+
+  getScorecard: async (ws: string, params?: TicketQuery): Promise<Scorecard> =>
+    (await api.get(`${base(ws)}/reports/scorecard`, { params })).data,
+  exportScorecardCsv: async (ws: string, params?: TicketQuery): Promise<Blob> =>
+    (await api.get(`${base(ws)}/reports/scorecard/export`, { params, responseType: "blob" })).data,
+
+  getScorecardConfig: async (ws: string): Promise<ScorecardConfig> =>
+    (await api.get(`${base(ws)}/reports/scorecard/config`)).data,
+  /** A whole-set replacement: the enabled weights must total 1, so there is no
+   *  valid partial edit. */
+  updateScorecardConfig: async (
+    ws: string,
+    data: { kpis: Omit<ScorecardKPI, "unit">[]; bands: ScorecardBand[] },
+  ): Promise<ScorecardConfig> =>
+    (await api.put(`${base(ws)}/reports/scorecard/config`, data)).data,
+
+  /** What a custom KPI may be built out of, in this desk's own nouns. */
+  getFormulaVocabulary: async (ws: string): Promise<FormulaVocabulary> =>
+    (await api.get(`${base(ws)}/reports/scorecard/vocabulary`)).data,
+  /**
+   * Score a config that has not been saved, next to the one that is.
+   *
+   * A POST because the body is a whole proposed config, but it writes nothing —
+   * it is what lets the builder show a real figure per owner, and what each
+   * person's score would become, before anybody commits to it.
+   */
+  previewScorecard: async (
+    ws: string,
+    data: { kpis: Omit<ScorecardKPI, "unit">[]; bands: ScorecardBand[] },
+    params?: TicketQuery,
+  ): Promise<ScorecardPreview> =>
+    (await api.post(`${base(ws)}/reports/scorecard/preview`, data, { params })).data,
 };

@@ -60,14 +60,14 @@ async def test_master_data_and_settings(client, sd_ws):
 
     # account with a domain + assigned KAM
     r = await client.post(b + "/accounts", headers=h, json={
-        "name": "ABC Finance", "assigned_owner_id": sd_ws["dev"].id, "domains": ["abcfinance.com"],
+        "name": "Northwind Ltd", "assigned_owner_id": sd_ws["dev"].id, "domains": ["abcfinance.com"],
     })
     assert r.status_code == 201, r.text
     assert r.json()["domains"] == ["abcfinance.com"]
 
     # vendor, Product, mailbox
     assert (await client.post(b + "/vendors", headers=h, json={"name": "XYZ Life", "domains": ["xyzlife.com"]})).status_code == 201
-    assert (await client.post(b + "/products", headers=h, json={"name": "Credit Life"})).status_code == 201
+    assert (await client.post(b + "/products", headers=h, json={"name": "Standard Cover"})).status_code == 201
     assert (await client.post(b + "/mailboxes", headers=h, json={"address": "operations@example.com"})).status_code == 201
 
     assert len((await client.get(b + "/accounts", headers=h)).json()) == 1

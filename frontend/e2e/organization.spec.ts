@@ -5,8 +5,8 @@ const API_BASE = "http://localhost:8000/api/v1";
 
 const mockWorkspace = {
   id: "ws-1",
-  name: "Bimaplan",
-  slug: "bimaplan",
+  name: "Northwind",
+  slug: "northwind",
   type: "business",
   avatar_url: null,
   owner_id: "test-user-123",
@@ -49,7 +49,7 @@ const mockDepartments = [
 // The unplaced one is the state every new joiner starts in.
 const mockPeople = [
   {
-    developer_id: "dev-placed", name: "Neha Placed", email: "neha@bimaplan.co",
+    developer_id: "dev-placed", name: "Dana Placed", email: "neha@northwind.example",
     avatar_url: null, workspace_role: "member",
     departments: [
       { id: "d-1", name: "Operations", function_key: "ops_kam", role_in_department: "member", is_primary: true },
@@ -57,10 +57,10 @@ const mockPeople = [
     manager_id: null, manager_name: null,
   },
   {
-    developer_id: "dev-stranded", name: "Sam Stranded", email: "sam@bimaplan.co",
+    developer_id: "dev-stranded", name: "Sam Stranded", email: "sam@northwind.example",
     avatar_url: null, workspace_role: "member",
     departments: [],
-    manager_id: "dev-placed", manager_name: "Neha Placed",
+    manager_id: "dev-placed", manager_name: "Dana Placed",
   },
 ];
 
@@ -68,7 +68,7 @@ const mockDepartmentDetail = {
   ...mockDepartments[0],
   members: [
     {
-      id: "dm-1", developer_id: "dev-placed", name: "Neha Placed", email: "neha@bimaplan.co",
+      id: "dm-1", developer_id: "dev-placed", name: "Dana Placed", email: "neha@northwind.example",
       avatar_url: null, role_in_department: "member", is_primary: true, allocation_percent: 100,
     },
   ],
@@ -182,7 +182,7 @@ test.describe("Organization UI", () => {
     await page.getByLabel("Manage members").first().click();
 
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Neha Placed")).toBeVisible();
+    await expect(page.getByText("Dana Placed")).toBeVisible();
     // The roster row, not the "Position" dropdowns that also list this title —
     // there are three "Senior KAM" nodes in the dialog and only one of them is
     // the assertion this test means.
@@ -195,7 +195,7 @@ test.describe("Organization UI", () => {
     await expect(picker).toBeVisible();
     await expect(picker.locator("option", { hasText: "Sam Stranded" })).toHaveCount(1);
     // ...and the one already in this department is not offered twice.
-    await expect(picker.locator("option", { hasText: "Neha Placed" })).toHaveCount(0);
+    await expect(picker.locator("option", { hasText: "Dana Placed" })).toHaveCount(0);
 
     await expect(page.getByLabel("Remove from department").first()).toBeVisible();
   });
@@ -209,7 +209,7 @@ test.describe("Organization UI", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
 
     // The roster is still readable ...
-    await expect(page.getByText("Neha Placed")).toBeVisible();
+    await expect(page.getByText("Dana Placed")).toBeVisible();
     // ... but nothing can be changed from here.
     await expect(page.getByRole("dialog").getByLabel("Add", { exact: true })).toHaveCount(0);
     await expect(page.getByLabel("Remove from department")).toHaveCount(0);
@@ -222,7 +222,7 @@ test.describe("Organization UI", () => {
 
     // Placed people appear under their department. Scoped to the row, since the
     // name also appears as an <option> in every manager picker.
-    await expect(page.locator("div.font-medium", { hasText: "Neha Placed" })).toBeVisible();
+    await expect(page.locator("div.font-medium", { hasText: "Dana Placed" })).toBeVisible();
 
     // The unplaced person gets their own group with an explanation — the whole
     // point, since a department-first view cannot show them at all.
@@ -240,7 +240,7 @@ test.describe("Organization UI", () => {
     await expect(page.getByRole("heading", { name: "Directory", level: 1 })).toBeVisible({ timeout: 15000 });
 
     // The manager's name is rendered, but not as an editable control.
-    await expect(page.getByText("Neha Placed").first()).toBeVisible();
+    await expect(page.getByText("Dana Placed").first()).toBeVisible();
     await expect(page.locator("select[aria-label='Reports to']")).toHaveCount(0);
   });
 });

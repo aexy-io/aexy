@@ -4,8 +4,8 @@ Applies a template's taxonomy (stakeholders + request types) and the departments
 its internal stakeholders route to, registers a shared mailbox, and — optionally —
 loads sample master data from a JSON file.
 
-This replaced ``seed_bimaplan_service_desk.py``, which hardcoded one company's
-staff names, ``@bimaplan.co`` email addresses, eight insurance lines of business
+This replaced ``an earlier customer-specific seed script``, which hardcoded one company's
+staff names, ``@northwind.example`` email addresses, eight insurance lines of business
 and three named partners. None of that belonged in a script shipped to everyone:
 a template describes a *shape*, and the names are yours.
 
