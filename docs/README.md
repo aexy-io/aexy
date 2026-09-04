@@ -56,7 +56,8 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ### Modules — Core
 - [Dashboard](./dashboard.md) - My Work, the widget grid, presets
-- [Organization](./organization.md) - Departments, teams, the org chart, access profiles
+- [Organization](./organization.md) - Departments, placing people, reporting lines, and what a department switches on
+- [Organization architecture](./organization-architecture.md) - The tree, access resolution, positions, the directory read
 
 ### Modules — People
 - [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths

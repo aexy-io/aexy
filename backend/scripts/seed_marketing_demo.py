@@ -32,6 +32,7 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from fastapi import HTTPException  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
 
 from aexy.core.database import async_session_maker  # noqa: E402
@@ -47,7 +48,7 @@ from aexy.models.sprint import (  # noqa: E402
     WorkspaceTaskStatus,
 )
 from aexy.models.team import Team, TeamMember  # noqa: E402
-from aexy.models.workspace import Workspace  # noqa: E402
+from aexy.models.workspace import Workspace, WorkspaceMember  # noqa: E402
 
 PREFERRED_DEVELOPER_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -868,11 +869,209 @@ async def seed_docs(db, workspace_id: str, dev: Developer) -> None:
 
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------- organization
+
+#: Colleagues, so the org chart and the directory have somebody in them. The
+#: workspace otherwise holds whoever signed in plus the two owners the Service
+#: Desk seed adds, and a three-person chart demonstrates nothing about
+#: departments, reporting lines or multi-department membership.
+ORG_PEOPLE = [
+    ("priya.raman@northwind.example", "Priya Raman"),
+    ("marcus.bell@northwind.example", "Marcus Bell"),
+    ("aiko.tanaka@northwind.example", "Aiko Tanaka"),
+    ("elena.duarte@northwind.example", "Elena Duarte"),
+]
+
+
+async def seed_organization(db, workspace: Workspace, dev: Developer) -> None:
+    """A small but complete org: departments with functions, heads, seats and
+    reporting lines.
+
+    Written through `OrganizationService` rather than as INSERTs, because
+    `path`, `depth` and the uniqueness of a function key are computed there —
+    a hand-built row looks right in the table and breaks the org chart.
+
+    Departments carry **function keys** on purpose. The Service Desk decides
+    who may see a ticket from the department that owns its pending-with bucket,
+    so a demo workspace with no functions shows "No department" on every row of
+    the queue board and every screenshot of it says the desk is misconfigured.
+    """
+    from aexy.schemas.organization import (
+        DepartmentCreate,
+        MembershipCreate,
+        PositionCreate,
+    )
+    from aexy.services.organization_service import OrganizationService
+
+    org = OrganizationService(db)
+    people: dict[str, Developer] = {}
+
+    for email, name in ORG_PEOPLE:
+        person = (
+            await db.execute(select(Developer).where(Developer.email == email))
+        ).scalar_one_or_none()
+        if person is None:
+            person = Developer(id=str(uuid4()), email=email, name=name)
+            db.add(person)
+            await db.flush()
+        people[name] = person
+
+        member = (
+            await db.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == workspace.id,
+                    WorkspaceMember.developer_id == person.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if member is None:
+            db.add(
+                WorkspaceMember(
+                    workspace_id=workspace.id,
+                    developer_id=person.id,
+                    role="member",
+                    status="active",
+                )
+            )
+        note("person", name, member is None)
+
+    await db.flush()
+
+    # Whoever the Service Desk seed put here, if it ran first; otherwise the
+    # owner stands in, so this seeder does not depend on the order.
+    def whoever(email: str) -> str:
+        return by_email.get(email, dev).id
+
+    by_email = {
+        d.email: d
+        for d in (
+            await db.execute(
+                select(Developer).join(
+                    WorkspaceMember, WorkspaceMember.developer_id == Developer.id
+                ).where(WorkspaceMember.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+
+    existing = {d.name: d for d in await org.list_departments(workspace.id)}
+
+    async def department(name: str, **kwargs) -> str:
+        if name in existing:
+            return existing[name].id
+        made = await org.create_department(
+            workspace.id, DepartmentCreate(name=name, **kwargs)
+        )
+        existing[name] = made
+        note("department", name, True)
+        return made.id
+
+    ops = await department(
+        "Operations",
+        function_key="operations",
+        description="Runs the service desk and everything downstream of it.",
+        head_id=whoever("dana@northwind.example"),
+        cost_center="OPS-100",
+        headcount_planned=6,
+        location="Mumbai",
+        timezone="Asia/Kolkata",
+    )
+    claims = await department(
+        "Claims",
+        parent_id=ops,
+        description="Claims intake and settlement follow-up.",
+        head_id=people["Priya Raman"].id,
+        cost_center="OPS-110",
+        headcount_planned=3,
+        location="Mumbai",
+    )
+    sales = await department(
+        "Sales",
+        function_key="sales",
+        head_id=whoever("rowan@northwind.example"),
+        cost_center="SAL-200",
+        headcount_planned=4,
+        location="London",
+    )
+    finance = await department(
+        "Finance",
+        function_key="finance",
+        head_id=people["Marcus Bell"].id,
+        cost_center="FIN-300",
+        headcount_planned=2,
+    )
+    hr = await department(
+        "People",
+        function_key="hr",
+        head_id=people["Elena Duarte"].id,
+        cost_center="PPL-400",
+        headcount_planned=2,
+    )
+
+    # (department, person, role, primary?) — Priya appears twice on purpose:
+    # somebody splitting their time across two departments is a thing the model
+    # supports and a thing nothing else in the demo data shows.
+    memberships = [
+        (ops, whoever("dana@northwind.example"), "head", True),
+        (ops, people["Priya Raman"].id, "manager", False),
+        (ops, people["Marcus Bell"].id, "member", False),
+        (claims, people["Priya Raman"].id, "head", True),
+        (sales, whoever("rowan@northwind.example"), "head", True),
+        (sales, people["Aiko Tanaka"].id, "member", True),
+        (finance, people["Marcus Bell"].id, "head", True),
+        (hr, people["Elena Duarte"].id, "head", True),
+        (hr, dev.id, "member", False),
+    ]
+    for dept_id, developer_id, role, primary in memberships:
+        try:
+            await org.add_member(
+                workspace.id,
+                dept_id,
+                MembershipCreate(
+                    developer_id=developer_id,
+                    role_in_department=role,
+                    is_primary=primary,
+                ),
+            )
+        except HTTPException as exc:
+            # 409 is "already a member", which is what a second run looks like.
+            if exc.status_code != 409:
+                raise
+
+    # Open seats, so headcount planned against filled means something.
+    for dept_id, title in ((claims, "Claims Analyst"), (sales, "Account Executive")):
+        detail = await org.get_department(workspace.id, dept_id)
+        if not any(p.title == title for p in (detail.positions or [])):
+            await org.add_position(workspace.id, dept_id, PositionCreate(title=title))
+
+    # Who reports to whom. Stored on the workspace membership, not the
+    # department, because a reporting line follows the person.
+    lines = [
+        (people["Priya Raman"].id, whoever("dana@northwind.example")),
+        (people["Marcus Bell"].id, whoever("dana@northwind.example")),
+        (people["Aiko Tanaka"].id, whoever("rowan@northwind.example")),
+        (whoever("dana@northwind.example"), dev.id),
+        (whoever("rowan@northwind.example"), dev.id),
+        (people["Elena Duarte"].id, dev.id),
+    ]
+    for developer_id, manager_id in lines:
+        if developer_id == manager_id:
+            continue
+        await org.set_manager(workspace.id, developer_id, manager_id)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--yes", "-y", action="store_true",
         help="actually write. Without it the script only reports its target.",
+    )
+    parser.add_argument(
+        "--workspace",
+        help=(
+            "seed this workspace instead of the first developer's first one. "
+            "The default picks whichever workspace happens to be oldest, which "
+            "is rarely the demo one once a database has more than one."
+        ),
     )
     args = parser.parse_args()
 
@@ -892,14 +1091,35 @@ async def main() -> int:
             print("No developer found — nothing to seed against.", file=sys.stderr)
             return 1
 
-        workspace = (
-            await db.execute(
-                select(Workspace)
-                .where(Workspace.owner_id == dev.id)
-                .order_by(Workspace.created_at)
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+        if args.workspace:
+            workspace = (
+                await db.execute(
+                    select(Workspace).where(Workspace.id == args.workspace)
+                )
+            ).scalar_one_or_none()
+            if workspace is None:
+                print(f"No workspace {args.workspace}.", file=sys.stderr)
+                return 1
+            # Act as its owner: seeded rows carry a creator, and attributing
+            # them to whoever happens to be the first developer in the database
+            # puts a stranger's name on every record in somebody else's
+            # workspace.
+            owner = (
+                await db.execute(
+                    select(Developer).where(Developer.id == workspace.owner_id)
+                )
+            ).scalar_one_or_none()
+            if owner is not None:
+                dev = owner
+        else:
+            workspace = (
+                await db.execute(
+                    select(Workspace)
+                    .where(Workspace.owner_id == dev.id)
+                    .order_by(Workspace.created_at)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
         if workspace is None:
             print(f"Developer {dev.id} owns no workspace.", file=sys.stderr)
             return 1
@@ -922,6 +1142,7 @@ async def main() -> int:
             return 1
 
         print()
+        await seed_organization(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)

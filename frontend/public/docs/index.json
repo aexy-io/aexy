@@ -241,7 +241,13 @@
           "title": "Organization",
           "slug": "organization",
           "path": "organization.md",
-          "description": "Departments, teams, the org chart, access profiles"
+          "description": "Departments, placing people, reporting lines, and what a department switches on"
+        },
+        {
+          "title": "Organization architecture",
+          "slug": "organization-architecture",
+          "path": "organization-architecture.md",
+          "description": "The tree, access resolution, positions, the directory read"
         }
       ]
     },
@@ -621,8 +627,14 @@
     "organization": {
       "title": "Organization",
       "section": "Modules — Core",
-      "description": "Departments, teams, the org chart, access profiles",
+      "description": "Departments, placing people, reporting lines, and what a department switches on",
       "path": "organization.md"
+    },
+    "organization-architecture": {
+      "title": "Organization architecture",
+      "section": "Modules — Core",
+      "description": "The tree, access resolution, positions, the directory read",
+      "path": "organization-architecture.md"
     },
     "reviews-and-people": {
       "title": "Reviews, hiring & learning",
@@ -1101,14 +1113,24 @@
         "slug": "dashboard"
       },
       "next": {
+        "title": "Organization architecture",
+        "slug": "organization-architecture"
+      }
+    },
+    "organization-architecture": {
+      "prev": {
+        "title": "Organization",
+        "slug": "organization"
+      },
+      "next": {
         "title": "Reviews, hiring & learning",
         "slug": "reviews-and-people"
       }
     },
     "reviews-and-people": {
       "prev": {
-        "title": "Organization",
-        "slug": "organization"
+        "title": "Organization architecture",
+        "slug": "organization-architecture"
       },
       "next": {
         "title": "Compliance",

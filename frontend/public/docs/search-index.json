@@ -1179,12 +1179,30 @@
     "slug": "organization",
     "title": "Organization",
     "section": "Modules — Core",
-    "description": "Departments, teams, the org chart, access profiles",
+    "description": "Departments, placing people, reporting lines, and what a department switches on",
     "headings": [
       "Organization",
       "Departments are not teams",
+      "Building the structure",
+      "The function is the part with consequences",
+      "Putting people in it",
+      "Reporting lines",
+      "Open seats",
+      "What a department switches on",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "organization-architecture",
+    "title": "Organization architecture",
+    "section": "Modules — Core",
+    "description": "The tree, access resolution, positions, the directory read",
+    "headings": [
+      "Organization — architecture",
+      "Departments are not teams",
       "Access profiles",
-      "The org chart",
+      "The tree",
+      "Reporting lines",
       "Positions",
       "Directory",
       "Common pitfalls"
