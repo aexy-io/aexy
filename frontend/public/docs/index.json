@@ -188,7 +188,13 @@
           "title": "Sprints & planning",
           "slug": "sprints",
           "path": "sprints.md",
-          "description": "Sprints, epics, stories, planning poker, retrospectives, releases"
+          "description": "The board, the backlog, running a cycle, estimating together"
+        },
+        {
+          "title": "Sprints & planning architecture",
+          "slug": "sprints-architecture",
+          "path": "sprints-architecture.md",
+          "description": "Models, lifecycle endpoints, poker sessions, external sync"
         },
         {
           "title": "Tickets & projects",
@@ -585,8 +591,14 @@
     "sprints": {
       "title": "Sprints & planning",
       "section": "Modules — Work & planning",
-      "description": "Sprints, epics, stories, planning poker, retrospectives, releases",
+      "description": "The board, the backlog, running a cycle, estimating together",
       "path": "sprints.md"
+    },
+    "sprints-architecture": {
+      "title": "Sprints & planning architecture",
+      "section": "Modules — Work & planning",
+      "description": "Models, lifecycle endpoints, poker sessions, external sync",
+      "path": "sprints-architecture.md"
     },
     "tickets-and-projects": {
       "title": "Tickets & projects",
@@ -1045,14 +1057,24 @@
         "slug": "integrations/openobserve"
       },
       "next": {
+        "title": "Sprints & planning architecture",
+        "slug": "sprints-architecture"
+      }
+    },
+    "sprints-architecture": {
+      "prev": {
+        "title": "Sprints & planning",
+        "slug": "sprints"
+      },
+      "next": {
         "title": "Tickets & projects",
         "slug": "tickets-and-projects"
       }
     },
     "tickets-and-projects": {
       "prev": {
-        "title": "Sprints & planning",
-        "slug": "sprints"
+        "title": "Sprints & planning architecture",
+        "slug": "sprints-architecture"
       },
       "next": {
         "title": "Tickets & projects architecture",

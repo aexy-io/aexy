@@ -975,9 +975,25 @@
     "slug": "sprints",
     "title": "Sprints & planning",
     "section": "Modules — Work & planning",
-    "description": "Sprints, epics, stories, planning poker, retrospectives, releases",
+    "description": "The board, the backlog, running a cycle, estimating together",
     "headings": [
-      "Sprints & Planning",
+      "Sprints & planning",
+      "The pieces",
+      "The board",
+      "The backlog",
+      "Running a cycle",
+      "Estimating together",
+      "Work from GitHub, Jira or Linear",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "sprints-architecture",
+    "title": "Sprints & planning architecture",
+    "section": "Modules — Work & planning",
+    "description": "Models, lifecycle endpoints, poker sessions, external sync",
+    "headings": [
+      "Sprints & planning — architecture",
       "Mental model",
       "Sprint lifecycle",
       "Backend routers",
@@ -1185,10 +1201,11 @@
     "description": "My Work, the widget grid, presets",
     "headings": [
       "Dashboard",
-      "The widget grid",
-      "Presets",
-      "Adding a widget",
-      "Common pitfalls"
+      "My Work",
+      "Insights: the widget grid",
+      "Starting layouts",
+      "Common mistakes",
+      "For developers"
     ]
   },
   {

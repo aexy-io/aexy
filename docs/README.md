@@ -46,7 +46,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [OpenObserve](./integrations/openobserve.md) - Log and trace shipping
 
 ### Modules — Work & planning
-- [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
+- [Sprints & planning](./sprints.md) - The board, the backlog, running a cycle, estimating together
+- [Sprints & planning architecture](./sprints-architecture.md) - Models, lifecycle endpoints, poker sessions, external sync
 - [Tickets & projects](./tickets-and-projects.md) - Raising tickets, where the queue lives, forms, converting to work
 - [Tickets & projects architecture](./tickets-and-projects-architecture.md) - The four work-item models, statuses, sync, public projects
 - [Service Desk](./service-desk.md) - Running a desk: mailboxes, master data, handoffs, the clock, reports
