@@ -310,6 +310,13 @@ async def main(workspace_id: str | None = None) -> None:
                 assignee_id=owner.id,
                 title=subject,
                 field_values={"subject": subject},
+                # What real intake stamps on a ticket that arrived by email.
+                # Without it these rows are indistinguishable from the generic
+                # ticketing module's own — `TicketService.list_tickets` excludes
+                # the desk by `source LIKE 'service_desk%'`, so an unset source
+                # puts every seeded desk ticket into a module it does not belong
+                # to, and the demo shows the same five tickets in two places.
+                source="service_desk_webhook",
             )
             db.add(row)
             # The segments carry a foreign key to the ticket, so it has to exist

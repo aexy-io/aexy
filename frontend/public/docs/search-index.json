@@ -994,9 +994,25 @@
     "slug": "tickets-and-projects",
     "title": "Tickets & projects",
     "section": "Modules — Work & planning",
-    "description": "Tickets, sprint tasks, projects, templates, ticket forms",
+    "description": "Raising tickets, where the queue lives, forms, converting to work",
     "headings": [
-      "Tickets, Projects & Tasks",
+      "Tickets & projects",
+      "Which thing do I want?",
+      "Where the queue lives",
+      "A ticket's life",
+      "Getting tickets in",
+      "Statuses and fields of your own",
+      "Projects",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "tickets-and-projects-architecture",
+    "title": "Tickets & projects architecture",
+    "section": "Modules — Work & planning",
+    "description": "The four work-item models, statuses, sync, public projects",
+    "headings": [
+      "Tickets, projects & tasks — architecture",
       "The four concepts",
       "Tickets",
       "Lifecycle",

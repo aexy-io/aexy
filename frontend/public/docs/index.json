@@ -194,7 +194,13 @@
           "title": "Tickets & projects",
           "slug": "tickets-and-projects",
           "path": "tickets-and-projects.md",
-          "description": "Tickets, sprint tasks, projects, templates, ticket forms"
+          "description": "Raising tickets, where the queue lives, forms, converting to work"
+        },
+        {
+          "title": "Tickets & projects architecture",
+          "slug": "tickets-and-projects-architecture",
+          "path": "tickets-and-projects-architecture.md",
+          "description": "The four work-item models, statuses, sync, public projects"
         },
         {
           "title": "Service Desk",
@@ -585,8 +591,14 @@
     "tickets-and-projects": {
       "title": "Tickets & projects",
       "section": "Modules — Work & planning",
-      "description": "Tickets, sprint tasks, projects, templates, ticket forms",
+      "description": "Raising tickets, where the queue lives, forms, converting to work",
       "path": "tickets-and-projects.md"
+    },
+    "tickets-and-projects-architecture": {
+      "title": "Tickets & projects architecture",
+      "section": "Modules — Work & planning",
+      "description": "The four work-item models, statuses, sync, public projects",
+      "path": "tickets-and-projects-architecture.md"
     },
     "service-desk": {
       "title": "Service Desk",
@@ -1043,14 +1055,24 @@
         "slug": "sprints"
       },
       "next": {
+        "title": "Tickets & projects architecture",
+        "slug": "tickets-and-projects-architecture"
+      }
+    },
+    "tickets-and-projects-architecture": {
+      "prev": {
+        "title": "Tickets & projects",
+        "slug": "tickets-and-projects"
+      },
+      "next": {
         "title": "Service Desk",
         "slug": "service-desk"
       }
     },
     "service-desk": {
       "prev": {
-        "title": "Tickets & projects",
-        "slug": "tickets-and-projects"
+        "title": "Tickets & projects architecture",
+        "slug": "tickets-and-projects-architecture"
       },
       "next": {
         "title": "Service Desk architecture",

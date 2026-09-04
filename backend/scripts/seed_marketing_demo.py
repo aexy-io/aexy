@@ -48,6 +48,7 @@ from aexy.models.sprint import (  # noqa: E402
     WorkspaceTaskStatus,
 )
 from aexy.models.team import Team, TeamMember  # noqa: E402
+from aexy.models.ticketing import Ticket, TicketForm  # noqa: E402
 from aexy.models.workspace import Workspace, WorkspaceMember  # noqa: E402
 
 PREFERRED_DEVELOPER_ID = "11111111-1111-1111-1111-111111111111"
@@ -1059,6 +1060,124 @@ async def seed_organization(db, workspace: Workspace, dev: Developer) -> None:
         await org.set_manager(workspace.id, developer_id, manager_id)
 
 
+# --------------------------------------------------------------------- tickets
+
+#: (title, status, priority, requester, body) — a support queue mid-week, which
+#: is what the module is for: a couple untriaged, work in progress, one waiting
+#: on the person who raised it, one already resolved.
+DEMO_TICKETS = [
+    (
+        "Export to CSV times out on large boards",
+        "new",
+        "high",
+        ("Ravi Menon", "ravi@lumenanalytics.example"),
+        "Exporting a board with about 4,000 rows spins for a minute and then fails. Smaller boards are fine.",
+    ),
+    (
+        "Invite email never arrived",
+        "new",
+        "medium",
+        ("Sofia Ferreira", "sofia@brightpathlabs.example"),
+        "Two new starters were invited on Monday and neither has had the email. Not in spam.",
+    ),
+    (
+        "SSO login loops back to the sign-in page",
+        "in_progress",
+        "urgent",
+        ("Tom Whitfield", "tom@northwindtraders.example"),
+        "After authenticating with Okta the browser returns to /login instead of the dashboard.",
+    ),
+    (
+        "Can we change the working week to Sunday–Thursday?",
+        "waiting_on_submitter",
+        "low",
+        ("Layla Haddad", "layla@fieldstonelogistics.example"),
+        "Our team works Sunday to Thursday. Asked for the account name so we can check the plan.",
+    ),
+    (
+        "Attachment preview is blank for .heic images",
+        "resolved",
+        "medium",
+        ("Ravi Menon", "ravi@lumenanalytics.example"),
+        "Fixed in this week's release — previews now render, and older uploads regenerate on first view.",
+    ),
+]
+
+
+async def seed_tickets(db, workspace: Workspace, dev: Developer) -> None:
+    """A support queue for the ticketing module.
+
+    Separate from the Service Desk's tickets on purpose. Both modules store
+    rows in `tickets`, and the generic one excludes the desk by
+    `source LIKE 'service_desk%'` — so a demo where the only tickets belong to
+    the desk photographs an empty Tickets page, and a demo where the desk's
+    tickets have no `source` photographs the same five tickets twice.
+    """
+    form = (
+        await db.execute(
+            select(TicketForm).where(
+                TicketForm.workspace_id == workspace.id,
+                TicketForm.slug == "support",
+            )
+        )
+    ).scalar_one_or_none()
+    if form is None:
+        form = TicketForm(
+            id=str(uuid4()),
+            workspace_id=workspace.id,
+            name="Support",
+            slug="support",
+            description="Product support requests from customers.",
+            created_by_id=dev.id,
+        )
+        db.add(form)
+        await db.flush()
+    note("ticket form", "Support", form.created_at is None)
+
+    seen = {
+        title
+        for title in (
+            await db.execute(
+                select(Ticket.title).where(Ticket.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+    highest = (
+        await db.execute(
+            select(func.max(Ticket.ticket_number)).where(
+                Ticket.workspace_id == workspace.id
+            )
+        )
+    ).scalar() or 0
+
+    for offset, (title, status, priority, (name, email), body) in enumerate(
+        DEMO_TICKETS, start=1
+    ):
+        if title in seen:
+            note("ticket", title, False)
+            continue
+
+        db.add(
+            Ticket(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                form_id=form.id,
+                # Continues the workspace's numbering: `uq_ticket_number` is
+                # (workspace_id, ticket_number), and the desk has already used
+                # the low numbers.
+                ticket_number=highest + offset,
+                title=title,
+                submitter_name=name,
+                submitter_email=email,
+                field_values={"subject": title, "description": body},
+                status=status,
+                priority=priority,
+                assignee_id=dev.id if status in {"in_progress", "resolved"} else None,
+            )
+        )
+        note("ticket", title, True)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1143,6 +1262,7 @@ async def main() -> int:
 
         print()
         await seed_organization(db, workspace, dev)
+        await seed_tickets(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)

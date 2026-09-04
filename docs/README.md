@@ -47,7 +47,8 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ### Modules — Work & planning
 - [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
-- [Tickets & projects](./tickets-and-projects.md) - Tickets, sprint tasks, projects, templates, ticket forms
+- [Tickets & projects](./tickets-and-projects.md) - Raising tickets, where the queue lives, forms, converting to work
+- [Tickets & projects architecture](./tickets-and-projects-architecture.md) - The four work-item models, statuses, sync, public projects
 - [Service Desk](./service-desk.md) - Running a desk: mailboxes, master data, handoffs, the clock, reports
 - [Service Desk architecture](./service-desk-architecture.md) - How it is built: intake pipeline, models, API, frontend
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
