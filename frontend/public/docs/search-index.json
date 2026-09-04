@@ -196,6 +196,49 @@
     ]
   },
   {
+    "slug": "guides/workspace-setup",
+    "title": "Setting up a workspace",
+    "section": "For administrators",
+    "description": "The first hour: people, apps, departments, modules",
+    "headings": [
+      "Setting up a workspace",
+      "What a workspace is",
+      "1. Invite the people",
+      "2. Switch on the apps you will use",
+      "3. Build the departments",
+      "4. Set up the modules you turned on",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/roles-and-access",
+    "title": "Roles, permissions & app access",
+    "section": "For administrators",
+    "description": "Why two colleagues see different things, and how to change it",
+    "headings": [
+      "Roles, permissions and app access",
+      "Two different questions",
+      "Workspace roles",
+      "Where app access comes from",
+      "Asking for access",
+      "Project permissions are separate",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/email-setup",
+    "title": "Email and inbox setup",
+    "section": "For administrators",
+    "description": "Mail arriving and mail leaving, and which module reads which",
+    "headings": [
+      "Email and inbox setup",
+      "Mail arriving",
+      "Which module reads which",
+      "Mail leaving",
+      "Common mistakes"
+    ]
+  },
+  {
     "slug": "guides/getting-started",
     "title": "Getting Started",
     "section": "Getting started & operations",

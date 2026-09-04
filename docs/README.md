@@ -20,6 +20,11 @@ We're on a mission to bring positive change by building world-class tools actual
 - [API Overview](./api/overview.md) - Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs
 - [Tracker ingest API](./api/tracker-ingest.md) - Aexy Tracker device enrollment + idempotent event ingest contract
 
+### For administrators
+- [Setting up a workspace](./guides/workspace-setup.md) - The first hour: people, apps, departments, modules
+- [Roles, permissions & app access](./guides/roles-and-access.md) - Why two colleagues see different things, and how to change it
+- [Email and inbox setup](./guides/email-setup.md) - Mail arriving and mail leaving, and which module reads which
+
 ### Getting started & operations
 - [Getting Started](./guides/getting-started.md) - Quick start guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
