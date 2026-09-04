@@ -221,10 +221,17 @@ exports as a zip with folders mirroring the page hierarchy.
 The export contains what you can read: a bulk export is a read of every page in
 it, and is filtered accordingly.
 
-> **PDF and non-Latin scripts.** PDF export uses a Latin-1 font by default, so
-> a page written in Hindi or another non-Latin script will warn that some
-> characters cannot be drawn. An administrator fixes this once by setting
-> `AEXY_PDF_FONT_DIR` to a directory holding a font that covers the script.
+> **PDF and non-Latin scripts.** A page written in Hindi or another script that
+> needs reshaping — Devanagari, Arabic, Thai and similar — exports to PDF with
+> its characters drawn individually and not reshaped, so vowel signs and
+> conjuncts can come out in the wrong order or unjoined. The export says so
+> when it happens. **Use Markdown or HTML for a faithful copy of those pages**;
+> those formats keep the text exactly as written.
+>
+> Latin text is unaffected. Nothing needs configuring — the shipped Docker
+> image includes a font covering Latin and Devanagari. Running outside Docker,
+> an administrator points `AEXY_PDF_FONT_DIR` at a directory holding a font
+> that covers the script, or non-Latin pages export blank.
 
 ---
 

@@ -128,36 +128,102 @@ def _register_fonts() -> _Fonts:
     return _fonts
 
 
+#: Filename tokens that name a face inside a family, longest first so
+#: "BoldOblique" is not read as "Bold" and the italic face silently becomes the
+#: bold one.
+_FACE_TOKENS: tuple[tuple[str, str], ...] = (
+    ("bolditalic", "bold_italic"),
+    ("boldoblique", "bold_italic"),
+    ("bold-italic", "bold_italic"),
+    ("bold-oblique", "bold_italic"),
+    ("bold", "bold"),
+    ("italic", "italic"),
+    ("oblique", "italic"),
+    ("regular", "regular"),
+    ("book", "regular"),
+)
+
+
+def _classify(filename: str) -> tuple[str, str]:
+    """Split a TTF filename into (family key, face slot).
+
+    `FreeSansBoldOblique.ttf` is the bold-italic face of `freesans`, not a
+    family of its own — which is the whole reason a directory holding several
+    families can be resolved at all.
+    """
+    stem = os.path.splitext(filename)[0].lower()
+    for token, slot in _FACE_TOKENS:
+        if token in stem:
+            key = stem.replace(token, "").strip(" -_.")
+            return key or stem, slot
+    return stem, "regular"
+
+
 def _load_family(font_dir: str) -> _Fonts | None:
-    """Find a regular/bold/italic set in `font_dir` and register it."""
-    by_name = {f.lower(): f for f in os.listdir(font_dir) if f.lower().endswith(".ttf")}
-    if not by_name:
+    """Register the widest-covering family in `font_dir`.
+
+    Grouped into families and chosen by glyph coverage, rather than by taking
+    the first filename containing "regular". That earlier rule made a shared
+    directory actively dangerous: pointed at `/usr/share/fonts/truetype/`,
+    `DejaVuSans-Regular.ttf` (283 glyphs, no Devanagari) beat
+    `NotoSansDevanagari-Regular.ttf` purely by appearing first in
+    `os.listdir`, so a Hindi export came out blank *with a font that covers it
+    sitting in the same directory* — and, because listdir order is filesystem
+    order, it did that on some machines and not others.
+
+    Coverage is the right tie-break because coverage is what this module is
+    for: the widest face is the one that leaves fewest characters undrawable.
+    An operator who wants a specific family should pass a directory holding
+    only that family, which is what the container image does.
+
+    One TTF is parsed per family to measure it. That is cached for the process
+    by `_register_fonts`, so a directory with many families costs a one-off
+    read on the first export rather than on every one.
+    """
+    families: dict[str, dict[str, str]] = {}
+    # Sorted so a tie between equal-coverage families resolves the same way
+    # every run, rather than by directory order.
+    for name in sorted(os.listdir(font_dir)):
+        if not name.lower().endswith(".ttf"):
+            continue
+        key, slot = _classify(name)
+        families.setdefault(key, {}).setdefault(slot, os.path.join(font_dir, name))
+
+    if not families:
         return None
 
-    def find(*needles: str) -> str | None:
-        for lowered, actual in by_name.items():
-            if all(n in lowered for n in needles):
-                return os.path.join(font_dir, actual)
-        return None
-
-    regular = (
-        find("regular")
-        or find("-r")
-        or next(
-            (
-                os.path.join(font_dir, f)
-                for lowered, f in by_name.items()
-                if not any(x in lowered for x in ("bold", "italic", "oblique"))
-            ),
-            None,
+    def pick_regular(paths: dict[str, str]) -> str:
+        return (
+            paths.get("regular")
+            or paths.get("bold")
+            or paths.get("italic")
+            or next(iter(paths.values()))
         )
-    )
-    if regular is None:
+
+    best_key: str | None = None
+    best_paths: dict[str, str] | None = None
+    best_cmap: set[int] | None = None
+
+    for key in sorted(families):
+        paths = families[key]
+        probe = pick_regular(paths)
+        try:
+            cmap = set(TTFont(f"_probe-{key}", probe).face.charToGlyph.keys())
+        except Exception:
+            # A directory of system fonts will contain something unparseable
+            # sooner or later; one bad file must not cost the whole export.
+            logger.warning("could not read font %s; skipping", probe, exc_info=True)
+            continue
+        if best_cmap is None or len(cmap) > len(best_cmap):
+            best_key, best_paths, best_cmap = key, paths, cmap
+
+    if best_paths is None or best_key is None:
         return None
 
-    bold = find("bold") or regular
-    italic = find("italic") or find("oblique") or regular
-    bold_italic = find("bold", "italic") or bold
+    regular = pick_regular(best_paths)
+    bold = best_paths.get("bold") or regular
+    italic = best_paths.get("italic") or regular
+    bold_italic = best_paths.get("bold_italic") or bold
 
     names = {}
     for suffix, path in (
@@ -179,7 +245,13 @@ def _load_family(font_dir: str) -> _Fonts | None:
     )
 
     cmap = set(pdfmetrics.getFont(names[""]).face.charToGlyph.keys())
-    logger.info("registered PDF font family from %s (%d glyphs)", font_dir, len(cmap))
+    logger.info(
+        "registered PDF font family %r from %s (%d glyphs, %d families considered)",
+        best_key,
+        font_dir,
+        len(cmap),
+        len(families),
+    )
 
     return _Fonts(
         regular=names[""],
@@ -210,6 +282,55 @@ def _unrenderable(text: str, fonts: _Fonts) -> set[str]:
             except UnicodeEncodeError:
                 missing.add(char)
     return missing
+
+
+#: Scripts that need OpenType shaping to be *correct*, not merely present:
+#: vowel signs reordered around the consonant they follow, conjuncts formed
+#: from consonant clusters, letters joined to their neighbours.
+#:
+#: reportlab does none of that. It maps each codepoint to one glyph and draws
+#: them left to right, so a font with full coverage still produces wrong text
+#: — checked against a real export, `नीति` comes out with the leading `ि`
+#: stranded after the `त` it belongs in front of. Glyph coverage and correct
+#: rendering are different questions, and `_unrenderable` only answers the
+#: first; without this the fix for blank boxes would quietly swap a visible
+#: failure for a silent one.
+_COMPLEX_SCRIPTS: tuple[tuple[str, int, int], ...] = (
+    ("Hebrew", 0x0590, 0x05FF),
+    ("Arabic", 0x0600, 0x06FF),
+    ("Devanagari", 0x0900, 0x097F),
+    ("Bengali", 0x0980, 0x09FF),
+    ("Gurmukhi", 0x0A00, 0x0A7F),
+    ("Gujarati", 0x0A80, 0x0AFF),
+    ("Oriya", 0x0B00, 0x0B7F),
+    ("Tamil", 0x0B80, 0x0BFF),
+    ("Telugu", 0x0C00, 0x0C7F),
+    ("Kannada", 0x0C80, 0x0CFF),
+    ("Malayalam", 0x0D00, 0x0D7F),
+    ("Sinhala", 0x0D80, 0x0DFF),
+    ("Thai", 0x0E00, 0x0E7F),
+    ("Lao", 0x0E80, 0x0EFF),
+    ("Myanmar", 0x1000, 0x109F),
+    ("Khmer", 0x1780, 0x17FF),
+)
+
+#: Nothing below this codepoint belongs to a script in the table, so the common
+#: case — an all-Latin document — costs one integer compare per character.
+_COMPLEX_FLOOR = _COMPLEX_SCRIPTS[0][1]
+
+
+def _complex_scripts(text: str) -> set[str]:
+    """Names of shaping-dependent scripts present in `text`."""
+    found: set[str] = set()
+    for char in text:
+        code = ord(char)
+        if code < _COMPLEX_FLOOR:
+            continue
+        for name, low, high in _COMPLEX_SCRIPTS:
+            if low <= code <= high:
+                found.add(name)
+                break
+    return found
 
 
 # ----------------------------------------------------------------------
@@ -283,6 +404,7 @@ class _Renderer:
         #: whole document so the reader gets one actionable warning rather than
         #: one per paragraph that happened to contain a different letter.
         self.missing_chars: set[str] = set()
+        self.complex_scripts: set[str] = set()
         self.headings: list[tuple[int, str]] = []
         self.styles = self._build_styles()
 
@@ -327,6 +449,7 @@ class _Renderer:
 
     def _check(self, text: str) -> None:
         self.missing_chars |= _unrenderable(text, self.fonts)
+        self.complex_scripts |= _complex_scripts(text)
 
     def _para(self, markup: str, style: str = "body") -> Paragraph:
         return Paragraph(markup or "&nbsp;", self.styles[style])
@@ -650,6 +773,15 @@ def tiptap_to_pdf(
             f"be drawn by the export font and will appear blank (for example: "
             f"{sample}). Set {FONT_DIR_ENV} to a directory containing a font "
             f"that covers this script.",
+        )
+
+    if renderer.complex_scripts:
+        scripts = ", ".join(sorted(renderer.complex_scripts))
+        warnings.append(
+            f"This document contains {scripts} text. The PDF exporter draws "
+            f"characters one at a time and does not reshape them, so vowel "
+            f"signs, conjuncts and joined forms may appear in the wrong order "
+            f"or unjoined. Export as Markdown or HTML for a faithful copy."
         )
 
     return PdfResult(pdf=buffer.getvalue(), warnings=warnings)
