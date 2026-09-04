@@ -38,8 +38,12 @@ from aexy.core.database import get_async_session  # noqa: E402
 from aexy.models.developer import Developer  # noqa: E402
 from aexy.models.service_desk import (  # noqa: E402
     ServiceDeskAccount,
+    ServiceDeskAccountDomain,
+    ServiceDeskMailbox,
     ServiceDeskProduct,
     ServiceDeskTicket,
+    ServiceDeskVendor,
+    ServiceDeskVendorDomain,
     TicketPendingSegment,
 )
 from aexy.models.ticketing import Ticket, TicketForm  # noqa: E402
@@ -110,6 +114,21 @@ async def _member(db, workspace_id: str, developer_id: str) -> None:
             status="active",
         )
     )
+
+
+async def _domain(db, model, workspace_id: str, fk: str, fk_value: str, domain: str) -> None:
+    """One domain row, once. Routing reads these; duplicates would double-match."""
+    found = (
+        await db.execute(
+            select(model).where(
+                model.workspace_id == workspace_id,
+                model.domain == domain,
+            )
+        )
+    ).scalar_one_or_none()
+    if found:
+        return
+    db.add(model(**{"id": str(uuid4()), "workspace_id": workspace_id, fk: fk_value, "domain": domain}))
 
 
 async def _workspace(db, workspace_id: str | None, owner: Developer) -> Workspace:
@@ -193,6 +212,58 @@ async def main(workspace_id: str | None = None) -> None:
                 id=str(uuid4()), workspace_id=workspace.id, name="Standard Cover"
             )
             db.add(product)
+
+        await db.flush()
+
+        # The master data a desk actually routes on, not just the two rows the
+        # tickets need. Intake matches the *sender's domain* against these
+        # tables, so an account with no domain and a desk with no mailbox make
+        # the setup screens look like a product with no answer to "how does mail
+        # get in" — which is the first thing the documentation has to show.
+        await _domain(db, ServiceDeskAccountDomain, workspace.id, "account_id", account.id, DOMAIN)
+        if account.assigned_owner_id is None:
+            account.assigned_owner_id = first.id
+
+        vendor = (
+            await db.execute(
+                select(ServiceDeskVendor).where(
+                    ServiceDeskVendor.workspace_id == workspace.id,
+                    ServiceDeskVendor.name == "Assurance Mutual",
+                )
+            )
+        ).scalar_one_or_none()
+        if vendor is None:
+            vendor = ServiceDeskVendor(
+                id=str(uuid4()), workspace_id=workspace.id, name="Assurance Mutual"
+            )
+            db.add(vendor)
+            await db.flush()
+        await _domain(
+            db, ServiceDeskVendorDomain, workspace.id, "vendor_id", vendor.id,
+            "assurance-mutual.example",
+        )
+
+        mailbox_address = f"support@{DOMAIN}"
+        existing_mailbox = (
+            await db.execute(
+                select(ServiceDeskMailbox).where(
+                    ServiceDeskMailbox.workspace_id == workspace.id,
+                    ServiceDeskMailbox.address == mailbox_address,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_mailbox is None:
+            # Webhook rather than Gmail sync: a Gmail mailbox is refused unless
+            # that exact address is a connected Google account, which a seed
+            # cannot fake.
+            db.add(
+                ServiceDeskMailbox(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    address=mailbox_address,
+                    channel="webhook",
+                )
+            )
 
         await db.flush()
         await seed_taxonomy(db, workspace.id, get_template("insurance_broking"))

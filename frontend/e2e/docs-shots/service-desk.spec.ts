@@ -154,5 +154,107 @@ test.describe("service desk screenshots", () => {
     await shooter.shoot(page, "ticket-timeline", '[data-testid="sd-timeline"]');
   });
 
+  test("tickets — the list, and what it can be filtered by", async ({ page }) => {
+    test.skip(ticketCount === 0, "no tickets to photograph");
+
+    await page.goto("/service-desk/tickets");
+    await ready(page);
+    await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 20_000 });
+
+    await shooter.shoot(page, "tickets", "main");
+  });
+
+  test("log-ticket — raising one by hand", async ({ page }) => {
+    await page.goto("/service-desk/tickets");
+    await ready(page);
+
+    await page.getByRole("button", { name: "Log ticket" }).click();
+
+    // The dialog, not the page behind it. Its dropdowns are the desk's own
+    // master data, which is the reason this screenshot exists: a manual ticket
+    // is classified from the same taxonomy an email would be.
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await shooter.shoot(page, "log-ticket", '[role="dialog"]');
+  });
+
+  test("turnaround — the two clocks on a ticket", async ({ page }) => {
+    test.skip(!handoffTicket, "no ticket with history");
+
+    await page.goto(`/service-desk/tickets/${handoffTicket!.ticket_id}`);
+    await ready(page);
+
+    const card = page.getByTestId("sd-turnaround");
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await shooter.shoot(page, "turnaround", '[data-testid="sd-turnaround"]');
+  });
+
+  test("handoff — passing a ticket to somebody else", async ({ page }) => {
+    test.skip(!handoffTicket, "no ticket with history");
+
+    await page.goto(`/service-desk/tickets/${handoffTicket!.ticket_id}`);
+    await ready(page);
+
+    // Only rendered for somebody who may edit the ticket, so a shot that comes
+    // back empty means the token is a viewer's, not that the control moved.
+    const card = page.getByTestId("sd-handoff");
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await shooter.shoot(page, "handoff", '[data-testid="sd-handoff"]');
+  });
+
+  test("master-data — the tables intake routes on", async ({ page }) => {
+    await page.goto("/service-desk/settings");
+    await ready(page);
+
+    // Waited on the seeded account by name: the page renders its headings and
+    // empty tables first, and a shot of those explains nothing about routing.
+    await expect(page.getByText("Northwind Ltd").first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await shooter.shoot(page, "master-data", "main");
+  });
+
+  test("mailboxes — where the mail arrives", async ({ page }) => {
+    await page.goto("/settings/service-desk/mailboxes");
+    await ready(page);
+
+    await expect(page.getByText("support@northwind.example").first()).toBeVisible(
+      { timeout: 20_000 },
+    );
+    await shooter.shoot(page, "mailboxes", "main");
+  });
+
+  test("working-hours — the clock the breach target is measured on", async ({
+    page,
+  }) => {
+    await page.goto("/settings/service-desk/hours");
+    await ready(page);
+    await shooter.shoot(page, "working-hours", "main");
+  });
+
+  test("tat-report — turnaround per ticket", async ({ page }) => {
+    test.skip(ticketCount === 0, "no tickets to report on");
+
+    await page.goto("/service-desk/reports");
+    await ready(page);
+    await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 30_000 });
+
+    await shooter.shoot(page, "tat-report", "main");
+  });
+
+  test("scorecard — how the desk's owners are doing", async ({ page }) => {
+    test.skip(ticketCount === 0, "no tickets to score");
+
+    await page.goto("/service-desk/reports");
+    await ready(page);
+    await page.getByRole("button", { name: "Scorecard" }).click();
+
+    // A score, not just the table chrome. The scorecard renders its KPI headers
+    // before the numbers arrive, and a screenshot of the empty grid would look
+    // like a desk nobody has worked.
+    await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 30_000 });
+    await shooter.shoot(page, "scorecard", "main");
+  });
+
   test.afterAll(() => shooter.report());
 });

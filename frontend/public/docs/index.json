@@ -200,7 +200,13 @@
           "title": "Service Desk",
           "slug": "service-desk",
           "path": "service-desk.md",
-          "description": "Email intake, pending-with handoffs, the breach clock, master data"
+          "description": "Running a desk: mailboxes, master data, handoffs, the clock, reports"
+        },
+        {
+          "title": "Service Desk architecture",
+          "slug": "service-desk-architecture",
+          "path": "service-desk-architecture.md",
+          "description": "How it is built: intake pipeline, models, API, frontend"
         },
         {
           "title": "Booking",
@@ -579,8 +585,14 @@
     "service-desk": {
       "title": "Service Desk",
       "section": "Modules — Work & planning",
-      "description": "Email intake, pending-with handoffs, the breach clock, master data",
+      "description": "Running a desk: mailboxes, master data, handoffs, the clock, reports",
       "path": "service-desk.md"
+    },
+    "service-desk-architecture": {
+      "title": "Service Desk architecture",
+      "section": "Modules — Work & planning",
+      "description": "How it is built: intake pipeline, models, API, frontend",
+      "path": "service-desk-architecture.md"
     },
     "booking": {
       "title": "Booking",
@@ -1029,14 +1041,24 @@
         "slug": "tickets-and-projects"
       },
       "next": {
+        "title": "Service Desk architecture",
+        "slug": "service-desk-architecture"
+      }
+    },
+    "service-desk-architecture": {
+      "prev": {
+        "title": "Service Desk",
+        "slug": "service-desk"
+      },
+      "next": {
         "title": "Booking",
         "slug": "booking"
       }
     },
     "booking": {
       "prev": {
-        "title": "Service Desk",
-        "slug": "service-desk"
+        "title": "Service Desk architecture",
+        "slug": "service-desk-architecture"
       },
       "next": {
         "title": "Tracking",

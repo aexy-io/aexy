@@ -48,7 +48,8 @@ We're on a mission to bring positive change by building world-class tools actual
 ### Modules — Work & planning
 - [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
 - [Tickets & projects](./tickets-and-projects.md) - Tickets, sprint tasks, projects, templates, ticket forms
-- [Service Desk](./service-desk.md) - Email intake, pending-with handoffs, the breach clock, master data
+- [Service Desk](./service-desk.md) - Running a desk: mailboxes, master data, handoffs, the clock, reports
+- [Service Desk architecture](./service-desk-architecture.md) - How it is built: intake pipeline, models, API, frontend
 - [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
 - [Tracking](./tracking.md) - Standups, time entries, blockers, entity activity
 - [Aexy Tracker](./aexy-tracker.md) - macOS work tracker + AI auto-attribution (timesheet, journals, insights)
