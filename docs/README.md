@@ -73,7 +73,8 @@ We're on a mission to bring positive change by building world-class tools actual
 ### Modules — AI & knowledge
 - [AI Agents](./ai-agents.md) - LangGraph-based agents with CRM/email tools
 - [Workflows & automations](./workflows-and-automations.md) - Automation triggers/actions + visual workflows + agent policies
-- [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Docs, file browser, AI metadata pipeline, MCP
+- [Knowledge base](./knowledge-base.md) - Spaces, pages, collaborative editing, review and freshness, search, publishing, import & export
+- [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Architecture behind the above, plus Drive, the AI metadata pipeline and MCP
 - [Drive](./drive.md) - Files, folders, smart views, quota
 
 ### Modules — Observability
@@ -88,7 +89,6 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
-- [Testing Tracker](./testing/testing-tracker.md) - Test coverage and status
 
 ## Products
 
@@ -120,8 +120,6 @@ Aexy is a complete Engineering OS with 10 integrated products:
 
 | Resource | Description |
 |----------|-------------|
-| [Implementation Tracker](./tracker.md) | Project implementation status |
-| [Testing Tracker](./testing/testing-tracker.md) | Test coverage and validation |
 | [API Endpoints](./api/overview.md) | Complete API reference |
 | [Getting Started](./guides/getting-started.md) | Development setup |
 

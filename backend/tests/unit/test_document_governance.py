@@ -991,3 +991,71 @@ class TestBodySizeLimit:
             content=_body("A perfectly normal paragraph." * 500),
         )
         assert updated is not None
+
+
+class TestNewPagesAreSearchable:
+    """A document created *with* a body must be findable by that body.
+
+    `create_document` set `content` and never `content_text`, while
+    `update_document` set both. `search_vector` is generated from
+    `content_text`, so every page created with content — every AI generation,
+    every imported page, every API client that sends a body on create — was
+    indexed by its title alone until somebody happened to edit it.
+
+    Found by running the real stack and searching for a word that was plainly
+    in a page: the API returned nothing, and no test noticed because the ones
+    that existed all edited a document before searching it.
+    """
+
+    async def test_content_text_is_extracted_on_create(self, db_session):
+        from aexy.services.document_service import DocumentService
+
+        workspace_id, author, _existing = await _setup(db_session)
+
+        created = await DocumentService(db_session).create_document(
+            workspace_id=workspace_id,
+            created_by_id=str(author.id),
+            title="Webhook rotation",
+            content=_body("The signing secret rotates every ninety days."),
+        )
+
+        assert created.content_text, "a page created with a body has no searchable text"
+        assert "ninety days" in created.content_text
+
+    async def test_an_empty_page_has_no_text(self, db_session):
+        """No content, nothing to extract — and `None` rather than an empty
+        string, so the column reads the same as every untouched row."""
+        from aexy.services.document_service import DocumentService
+
+        workspace_id, author, _existing = await _setup(db_session)
+
+        created = await DocumentService(db_session).create_document(
+            workspace_id=workspace_id,
+            created_by_id=str(author.id),
+            title="Empty",
+        )
+        assert created.content_text is None
+
+    async def test_a_new_page_is_findable_by_its_body(self, db_session):
+        """The end-to-end shape of the bug, through the search path."""
+        from aexy.services.document_access import DocumentAccess
+        from aexy.services.document_service import DocumentService
+
+        workspace_id, author, _existing = await _setup(db_session)
+        service = DocumentService(db_session)
+
+        await service.create_document(
+            workspace_id=workspace_id,
+            created_by_id=str(author.id),
+            title="Unrelated title",
+            content=_body("The escalation path runs through the on-call engineer."),
+        )
+
+        hits = await service.search_documents(
+            workspace_id=workspace_id,
+            query="escalation",
+            access_clause=await DocumentAccess(db_session).visible_clause(
+                workspace_id, str(author.id)
+            ),
+        )
+        assert [h.document.title for h in hits] == ["Unrelated title"]

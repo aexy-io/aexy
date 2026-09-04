@@ -319,10 +319,16 @@
           "description": "Automation triggers/actions + visual workflows + agent policies"
         },
         {
+          "title": "Knowledge base",
+          "slug": "knowledge-base",
+          "path": "knowledge-base.md",
+          "description": "Spaces, pages, collaborative editing, review and freshness, search, publishing, import & export"
+        },
+        {
           "title": "Documents, Drive & Knowledge Graph",
           "slug": "documents-and-drive",
           "path": "documents-and-drive.md",
-          "description": "Docs, file browser, AI metadata pipeline, MCP"
+          "description": "Architecture behind the above, plus Drive, the AI metadata pipeline and MCP"
         },
         {
           "title": "Drive",
@@ -672,10 +678,16 @@
       "description": "Automation triggers/actions + visual workflows + agent policies",
       "path": "workflows-and-automations.md"
     },
+    "knowledge-base": {
+      "title": "Knowledge base",
+      "section": "Modules — AI & knowledge",
+      "description": "Spaces, pages, collaborative editing, review and freshness, search, publishing, import & export",
+      "path": "knowledge-base.md"
+    },
     "documents-and-drive": {
       "title": "Documents, Drive & Knowledge Graph",
       "section": "Modules — AI & knowledge",
-      "description": "Docs, file browser, AI metadata pipeline, MCP",
+      "description": "Architecture behind the above, plus Drive, the AI metadata pipeline and MCP",
       "path": "documents-and-drive.md"
     },
     "drive": {
@@ -1177,14 +1189,24 @@
         "slug": "ai-agents"
       },
       "next": {
+        "title": "Knowledge base",
+        "slug": "knowledge-base"
+      }
+    },
+    "knowledge-base": {
+      "prev": {
+        "title": "Workflows & automations",
+        "slug": "workflows-and-automations"
+      },
+      "next": {
         "title": "Documents, Drive & Knowledge Graph",
         "slug": "documents-and-drive"
       }
     },
     "documents-and-drive": {
       "prev": {
-        "title": "Workflows & automations",
-        "slug": "workflows-and-automations"
+        "title": "Knowledge base",
+        "slug": "knowledge-base"
       },
       "next": {
         "title": "Drive",

@@ -230,6 +230,13 @@ class DocumentService:
             space_id=space_id,
             title=title,
             content=content or {"type": "doc", "content": []},
+            # Extracted here as well as on update. It was set only on update,
+            # so a document created *with* a body — every AI generation, every
+            # imported page, every API client that sends content on create —
+            # was unsearchable by that body until somebody happened to edit it.
+            # `search_vector` is generated from this column, so an empty one
+            # means the page is indexed by its title alone.
+            content_text=self._extract_text(content) if content else None,
             icon=icon,
             cover_image=cover_image,
             visibility=visibility,
