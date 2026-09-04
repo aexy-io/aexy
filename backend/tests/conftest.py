@@ -104,6 +104,22 @@ async def _no_engine_outlives_its_event_loop():
 # exercise them cannot pass against the SQLite default. Marking them keeps a
 # SQLite run green and honest instead of reporting failures the code does not
 # have; a Postgres run (TEST_DATABASE_URL=...aexy_test) still covers them.
+# The inverse, and rarer: a test that drives the ASGI app through Starlette's
+# `TestClient` cannot share `db_session` with it on PostgreSQL. `TestClient`
+# runs the app in its own event loop, and an asyncpg connection is bound to the
+# loop that opened it — so the session works during the test and then explodes
+# in teardown ("attached to a different loop"). SQLite's StaticPool shares one
+# connection and tolerates it.
+#
+# Only for tests whose subject is dialect-independent. Anything that asserts on
+# SQL behaviour belongs on PostgreSQL, not here.
+requires_sqlite = pytest.mark.skipif(
+    not _IS_SQLITE,
+    reason="drives the ASGI app through TestClient, whose event loop cannot "
+    "share an asyncpg session with the test's; the behaviour asserted is "
+    "dialect-independent",
+)
+
 requires_postgres = pytest.mark.skipif(
     _IS_SQLITE,
     reason="needs PostgreSQL (date_trunc and other server-side SQL); "
@@ -659,7 +675,40 @@ async def seed_workspace(db: AsyncSession) -> str:
         {"i": workspace_id, "s": f"ws-{workspace_id[:8]}", "o": owner_id},
     )
     await db.flush()
+    await seed_member(db, workspace_id, owner_id, role="owner")
     return workspace_id
+
+
+async def seed_member(
+    db: AsyncSession,
+    workspace_id: str,
+    developer_id: str,
+    role: str = "member",
+    status: str = "active",
+) -> None:
+    """Give a developer standing in a workspace.
+
+    Needed by anything that touches documents since `DocumentAccess` landed:
+    workspace membership is now the floor under every document permission, so a
+    developer with no `workspace_members` row reads nothing — which is the
+    correct answer, and was not the previous one.
+    """
+    # Through the ORM, not raw SQL. SQLAlchemy's UUID type dash-strips on the
+    # SQLite this suite runs against, so a raw-inserted membership row stores a
+    # dashed id that an ORM query — which strips the bind parameter — never
+    # matches. The row would exist and the lookup would still return None.
+    from aexy.models.workspace import WorkspaceMember
+
+    db.add(
+        WorkspaceMember(
+            id=str(uuid.uuid4()),
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+            role=role,
+            status=status,
+        )
+    )
+    await db.flush()
 
 
 async def seed_crm_object(db: AsyncSession, workspace_id: str, name: str = "Object") -> str:

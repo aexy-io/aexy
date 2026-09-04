@@ -52,6 +52,24 @@ class DocumentUpdate(BaseModel):
     cover_image: str | None = Field(default=None, max_length=500)
     visibility: DocumentVisibility | None = None
     is_auto_save: bool = False
+    # The sha the editor believes it is editing. Optional so existing clients
+    # keep working unchanged; when present, a mismatch is a 409 carrying the
+    # current content rather than a silent overwrite of somebody else's save.
+    base_sha: str | None = Field(default=None, max_length=64)
+
+
+class DocumentTrashItem(BaseModel):
+    """A document sitting in the trash, and what it would take back with it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    icon: str | None = None
+    space_id: str | None = None
+    deleted_at: datetime
+    deleted_by_id: str | None = None
+    descendant_count: int = 0
 
 
 class DocumentResponse(BaseModel):

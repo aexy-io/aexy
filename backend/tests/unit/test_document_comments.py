@@ -26,12 +26,12 @@ from aexy.models.developer import Developer
 from aexy.models.documentation import Document, DocumentComment
 from aexy.models.notification import Notification, NotificationEventType
 from aexy.services.document_comment_service import DocumentCommentService
-from tests.conftest import seed_workspace
+from tests.conftest import seed_member, seed_workspace
 
 pytestmark = pytest.mark.asyncio
 
 
-async def _developer(db, name="Ada") -> str:
+async def _developer(db, name="Ada", workspace_id: str | None = None) -> str:
     """Insert through the ORM, not raw SQL.
 
     A raw INSERT stores the id exactly as given, while the ORM's UUID type
@@ -43,6 +43,11 @@ async def _developer(db, name="Ada") -> str:
     developer = Developer(id=str(uuid.uuid4()), name=name)
     db.add(developer)
     await db.flush()
+    # Workspace membership is the floor under every document permission since
+    # `DocumentAccess` landed — a developer with no `workspace_members` row
+    # reads nothing, which is the point of it.
+    if workspace_id:
+        await seed_member(db, workspace_id, str(developer.id))
     return str(developer.id)
 
 
@@ -77,8 +82,8 @@ def _mention(developer_id: str) -> str:
 
 async def test_comment_notifies_the_document_owner(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session, "Owner")
-    commenter_id = await _developer(db_session, "Commenter")
+    owner_id = await _developer(db_session, "Owner", workspace_id)
+    commenter_id = await _developer(db_session, "Commenter", workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     await DocumentCommentService(db_session).create_comment(
@@ -97,7 +102,7 @@ async def test_comment_notifies_the_document_owner(db_session):
 
 async def test_commenting_on_your_own_document_notifies_nobody(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session, "Owner")
+    owner_id = await _developer(db_session, "Owner", workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     await DocumentCommentService(db_session).create_comment(
@@ -115,8 +120,8 @@ async def test_commenting_on_your_own_document_notifies_nobody(db_session):
 async def test_a_mention_wins_over_the_thread_notification(db_session):
     """One comment, one notification — the mention, not both."""
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session, "Owner")
-    commenter_id = await _developer(db_session, "Commenter")
+    owner_id = await _developer(db_session, "Owner", workspace_id)
+    commenter_id = await _developer(db_session, "Commenter", workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -141,9 +146,9 @@ async def test_a_mention_wins_over_the_thread_notification(db_session):
 
 async def test_replies_notify_the_other_people_in_the_thread(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session, "Owner")
-    first_id = await _developer(db_session, "First")
-    second_id = await _developer(db_session, "Second")
+    owner_id = await _developer(db_session, "Owner", workspace_id)
+    first_id = await _developer(db_session, "First", workspace_id)
+    second_id = await _developer(db_session, "Second", workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -177,7 +182,7 @@ async def test_replies_notify_the_other_people_in_the_thread(db_session):
 async def test_a_reply_to_a_reply_joins_the_same_thread(db_session):
     """Threading is one level; the user's intent is unambiguous, so don't error."""
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -199,7 +204,7 @@ async def test_a_reply_to_a_reply_joins_the_same_thread(db_session):
 
 async def test_deleting_keeps_the_row_and_drops_the_body(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -223,8 +228,8 @@ async def test_deleting_keeps_the_row_and_drops_the_body(db_session):
 
 async def test_you_cannot_delete_someone_elses_comment(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
-    other_id = await _developer(db_session, "Other")
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
+    other_id = await _developer(db_session, "Other", workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -243,7 +248,7 @@ async def test_you_cannot_delete_someone_elses_comment(db_session):
 
 async def test_only_a_thread_root_can_be_resolved(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)
@@ -273,8 +278,8 @@ async def test_only_a_thread_root_can_be_resolved(db_session):
 async def test_a_private_documents_comments_are_not_public_to_the_workspace(db_session):
     """404, not 403, so private document ids stay unenumerable."""
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
-    outsider_id = await _developer(db_session, "Outsider")
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
+    outsider_id = await _developer(db_session, "Outsider", workspace_id)
     document = await _document(
         db_session, workspace_id, owner_id, visibility="private"
     )
@@ -317,7 +322,7 @@ class TestResponsesAreSerialisable:
     @pytest.mark.asyncio
     async def test_a_new_comment_names_its_author(self, db_session):
         workspace_id = await seed_workspace(db_session)
-        author_id = await _developer(db_session, "Ada Lovelace")
+        author_id = await _developer(db_session, "Ada Lovelace", workspace_id)
         document = await _document(db_session, workspace_id, author_id)
 
         comment = await DocumentCommentService(db_session).create_comment(
@@ -333,7 +338,7 @@ class TestResponsesAreSerialisable:
     @pytest.mark.asyncio
     async def test_resolving_returns_a_real_timestamp(self, db_session):
         workspace_id = await seed_workspace(db_session)
-        author_id = await _developer(db_session)
+        author_id = await _developer(db_session, workspace_id=workspace_id)
         document = await _document(db_session, workspace_id, author_id)
 
         service = DocumentCommentService(db_session)
@@ -354,7 +359,7 @@ class TestResponsesAreSerialisable:
     @pytest.mark.asyncio
     async def test_reopening_clears_the_timestamp(self, db_session):
         workspace_id = await seed_workspace(db_session)
-        author_id = await _developer(db_session)
+        author_id = await _developer(db_session, workspace_id=workspace_id)
         document = await _document(db_session, workspace_id, author_id)
 
         service = DocumentCommentService(db_session)
@@ -379,7 +384,7 @@ class TestResponsesAreSerialisable:
     @pytest.mark.asyncio
     async def test_an_edited_comment_serialises(self, db_session):
         workspace_id = await seed_workspace(db_session)
-        author_id = await _developer(db_session)
+        author_id = await _developer(db_session, workspace_id=workspace_id)
         document = await _document(db_session, workspace_id, author_id)
 
         service = DocumentCommentService(db_session)
@@ -400,8 +405,8 @@ class TestResponsesAreSerialisable:
     @pytest.mark.asyncio
     async def test_a_thread_serialises_with_its_replies_nested(self, db_session):
         workspace_id = await seed_workspace(db_session)
-        author_id = await _developer(db_session, "Root Author")
-        replier_id = await _developer(db_session, "Replier")
+        author_id = await _developer(db_session, "Root Author", workspace_id)
+        replier_id = await _developer(db_session, "Replier", workspace_id)
         document = await _document(db_session, workspace_id, author_id)
 
         service = DocumentCommentService(db_session)
@@ -426,7 +431,7 @@ class TestResponsesAreSerialisable:
 
 async def test_counts_separate_all_comments_from_open_threads(db_session):
     workspace_id = await seed_workspace(db_session)
-    owner_id = await _developer(db_session)
+    owner_id = await _developer(db_session, workspace_id=workspace_id)
     document = await _document(db_session, workspace_id, owner_id)
 
     service = DocumentCommentService(db_session)

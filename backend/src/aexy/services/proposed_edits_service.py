@@ -122,6 +122,7 @@ class ProposedEditsService:
         trigger: dict[str, Any] | None = None,
         proposed_ops: list[dict[str, Any]] | None = None,
         notify_owner: bool = True,
+        assigned_reviewer_id: str | None = None,
     ) -> ProposedChange:
         """Create a new pending proposal.
 
@@ -239,31 +240,44 @@ class ProposedEditsService:
             # can reconstruct it.
             trigger=trigger,
             status=ProposedEditStatus.PENDING.value,
+            assigned_reviewer_id=assigned_reviewer_id,
             requested_by_id=proposed_by_id,
             created_at=datetime.now(timezone.utc),
         )
         self.db.add(new_proposal)
         await self.db.flush()
 
-        # Now supersede prior pending proposals (excluding the one we
-        # just created).
-        stmt = (
+        # Supersede prior pending proposals — but only this author's.
+        #
+        # Superseding everything is right for AI: one draft at a time, and a
+        # stale regeneration is noise. It is wrong the moment people propose,
+        # because two colleagues each suggesting a change means the second
+        # silently discards the first and the first author is never told. Their
+        # work is gone and the queue looks tidy, which is the worst possible
+        # combination.
+        #
+        # A proposal with no author is automation, and automation supersedes
+        # its own earlier automation the way it always did.
+        conditions = [
+            ProposedChange.entity_type == "document",
+            ProposedChange.entity_id == document_id,
+            ProposedChange.status == ProposedEditStatus.PENDING.value,
+            ProposedChange.id != new_proposal.id,
+        ]
+        if proposed_by_id:
+            conditions.append(ProposedChange.requested_by_id == proposed_by_id)
+        else:
+            conditions.append(ProposedChange.requested_by_id.is_(None))
+
+        await self.db.execute(
             update(ProposedChange)
-            .where(
-                and_(
-                    ProposedChange.entity_type == "document",
-                    ProposedChange.entity_id == document_id,
-                    ProposedChange.status == ProposedEditStatus.PENDING.value,
-                    ProposedChange.id != new_proposal.id,
-                )
-            )
+            .where(and_(*conditions))
             .values(
                 status=ProposedEditStatus.SUPERSEDED.value,
                 reviewed_at=datetime.now(timezone.utc),
                 reason=f"superseded by {new_proposal.id}",
             )
         )
-        await self.db.execute(stmt)
 
         # Tell the document owner a proposal is waiting on them. Best-effort: a
         # missing document or missing owner shouldn't block proposal creation.

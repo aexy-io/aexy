@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import (
+    DDL,
+    LargeBinary,
+    column,
+    event,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -18,7 +22,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
 
@@ -119,6 +124,26 @@ class DocumentSpaceRole(str, Enum):
     VIEWER = "viewer"  # View documents only
 
 
+class DocumentSpaceVisibility(str, Enum):
+    """Who a space's documents are for.
+
+    OPEN        any workspace member may read and write in it. What every
+                space was before this field existed, and the default, so the
+                migration changes nothing.
+    RESTRICTED  exactly the people in `document_space_members`, at the grade
+                their row says.
+
+    The membership table predates this flag and its roles were enforced only on
+    the space's own endpoints — a "restricted" HR space was a label, because
+    the documents inside it were readable by any workspace member who had the
+    id. This is the field that makes the list mean something; `DocumentAccess`
+    is what reads it.
+    """
+
+    OPEN = "open"
+    RESTRICTED = "restricted"
+
+
 class DocumentSpace(Base):
     """Document spaces for organizing documents within a workspace (like Notion teamspaces)."""
 
@@ -146,6 +171,40 @@ class DocumentSpace(Base):
     # Space flags
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Who the space is for. Defaults to OPEN so every row that existed before
+    # this column behaves exactly as it did — a migration that quietly locked
+    # people out of spaces they were using would be worse than the leak.
+    visibility: Mapped[str] = mapped_column(
+        String(20),
+        default=DocumentSpaceVisibility.OPEN.value,
+        server_default=DocumentSpaceVisibility.OPEN.value,
+        nullable=False,
+    )
+    # Every edit in this space becomes a proposal for a reviewer, reusing the
+    # `document_proposed_edits` machinery that already gates agent writes.
+    #
+    # A space with this on does **not** get live collaborative editing. That is
+    # a decision, not an omission: `DocumentRoom._flatten` writes the CRDT
+    # straight through `update_document` on a debounce, so co-editing bypasses
+    # the gate entirely — and a gate anyone can walk around by opening the
+    # editor is worse than no gate, because it is believed. The socket refuses
+    # in these spaces and the editor falls back to single-writer saves, which
+    # become proposals. See `api/collaboration.py`.
+    requires_approval: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+
+    # Who may approve here. Empty means any space admin, which is the sensible
+    # default and the one that does not need configuring before the feature
+    # works.
+    # No `server_default` here: a `'[]'::jsonb` cast is PostgreSQL syntax and
+    # SQLite cannot parse it in DDL, which breaks the test suite's schema
+    # creation. The Python default covers every write, and the migration sets
+    # the column default on PostgreSQL for rows written outside the ORM.
+    approval_reviewers: Mapped[list] = mapped_column(
+        JSONB, default=list, nullable=False
+    )
 
     # Settings (JSON for extensibility)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
@@ -389,6 +448,67 @@ class Document(Base):
     # Ordering within parent
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # ---- Search ------------------------------------------------------
+    #
+    # A PostgreSQL generated column (`title` weighted A, body weighted B) with
+    # a GIN index, maintained by the database rather than by application code
+    # so it cannot drift from the content it indexes. Search used to be
+    # `ILIKE '%q%'` over `content_text` — a sequential scan of every body in
+    # the workspace, ordered by `updated_at` instead of relevance.
+    #
+    # `deferred` because it is large, never displayed, and would otherwise be
+    # loaded on every document read. Nothing outside
+    # `DocumentService._search_postgres` refers to it; on SQLite it compiles to
+    # an inert TEXT column (see `core/database.py`).
+    # `search_vector` is deliberately NOT mapped here. It is a PostgreSQL
+    # generated column, so the ORM must never try to write it — and it does try
+    # for any mapped column, sending NULL and getting
+    # `GeneratedAlwaysError` on every insert. It is created by the DDL hook at
+    # the bottom of this module and referenced by `DOCUMENT_SEARCH_VECTOR`,
+    # which is the only query that needs it.
+
+    # ---- Trash -------------------------------------------------------
+    #
+    # Delete used to be `db.delete(document)` and a FK cascade, which took the
+    # children, every version, every comment and the docx storage keys with it,
+    # irreversibly, at member level. These two columns are the whole of the
+    # trash: every read path filters `deleted_at IS NULL`, and a purge job
+    # removes rows past the workspace's retention window.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    deleted_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # ---- Lifecycle ---------------------------------------------------
+    #
+    # `created_by_id` says who typed it, which stops being the right answer the
+    # moment they change team. `owner_id` is who is accountable for it now, and
+    # is who the review reminders go to.
+    owner_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    review_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_verified_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -431,11 +551,24 @@ class Document(Base):
         foreign_keys=[last_edited_by_id],
         lazy="selectin",
     )
+    owner: Mapped["Developer | None"] = relationship(
+        "Developer",
+        foreign_keys=[owner_id],
+        lazy="selectin",
+    )
     versions: Mapped[list["DocumentVersion"]] = relationship(
         "DocumentVersion",
         back_populates="document",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        # `selectin` loaded every version this document has ever had on every
+        # document read — and `_create_version` writes a full JSONB snapshot of
+        # the body per autosave, so an actively-edited page carried hundreds of
+        # complete copies of itself into memory just to render its title.
+        #
+        # `raise` rather than `select`: a lazy load here would be a silent
+        # N+1 in a listing, and the history endpoint queries
+        # `DocumentVersion` directly and paginates.
+        lazy="raise",
         order_by="desc(DocumentVersion.version_number)",
     )
     code_links: Mapped[list["DocumentCodeLink"]] = relationship(
@@ -471,6 +604,12 @@ class Document(Base):
         Index("ix_documents_workspace_template", "workspace_id", "is_template"),
         Index("ix_documents_workspace_space", "workspace_id", "space_id"),
         Index("ix_documents_workspace_format", "workspace_id", "content_format"),
+        # The two columns every read path now filters on together. Without
+        # this the trash filter turns the tree and search into a scan of every
+        # row the workspace has ever held, deleted ones included.
+        Index("ix_documents_workspace_live", "workspace_id", "deleted_at"),
+        Index("ix_documents_workspace_visibility", "workspace_id", "visibility"),
+        Index("ix_documents_owner_review", "owner_id", "review_due_at"),
         CheckConstraint(
             f"content_format IN {CONTENT_FORMATS}",
             name="ck_documents_content_format",
@@ -528,6 +667,15 @@ class DocumentVersion(Base):
     )
     change_summary: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_auto_save: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Never pruned. Set when somebody names a version, restores from it, or a
+    # proposal is based on it — the retention sweep is allowed to collapse
+    # autosave noise, and is not allowed to delete a version a person or a
+    # record points at.
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_auto_generated: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )
@@ -1044,6 +1192,291 @@ class DocumentGitHubSync(Base):
     )
 
 
+class DocumentYjsState(Base):
+    """The server's own copy of a document's CRDT state.
+
+    There was no such thing. Each client built an empty `Y.Doc` and seeded it by
+    calling `setContent()` with the REST body, so two people opening one page
+    each inserted the *whole document* into their own Yjs history; when their
+    updates merged, the content duplicated. The relay forwarded bytes between
+    them and stored nothing, and the only thing that actually persisted was a
+    debounced `PATCH` of the entire body — last writer wins, silently.
+
+    With this row the server holds the document. A client syncs against it
+    rather than against whoever else happens to be connected, a person who
+    opens the page while nobody else is there still gets the merged state, and
+    an edit made while the last editor's tab was closing is not lost.
+
+    `state` is a full Yjs update (`Doc.get_update()`), not a delta log: it is
+    self-contained, so recovery needs no replay, and rewriting one row per
+    debounce interval is cheaper than an append-only log that must be compacted
+    anyway.
+    """
+
+    __tablename__ = "document_yjs_state"
+
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    # Yjs binary. Not JSONB: it is opaque to SQL and round-tripping it through
+    # base64 for the sake of a text column would inflate every write by a third.
+    state: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    # Yjs state vector, so a reconnecting client can be answered with just what
+    # it is missing instead of the whole document.
+    state_vector: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
+    # The sha of the `documents.content` snapshot this state was last flattened
+    # into. When they match, the REST body is current and the flush can be
+    # skipped; when they differ, search, the knowledge graph and every AI path
+    # are reading a stale body.
+    snapshot_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    snapshot_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    document: Mapped["Document"] = relationship("Document", lazy="selectin")
+
+
+class PublishedDocument(Base):
+    """A public snapshot of a document, served by the KB portal.
+
+    `Document.is_published` and `visibility="public"` were stored on every row
+    and surfaced in every API response, and *nothing read them*: there was no
+    public endpoint anywhere, so publishing a page did nothing at all.
+
+    A snapshot rather than a live mirror, and that is the whole design. A
+    published page that silently follows its source means an accidental edit to
+    an internal document is instantly public — and the person who made the edit
+    has no idea the page is externally visible. Republishing is a deliberate
+    act, and `is_stale` is what tells an admin the source has moved on.
+
+    Its own table rather than more columns on `documents` because the two have
+    different lifetimes: withdrawing a page from the portal must not touch the
+    document, and a purge of the document must not silently leave a public URL
+    serving a body nobody can find any more.
+    """
+
+    __tablename__ = "published_documents"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # The public path. Unique across the whole deployment, not per workspace:
+    # the portal serves /kb/{slug} and two workspaces publishing "refund-policy"
+    # cannot both own it.
+    slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    # The frozen body. A copy, deliberately — see the class docstring.
+    content: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The sha of the source when this snapshot was taken. Different from the
+    # document's current sha means the published copy is behind.
+    source_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # 'public'   anyone with the link
+    # 'workspace' signed-in members of the workspace only — a portal for the
+    #             company rather than for its customers
+    audience: Mapped[str] = mapped_column(
+        String(20), default="public", server_default="public", nullable=False
+    )
+
+    published_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    view_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+
+    document: Mapped["Document"] = relationship("Document", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_published_documents_workspace", "workspace_id"),
+        Index("ix_published_documents_audience", "audience"),
+    )
+
+
+class DocumentImportJob(Base):
+    """One migration of an archive into a space.
+
+    A Confluence space is thousands of pages, so this is a background job with
+    a progress record rather than a request.
+
+    Two columns carry the design:
+
+    `id_map` is the output of pass one — every source page id mapped to the
+    document created for it. Import is two passes because a wiki is mostly
+    forward references: converting bodies in one pass means a link to a page
+    not yet created resolves to nothing, which is the majority of links. It is
+    also what makes the job **resumable**, which matters because the first
+    attempt at a large migration usually fails on something, and re-importing
+    from zero produces duplicates rather than a fix.
+
+    `status = 'partial'` is a real terminal state, not a failure mode. One page
+    that will not convert must not roll back the four thousand that did; the
+    job finishes, says which pages failed and why, and the operator retries
+    those.
+    """
+
+    __tablename__ = "document_import_jobs"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    space_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("document_spaces.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    requested_by_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    archive_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    archive_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", server_default="pending", nullable=False
+    )
+
+    total_pages: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    imported_pages: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    failed_pages: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+
+    #: source page id -> created document id. Pass one's output, and the reason
+    #: a re-run resumes instead of duplicating.
+    id_map: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    #: Per-page conversion notes, so a lossy page is visible rather than
+    #: silently wrong.
+    warnings: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_document_import_jobs_workspace_status", "workspace_id", "status"),
+    )
+
+
+class DocumentEmbedding(Base):
+    """Chunk-level embeddings for semantic search over documents.
+
+    Documents were the one body of text in the workspace that keyword search
+    reached and semantic search did not: `file_embeddings` already indexed
+    Drive files, task attachments and compliance documents through
+    `FileSearchService`, and documents were simply never registered as a source.
+
+    Keyed to `documents.id` rather than routed through `file_metadata` because
+    that pipeline resolves a source id to *bytes*, and a TipTap document has
+    none — its text is `content_text`. Keying here also means the access
+    predicate is a plain join to `documents`, which is what keeps semantic
+    search from becoming the leak keyword search used to be.
+
+    Dimension 1024 to match `FileEmbedding`, so the same embedding model serves
+    both and a workspace does not need two.
+    """
+
+    __tablename__ = "document_embeddings"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    document_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Denormalised so the vector search can filter by workspace without a join
+    # on every candidate row.
+    workspace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # The sha of the body these chunks were built from. Re-embedding is skipped
+    # when it still matches, which matters because the collaborative editor
+    # flushes a document every few seconds while somebody is typing in it.
+    content_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "chunk_index", name="uq_document_embedding_chunk"
+        ),
+        Index("ix_document_embeddings_workspace", "workspace_id"),
+    )
+
+
 class DocumentFavorite(Base):
     """User's favorited documents for quick access."""
 
@@ -1340,3 +1773,54 @@ class DocumentProposedEdit(Base):
 
     # Relationships
     document: Mapped["Document"] = relationship("Document", lazy="selectin")
+
+
+# ----------------------------------------------------------------------
+# `documents.search_vector` is a PostgreSQL generated column.
+#
+# It is not a mapped attribute, and both halves of that are deliberate.
+#
+# **Not mapped**, because the ORM writes every mapped column: it would send
+# NULL for this one on every insert and PostgreSQL would answer
+# `GeneratedAlwaysError`. So it exists as `DOCUMENT_SEARCH_VECTOR` below, used
+# by the one query that needs it.
+#
+# **Created by a hook**, because `mapped_column` cannot express a generated
+# column portably, and the migration is not the only thing that builds this
+# schema — `main.py` runs `create_all` on startup. Without this hook a
+# deployment that had never run the migrations would get a plain, always-NULL
+# column and **search would silently return nothing**: no error, no empty-state,
+# just a search box that finds no documents.
+#
+# Both of those were found by running the suite against PostgreSQL and neither
+# is visible on SQLite, where the column compiles to inert TEXT and the search
+# path never touches it.
+#
+# DROP then ADD rather than ALTER: PostgreSQL cannot convert an existing plain
+# column into a generated one. Safe here because `after_create` fires on a table
+# that has just been created and holds no rows.
+
+#: The generated column, as a query expression. Not a mapped attribute — see
+#: the note where it would otherwise have been declared.
+DOCUMENT_SEARCH_VECTOR = column("search_vector", TSVECTOR)
+
+
+# asyncpg refuses multiple statements in one prepared statement, so these are
+# three separate listeners rather than one script.
+for _statement in (
+    "ALTER TABLE documents DROP COLUMN IF EXISTS search_vector",
+    """
+    ALTER TABLE documents ADD COLUMN search_vector tsvector
+        GENERATED ALWAYS AS (
+            setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+            setweight(to_tsvector('english', coalesce(content_text, '')), 'B')
+        ) STORED
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_documents_search_vector "
+    "ON documents USING GIN (search_vector)",
+):
+    event.listen(
+        Document.__table__,
+        "after_create",
+        DDL(_statement).execute_if(dialect="postgresql"),
+    )
