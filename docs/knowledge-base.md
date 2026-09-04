@@ -159,9 +159,10 @@ the pages people write together.
 ## Finding things
 
 Search covers page titles and their contents, ranked by relevance rather than
-by date. Press `Cmd`/`Ctrl` + `K` anywhere in the knowledge base.
+by date, and each result shows the passage that matched with your terms
+highlighted. Press `Cmd`/`Ctrl` + `K` anywhere in the knowledge base.
 
-![Searching the knowledge base from the command bar](./images/knowledge-base/search.png)
+![Search results, each showing the passage that matched](./images/knowledge-base/search.png)
 
 It is **keyword and meaning together**. A search for *"how do we handle angry
 customers"* finds the escalation policy even if it never uses those words,

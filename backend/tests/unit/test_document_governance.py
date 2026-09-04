@@ -1059,3 +1059,107 @@ class TestNewPagesAreSearchable:
             ),
         )
         assert [h.document.title for h in hits] == ["Unrelated title"]
+
+
+class TestSearchResultsCarryTheirSnippet:
+    """A search result says *why* it matched, not just that it did.
+
+    `search_documents` ranks each row and excerpts the passage that matched —
+    on PostgreSQL via `ts_headline` over the same tsquery that did the ranking,
+    so the excerpt and the match cannot disagree. The `SearchHit` docstring is
+    explicit that the snippet is part of the result rather than something the
+    caller derives.
+
+    The list route then dropped it: `return [document_to_list_response(hit.document)
+    for hit in hits]` kept the document and discarded `snippet` and `score`. So
+    the search UI showed a bare list of titles and dates — not because nobody
+    had written the rendering, but because the data never arrived.
+
+    Tested through the route rather than the service, because the service was
+    always right and the route was where the fields were lost.
+    """
+
+    async def _search(self, db, workspace_id, author, query):
+        from aexy.api.documents import list_documents
+
+        # `limit`/`offset` passed explicitly: calling the route function
+        # directly skips FastAPI's dependency resolution, so their defaults
+        # arrive as `Query` objects rather than ints.
+        return await list_documents(
+            workspace_id=workspace_id,
+            search=query,
+            # Keyword-only. The vector half needs an embedding provider, which
+            # a unit test has no business standing up, and blending it would
+            # make the ranking depend on one.
+            semantic=False,
+            limit=50,
+            offset=0,
+            current_user=author,
+            db=db,
+        )
+
+    async def test_a_hit_carries_the_matching_passage(self, db_session):
+        workspace_id, author, _document = await _setup(db_session)
+
+        results = await self._search(db_session, workspace_id, author, "refunds")
+
+        assert [r.title for r in results] == ["Refund policy"]
+        assert results[0].snippet, "the matching passage was dropped by the route"
+        assert "14 days" in results[0].snippet
+
+    async def test_browsing_has_nothing_to_excerpt(self, db_session):
+        """No query, no ranking, no passage — and `None` rather than an empty
+        string, so a client can tell "not a search" from "matched nothing"."""
+        workspace_id, author, _document = await _setup(db_session)
+
+        from aexy.api.documents import list_documents
+
+        results = await list_documents(
+            workspace_id=workspace_id,
+            search=None,
+            semantic=False,
+            limit=50,
+            offset=0,
+            current_user=author,
+            db=db_session,
+        )
+
+        assert results
+        assert all(r.snippet is None and r.score is None for r in results)
+
+    @requires_postgres
+    async def test_the_snippet_marks_the_matched_terms(self, db_session):
+        """Postgres-only, and that is the point of the marker.
+
+        The SQLite fallback returns a plain window around the match, so it
+        would pass this file's other assertions while proving nothing about
+        `ts_headline` — which is the only implementation that ships.
+        """
+        workspace_id, author, _document = await _setup(db_session)
+
+        results = await self._search(db_session, workspace_id, author, "refunds")
+
+        assert "<mark>" in results[0].snippet, (
+            "ts_headline should wrap the matched terms; the frontend parses "
+            "these markers out rather than injecting the string as HTML"
+        )
+
+    @requires_postgres
+    async def test_a_body_match_is_excerpted_not_the_title(self, db_session):
+        """The case the feature exists for: the page whose *body* answers the
+        question, whose title gives no clue that it does."""
+        from aexy.services.document_service import DocumentService
+
+        workspace_id, author, _existing = await _setup(db_session)
+
+        await DocumentService(db_session).create_document(
+            workspace_id=workspace_id,
+            created_by_id=str(author.id),
+            title="Chargeback handling",
+            content=_body("A chargeback is not a refund. Evidence within 7 days."),
+        )
+
+        results = await self._search(db_session, workspace_id, author, "evidence")
+
+        assert [r.title for r in results] == ["Chargeback handling"]
+        assert "Evidence" in results[0].snippet

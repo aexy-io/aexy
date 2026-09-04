@@ -357,6 +357,14 @@ test.describe("documentation screenshots", () => {
     });
     await expect(dialog.getByText(/No documents found/)).toHaveCount(0);
 
+    // The doc says each result shows the passage that matched, with the terms
+    // highlighted — so the shot has to actually contain one. "Chargeback
+    // handling" is the case worth photographing: its title says nothing about
+    // refunds and its body does, which is the only thing that explains why it
+    // is in the list at all.
+    await expect(dialog.locator("mark").first()).toBeVisible();
+    await expect(dialog.getByText("Chargeback handling")).toBeVisible();
+
     await shoot(page, "search");
   });
 

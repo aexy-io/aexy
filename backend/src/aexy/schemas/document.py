@@ -134,6 +134,27 @@ class DocumentListResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Search-only, and absent everywhere else. Browsing a folder produces no
+    # ranking and nothing to excerpt, so these stay `None` there rather than
+    # the route returning a different shape depending on whether `search` was
+    # passed — one endpoint, one response model, two of its fields populated
+    # only when there is something to put in them.
+    #
+    # `snippet` is why the row matched: on PostgreSQL it is `ts_headline` over
+    # the same tsquery that did the ranking, so the excerpt and the match
+    # cannot disagree. It wraps the matched terms in `<mark>…</mark>`.
+    #
+    # Treat the rest of it as untrusted. `ts_headline` strips *well-formed*
+    # tags it recognises, but a malformed one survives verbatim — a body
+    # containing `<img src=x onerror=alert(1)` with no closing bracket comes
+    # back in the snippet unchanged, and browsers parse unclosed tags happily.
+    # The semantic half of search skips `ts_headline` altogether and returns
+    # raw chunk text. So render by parsing the markers out (see
+    # `highlightSnippet` on the frontend), never by injecting the string as
+    # HTML.
+    snippet: str | None = None
+    score: float | None = None
+
 
 class DocumentTreeItem(BaseModel):
     """Schema for document tree item."""

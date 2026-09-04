@@ -350,8 +350,19 @@ def document_to_response(doc) -> DocumentResponse:
     )
 
 
-def document_to_list_response(doc) -> DocumentListResponse:
-    """Convert Document model to list response schema."""
+def document_to_list_response(
+    doc,
+    *,
+    snippet: str | None = None,
+    score: float | None = None,
+) -> DocumentListResponse:
+    """Convert Document model to list response schema.
+
+    `snippet` and `score` come from a `SearchHit` and are keyword-only, so a
+    browse-path caller cannot supply them by accident and a search-path one
+    cannot forget them silently — the two reads of this function look
+    different at the call site.
+    """
     return DocumentListResponse(
         id=str(doc.id),
         workspace_id=str(doc.workspace_id),
@@ -362,6 +373,8 @@ def document_to_list_response(doc) -> DocumentListResponse:
         generation_status=doc.generation_status,
         created_at=doc.created_at,
         updated_at=doc.updated_at,
+        snippet=snippet,
+        score=score,
     )
 
 
@@ -429,7 +442,17 @@ async def list_documents(
             access_clause=clause,
             semantic=_semantic_search(db) if semantic else None,
         )
-        return [document_to_list_response(hit.document) for hit in hits]
+        # The hit, not just the document it points at. `search_documents` does
+        # the work of ranking each row and excerpting the passage that matched,
+        # and this line used to drop both on the floor — so the API answered a
+        # search with a bare list of titles, and the search UI had no snippet
+        # to show because none was ever sent.
+        return [
+            document_to_list_response(
+                hit.document, snippet=hit.snippet, score=hit.score
+            )
+            for hit in hits
+        ]
     else:
         # Get flat list at parent level
         tree = await service.get_document_tree(
