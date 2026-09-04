@@ -248,13 +248,19 @@ class TestFonts:
 
         # The chosen font may not in fact cover Devanagari (DejaVu does not);
         # what is being tested is that a *covering* font clears the coverage
-        # warning. The shaping warning stays, and must: a font supplying the
-        # glyphs does not give reportlab the ability to order them correctly,
-        # so silence here would mean claiming a Hindi PDF is faithful when it
-        # is not.
+        # warning.
         if "Devanagari" in source or "Arial Unicode" in source:
             assert not any("cannot be drawn" in w for w in result.warnings)
-            assert any("does not reshape" in w for w in result.warnings)
+
+            # Whether anything is left depends on shaping, and both answers are
+            # correct. A font supplying the glyphs does not by itself let
+            # reportlab order them, so without HarfBuzz the export still has to
+            # say so; with it, the text is right and silence is the honest
+            # result.
+            if pdf_module._register_fonts().shaped:
+                assert result.warnings == [], result.warnings
+            else:
+                assert any("does not reshape" in w for w in result.warnings)
         assert result.pdf.startswith(b"%PDF-")
 
     def test_a_missing_font_directory_falls_back(self, monkeypatch):
@@ -468,3 +474,201 @@ class TestComplexScriptWarning:
         """A Hindi title on an English body is still an unshaped export."""
         result = tiptap_to_pdf(_doc(_para("English body.")), "नीति")
         assert any("does not reshape" in w for w in result.warnings)
+
+
+class TestShaping:
+    """Correct glyph order for scripts that reorder or join.
+
+    reportlab maps one codepoint to one glyph and draws left to right unless
+    HarfBuzz is wired in, so `नीति` came out with the leading `ि` stranded
+    after the `त` it belongs in front of, `छुट्टी` with its conjunct broken
+    open, and Arabic unjoined *and* in left-to-right order.
+
+    Two switches, both required and neither on by default:
+    `ParagraphStyle.shaping` (ships as 0) and `TTFont.shapable` (True, but
+    reads False until `uharfbuzz` is importable). Installing the package and
+    stopping there changes nothing — the bytes come out identical, which is a
+    slow way to learn the flag exists. These tests pin both halves.
+    """
+
+    @staticmethod
+    def _shapable_font_dir(tmp_path):
+        import os
+        import shutil
+
+        for candidate in (
+            "/usr/share/aexy-fonts/FreeSans.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        ):
+            if os.path.exists(candidate):
+                break
+        else:
+            pytest.skip("no TTF available to shape with")
+
+        font_dir = tmp_path / "fonts"
+        font_dir.mkdir()
+        shutil.copy(candidate, font_dir / "Shaper-Regular.ttf")
+        return font_dir
+
+    def test_a_ttf_is_marked_shapable_when_uharfbuzz_is_present(
+        self, tmp_path, monkeypatch
+    ):
+        pytest.importorskip("uharfbuzz")
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+
+        assert pdf_module._register_fonts().shaped is True
+
+    def test_the_builtin_fallback_is_not_shapable(self, monkeypatch):
+        """Helvetica is a Type1 with no outlines to reshape, so the flag must
+        stay off rather than asking reportlab to shape something it cannot."""
+        monkeypatch.setenv(FONT_DIR_ENV, "/nonexistent/path/to/fonts")
+
+        assert pdf_module._register_fonts().shaped is False
+
+    def test_the_style_carries_the_flag_and_children_inherit_it(
+        self, tmp_path, monkeypatch
+    ):
+        """`shaping` on the body style is the only place it is set; every other
+        style picks it up through `parent=body`. If that inheritance ever
+        stops, headings and table cells silently go back to unshaped."""
+        pytest.importorskip("uharfbuzz")
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+
+        renderer = pdf_module._Renderer("t", pdf_module._register_fonts())
+        for name in ("body", "title", "h1", "h2", "h3", "cell", "quote", "toc"):
+            assert renderer.styles[name].shaping == 1, name
+
+    def test_no_shaping_flag_without_a_shapable_font(self, monkeypatch):
+        monkeypatch.setenv(FONT_DIR_ENV, "/nonexistent/path/to/fonts")
+
+        renderer = pdf_module._Renderer("t", pdf_module._register_fonts())
+        assert renderer.styles["body"].shaping == 0
+
+    def test_shaped_output_is_not_the_unshaped_output(self, tmp_path, monkeypatch):
+        """The end of it: same document, same font, different bytes.
+
+        Byte-identical output is exactly what installing uharfbuzz without
+        setting `shaping` produces, so this is the assertion that would have
+        caught that.
+        """
+        pytest.importorskip("uharfbuzz")
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+        document = _doc(_para("छुट्टी की नीति"))
+
+        shaped = tiptap_to_pdf(document, "Policy")
+
+        monkeypatch.setattr(pdf_module, "_fonts", None)
+        real_load = pdf_module._load_family
+        monkeypatch.setattr(
+            pdf_module,
+            "_load_family",
+            lambda d: (
+                None
+                if (f := real_load(d)) is None
+                else pdf_module.replace(f, shaped=False)
+            ),
+        )
+        unshaped = tiptap_to_pdf(document, "Policy")
+
+        assert shaped.pdf != unshaped.pdf, "shaping made no difference to the output"
+
+    def test_shaping_silences_the_unshaped_warning(self, tmp_path, monkeypatch):
+        """With HarfBuzz these scripts come out correct — verified against real
+        exports for Devanagari, Arabic and Hebrew, ordering included — so the
+        warning must go, or readers learn to ignore one that is usually wrong.
+        """
+        pytest.importorskip("uharfbuzz")
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+
+        result = tiptap_to_pdf(_doc(_para("छुट्टी की नीति")), "नीति")
+
+        assert not any("does not reshape" in w for w in result.warnings), (
+            result.warnings
+        )
+
+    def test_a_shaping_failure_falls_back_instead_of_losing_the_document(
+        self, tmp_path, monkeypatch
+    ):
+        """reportlab's shaped path is its newest and it is not bulletproof: a
+        paragraph of Devanagari written as HTML numeric entities crashes it
+        with an IndexError from `textobject.setRise`. Nothing here emits those,
+        but a shaping bug should cost correct glyph order — which the unshaped
+        build already gives — not the whole export.
+        """
+        pytest.importorskip("uharfbuzz")
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+
+        calls = {"n": 0}
+        real_build = pdf_module._build_pdf
+
+        def flaky(*args, **kwargs):
+            calls["n"] += 1
+            if kwargs["fonts"].shaped:
+                raise IndexError("list index out of range")
+            return real_build(*args, **kwargs)
+
+        monkeypatch.setattr(pdf_module, "_build_pdf", flaky)
+        result = tiptap_to_pdf(_doc(_para("छुट्टी की नीति")), "नीति")
+
+        assert calls["n"] == 2, "the unshaped retry did not happen"
+        assert result.pdf.startswith(b"%PDF-")
+        assert any("could not be text-shaped" in w for w in result.warnings)
+
+    def test_a_genuine_failure_still_raises(self, monkeypatch):
+        """With no shapable font there is nothing to fall back to, so an error
+        is the document's own and must not be swallowed."""
+        monkeypatch.setenv(FONT_DIR_ENV, "/nonexistent/path/to/fonts")
+
+        def broken(*args, **kwargs):
+            raise ValueError("something is genuinely wrong")
+
+        monkeypatch.setattr(pdf_module, "_build_pdf", broken)
+        with pytest.raises(ValueError):
+            tiptap_to_pdf(_doc(_para("Hello")), "Boom")
+
+    def test_the_renderer_never_emits_numeric_entities(self):
+        """The input that crashes reportlab's shaper. `_inline` escapes with
+        `html.escape`, which touches only `& < > "` — if that is ever swapped
+        for something that emits `&#NNNN;`, the export starts crashing on
+        exactly the documents shaping was added for.
+        """
+        import re
+
+        markup = pdf_module._inline(
+            [{"type": "text", "text": 'छुट्टी <b>&amp;</b> "quoted"'}]
+        )
+        assert not re.search(r"&#\d+;", markup), markup
+
+    def test_shaping_reorders_and_reverses_the_glyphs_it_draws(
+        self, tmp_path, monkeypatch
+    ):
+        """The point of the whole change, asserted on glyph order rather than
+        on "the bytes differ".
+
+        `नीति` is *stored* न ी त ि, and the `ि` has to be *drawn* in front of
+        the त it belongs to; Hebrew has to come out right to left. The oracle
+        is reportlab's own shaping call, the one the paragraph path makes.
+
+        Only script-level behaviour is asserted. HarfBuzz reorders pre-base
+        vowel signs and reverses RTL runs whatever the font carries, while the
+        conjunct in `छुट्टी` and the lam-alef ligature in `سلام` need GSUB
+        rules the shipped face may not have — asserting those would pass here
+        on Arial Unicode and fail in the image on FreeSans.
+        """
+        pytest.importorskip("uharfbuzz")
+        from reportlab.pdfbase.ttfonts import shapeStr
+
+        monkeypatch.setenv(FONT_DIR_ENV, str(self._shapable_font_dir(tmp_path)))
+        face = pdf_module._register_fonts().regular
+
+        # Escapes, not literals: the expected values are strings in *visual*
+        # order, and an editor or a terminal that helpfully reorders bidi text
+        # would rewrite the assertion into the thing it is meant to catch.
+        niti = "\u0928\u0940\u0924\u093f"  # न ी त ि, as typed
+        niti_drawn = "\u0928\u0940\u093f\u0924"  # ...ि ahead of त, as drawn
+        shalom = "\u05e9\u05dc\u05d5\u05dd"
+        shalom_drawn = shalom[::-1]
+
+        assert str(shapeStr(niti, face, 11)) == niti_drawn
+        assert str(shapeStr(shalom, face, 11)) == shalom_drawn

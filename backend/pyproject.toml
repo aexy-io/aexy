@@ -58,6 +58,13 @@ dependencies = [
     "openpyxl>=3.1.0",
     # PDF report generation (export service)
     "reportlab>=4.0.0",
+    # Text shaping for PDF export. reportlab has the integration built in but
+    # treats the package as optional: without it, `TTFont.shapable` is False
+    # and every script that reorders or joins its characters — Devanagari,
+    # Arabic, Hebrew, Thai — is drawn one codepoint at a time and comes out
+    # wrong. The product ships Hindi, so this is not optional for us.
+    # Prebuilt abi3 wheels, no compiler needed.
+    "uharfbuzz>=0.56.0",
     # Timezone data (required in minimal Docker images)
     "tzdata>=2024.1",
     # Drive: pgvector ORM bindings, document/PDF text extraction, video frame sampling

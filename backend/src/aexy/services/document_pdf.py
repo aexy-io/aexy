@@ -29,7 +29,7 @@ from __future__ import annotations
 import io
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from html import escape
 from typing import Any
@@ -90,6 +90,11 @@ class _Fonts:
     #: None when the active face is a built-in Type1, whose coverage is
     #: Latin-1 and which exposes no cmap to inspect.
     cmap: set[int] | None = None
+    #: True when reportlab can hand this face to HarfBuzz — a TTF *and*
+    #: `uharfbuzz` importable. False means text is drawn one codepoint to one
+    #: glyph, left to right, which is wrong for every script that reorders or
+    #: joins.
+    shaped: bool = False
 
 
 _fonts: _Fonts | None = None
@@ -244,13 +249,17 @@ def _load_family(font_dir: str) -> _Fonts | None:
         boldItalic=names["-BoldItalic"],
     )
 
-    cmap = set(pdfmetrics.getFont(names[""]).face.charToGlyph.keys())
+    registered = pdfmetrics.getFont(names[""])
+    cmap = set(registered.face.charToGlyph.keys())
+    shaped = bool(registered.shapable)
     logger.info(
-        "registered PDF font family %r from %s (%d glyphs, %d families considered)",
+        "registered PDF font family %r from %s (%d glyphs, %d families "
+        "considered, shaping %s)",
         best_key,
         font_dir,
         len(cmap),
         len(families),
+        "on" if shaped else "off (install uharfbuzz)",
     )
 
     return _Fonts(
@@ -259,6 +268,7 @@ def _load_family(font_dir: str) -> _Fonts | None:
         italic=names["-Italic"],
         bold_italic=names["-BoldItalic"],
         cmap=cmap,
+        shaped=shaped,
     )
 
 
@@ -420,6 +430,16 @@ class _Renderer:
             leading=15,
             spaceAfter=8,
             alignment=TA_LEFT,
+            # Both halves are required and neither is the default: reportlab
+            # asks `style.shaping and getFont(name).shapable`, and
+            # `ParagraphStyle` ships `shaping = 0`. Installing uharfbuzz
+            # without this changes nothing at all — the output stays
+            # byte-identical, which is a slow way to discover the flag exists.
+            #
+            # Every other style inherits it through `parent=body`. The code
+            # style is the exception in spirit only: it uses Courier, a Type1,
+            # whose `shapable` is False, so the flag is inert there.
+            shaping=1 if f.shaped else 0,
         )
         return {
             "body": body,
@@ -715,8 +735,65 @@ def tiptap_to_pdf(
     last_verified_at: datetime | None = None,
     include_toc: bool = True,
 ) -> PdfResult:
-    """Render a TipTap document as a PDF."""
+    """Render a TipTap document as a PDF.
+
+    Shaped when the registered face and `uharfbuzz` allow it, and falling back
+    to an unshaped build if that raises. The shaped path is reportlab's newest
+    and it is not bulletproof — a paragraph of Devanagari written as HTML
+    numeric entities crashes it with an `IndexError` from
+    `textobject.setRise`, deep inside reportlab, where `self._code` is empty.
+
+    Nothing in this module emits numeric entities (`_inline` uses
+    `html.escape`, which touches only `& < > "`), so that particular door is
+    shut. The retry is for the ones nobody has found yet: a shaping bug should
+    cost the reader correct glyph order, which is what the unshaped build
+    already gives, rather than costing them the document.
+    """
     fonts = _register_fonts()
+    try:
+        return _build_pdf(
+            content,
+            title,
+            fonts=fonts,
+            owner_name=owner_name,
+            last_verified_at=last_verified_at,
+            include_toc=include_toc,
+        )
+    except Exception:
+        if not fonts.shaped:
+            # Nothing to fall back to — the failure is the document, not the
+            # shaper, and swallowing it here would hide a real bug.
+            raise
+        logger.warning(
+            "shaped PDF build failed; retrying without shaping", exc_info=True
+        )
+
+    unshaped = replace(fonts, shaped=False)
+    result = _build_pdf(
+        content,
+        title,
+        fonts=unshaped,
+        owner_name=owner_name,
+        last_verified_at=last_verified_at,
+        include_toc=include_toc,
+    )
+    result.warnings.append(
+        "This document could not be text-shaped and was exported without it, "
+        "so vowel signs, conjuncts and joined forms may appear in the wrong "
+        "order or unjoined. Export as Markdown or HTML for a faithful copy."
+    )
+    return result
+
+
+def _build_pdf(
+    content: dict[str, Any],
+    title: str,
+    *,
+    fonts: _Fonts,
+    owner_name: str | None = None,
+    last_verified_at: datetime | None = None,
+    include_toc: bool = True,
+) -> PdfResult:
     renderer = _Renderer(title, fonts)
 
     body = renderer.render(content)
@@ -775,7 +852,11 @@ def tiptap_to_pdf(
             f"that covers this script.",
         )
 
-    if renderer.complex_scripts:
+    # Only when the text was *not* shaped. With HarfBuzz these scripts come out
+    # correct — checked against real exports for Devanagari, Arabic and Hebrew,
+    # including the right-to-left ordering — so warning anyway would train
+    # readers to ignore a warning that is usually wrong.
+    if renderer.complex_scripts and not fonts.shaped:
         scripts = ", ".join(sorted(renderer.complex_scripts))
         warnings.append(
             f"This document contains {scripts} text. The PDF exporter draws "
