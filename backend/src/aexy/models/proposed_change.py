@@ -119,6 +119,16 @@ class ProposedChange(Base):
         ForeignKey("developers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Who it is *for*. `reviewed_by_id` records who acted, which is only known
+    # afterwards — so without this a proposal is addressed to nobody and sits
+    # in a queue hoping somebody opens it, which is the documented failure mode
+    # of this whole area.
+    assigned_reviewer_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("developers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     reviewed_by_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("developers.id", ondelete="SET NULL"),

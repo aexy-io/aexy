@@ -31,6 +31,21 @@ class DocumentSpaceService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    def _invalidate_access(self) -> None:
+        """Drop cached access decisions after a change to this space.
+
+        A space's membership and visibility decide access to every document
+        filed under it, and this service has no list of those documents — so
+        the invalidation is the whole cache rather than a set of ids.
+
+        Imported here rather than at module scope: `workspace_service` imports
+        this module and `document_access` imports `workspace_service`, so a
+        top-level import closes a cycle.
+        """
+        from aexy.services.document_access import DocumentAccess
+
+        DocumentAccess.invalidate(self.db)
+
     # ==================== Space CRUD ====================
 
     async def create_space(
@@ -222,6 +237,8 @@ class DocumentSpaceService:
 
         await self.db.flush()
         await self.db.refresh(space)
+        self._invalidate_access()
+
         return space
 
     async def delete_space(self, space_id: str) -> bool:
@@ -459,6 +476,8 @@ class DocumentSpaceService:
         self.db.add(member)
         await self.db.flush()
         await self.db.refresh(member)
+        self._invalidate_access()
+
         return member
 
     async def update_member_role(
@@ -486,6 +505,8 @@ class DocumentSpaceService:
 
         await self.db.flush()
         await self.db.refresh(member)
+        self._invalidate_access()
+
         return member
 
     async def remove_member(
@@ -503,6 +524,8 @@ class DocumentSpaceService:
             )
         )
         await self.db.flush()
+        self._invalidate_access()
+
         return result.rowcount > 0
 
     async def get_members(
@@ -585,4 +608,6 @@ class DocumentSpaceService:
             count += 1
 
         await self.db.flush()
+        self._invalidate_access()
+
         return count

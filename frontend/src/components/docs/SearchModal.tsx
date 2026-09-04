@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, File, Clock, ArrowRight, Loader2 } from "lucide-react";
 import { documentApi, DocumentListItem } from "@/lib/api";
+import { highlightSnippet } from "./highlightSnippet";
 
 interface SearchModalProps {
   workspaceId: string | null;
@@ -177,9 +178,22 @@ export function SearchModal({ workspaceId, isOpen, onClose }: SearchModalProps) 
                       <p className="text-sm font-medium truncate">
                         {doc.title || "Untitled"}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {new Date(doc.updated_at).toLocaleDateString()}
-                      </p>
+                      {/*
+                        The passage that matched, when there is one — which is
+                        the only thing on the row that explains a result whose
+                        title says nothing about the query. Falls back to the
+                        date, so a page matched purely on its title still has
+                        a second line rather than a ragged list.
+                      */}
+                      {doc.snippet ? (
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
+                          {highlightSnippet(doc.snippet)}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {new Date(doc.updated_at).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                     {index === selectedIndex && (
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />

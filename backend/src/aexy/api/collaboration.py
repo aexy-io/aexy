@@ -1,334 +1,272 @@
-"""WebSocket endpoint for real-time document collaboration."""
+"""WebSocket endpoint for real-time document collaboration.
+
+This file used to authenticate nobody. `validate_token_and_get_user` split the
+`token` query parameter on `:` and returned the pieces as a user:
+
+    parts = token.split(":")
+    return {"id": parts[0], "name": parts[1], "email": parts[2], ...}
+
+and the client sent exactly that, unsigned. The router carried only
+`require_app_access_document_scoped("docs")`, which by its own docstring is
+auth-free and checks that the *workspace* has the docs app enabled — resolving
+that workspace from the `document_id` in the attacker's own URL. So anyone who
+knew or guessed a document id could read every live edit on it, inject content
+that legitimate clients would then autosave, and appear in the presence list as
+whoever they liked. Two further REST endpoints returned, unauthenticated, who
+was editing any document.
+
+Now: a real signed token, verified by the same code the HTTP dependency uses;
+`DocumentAccess` decides whether the socket opens at all and whether it may
+write; and the server holds the document rather than relaying bytes between
+clients. See `services/document_collaboration.py` for that half.
+"""
+
+from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Any
-from uuid import uuid4
+import uuid
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.core.database import get_db
-from aexy.models.documentation import CollaborationSession, Document
-from aexy.services.document_service import DocumentService
+from aexy.api.developers import get_current_developer, verify_token
+from aexy.core.database import get_async_session, get_db
+from aexy.models.developer import Developer
+from aexy.models.documentation import Document
+from aexy.services.document_access import AccessLevel, DocumentAccess
+from aexy.services.document_approval import DocumentApprovalService
+from aexy.services.document_collaboration import (
+    CollaborationError,
+    Participant,
+    get_room,
+    release_room,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/collaboration", tags=["Collaboration"])
+router = APIRouter(prefix="/collaboration", tags=["collaboration"])
 
 
-class ConnectionManager:
-    """Manages WebSocket connections for document collaboration."""
+# Close codes. 4001/4003/4004 rather than a generic 1008 so the client can tell
+# "log in again" from "you may not open this" from "it is gone" and stop
+# retrying on the two that will never succeed.
+WS_INVALID_TOKEN = 4001
+WS_FORBIDDEN = 4003
+WS_NOT_FOUND = 4004
+#: The space reviews changes, so there is no live room to join. Its own code
+#: because the editor must render it as an explanation rather than an error —
+#: the document is perfectly editable, just not collaboratively.
+WS_REVIEWED_SPACE = 4005
 
-    def __init__(self):
-        # document_id -> list of (websocket, user_info)
-        self.active_connections: dict[str, list[tuple[WebSocket, dict]]] = {}
-        # websocket -> document_id
-        self.connection_documents: dict[WebSocket, str] = {}
-        # document_id -> awareness state (user cursors, selections)
-        self.awareness_states: dict[str, dict[str, dict]] = {}
-
-    async def connect(
-        self, websocket: WebSocket, document_id: str, user_info: dict
-    ) -> None:
-        """Accept a new WebSocket connection for a document."""
-        await websocket.accept()
-
-        if document_id not in self.active_connections:
-            self.active_connections[document_id] = []
-            self.awareness_states[document_id] = {}
-
-        self.active_connections[document_id].append((websocket, user_info))
-        self.connection_documents[websocket] = document_id
-
-        # Add user to awareness
-        user_id = user_info.get("id", str(uuid4()))
-        self.awareness_states[document_id][user_id] = {
-            "user": user_info,
-            "cursor": None,
-            "selection": None,
-            "lastActive": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Broadcast new user joined
-        await self.broadcast_awareness(document_id)
-
-        logger.info(
-            f"User {user_info.get('name', 'Unknown')} connected to document {document_id}"
-        )
-
-    def disconnect(self, websocket: WebSocket) -> str | None:
-        """Remove a WebSocket connection."""
-        document_id = self.connection_documents.pop(websocket, None)
-
-        if document_id and document_id in self.active_connections:
-            # Find and remove this connection
-            self.active_connections[document_id] = [
-                (ws, info)
-                for ws, info in self.active_connections[document_id]
-                if ws != websocket
-            ]
-
-            # Find user_id for this connection and remove from awareness
-            for user_id, state in list(self.awareness_states.get(document_id, {}).items()):
-                # This is a simplification - in production you'd track user_id per connection
-                pass
-
-            # Clean up empty document rooms
-            if not self.active_connections[document_id]:
-                del self.active_connections[document_id]
-                if document_id in self.awareness_states:
-                    del self.awareness_states[document_id]
-
-            logger.info(f"User disconnected from document {document_id}")
-
-        return document_id
-
-    async def broadcast(
-        self,
-        document_id: str,
-        message: dict,
-        exclude: WebSocket | None = None,
-    ) -> None:
-        """Broadcast a message to all connections for a document."""
-        if document_id not in self.active_connections:
-            return
-
-        disconnected = []
-        for websocket, _ in self.active_connections[document_id]:
-            if websocket == exclude:
-                continue
-            try:
-                await websocket.send_json(message)
-            except Exception as e:
-                logger.warning(f"Failed to send message: {e}")
-                disconnected.append(websocket)
-
-        # Clean up disconnected websockets
-        for ws in disconnected:
-            self.disconnect(ws)
-
-    async def broadcast_awareness(self, document_id: str) -> None:
-        """Broadcast awareness state to all connections."""
-        if document_id not in self.awareness_states:
-            return
-
-        message = {
-            "type": "awareness",
-            "users": list(self.awareness_states[document_id].values()),
-        }
-        await self.broadcast(document_id, message)
-
-    def update_awareness(
-        self,
-        document_id: str,
-        user_id: str,
-        cursor: dict | None = None,
-        selection: dict | None = None,
-    ) -> None:
-        """Update awareness state for a user."""
-        if document_id not in self.awareness_states:
-            return
-
-        if user_id not in self.awareness_states[document_id]:
-            return
-
-        state = self.awareness_states[document_id][user_id]
-        if cursor is not None:
-            state["cursor"] = cursor
-        if selection is not None:
-            state["selection"] = selection
-        state["lastActive"] = datetime.now(timezone.utc).isoformat()
-
-    def get_active_users(self, document_id: str) -> list[dict]:
-        """Get list of active users for a document."""
-        if document_id not in self.awareness_states:
-            return []
-        return [
-            state["user"]
-            for state in self.awareness_states[document_id].values()
-        ]
-
-    def get_connection_count(self, document_id: str) -> int:
-        """Get number of active connections for a document."""
-        return len(self.active_connections.get(document_id, []))
+_PALETTE = [
+    "#f87171",
+    "#fb923c",
+    "#fbbf24",
+    "#a3e635",
+    "#34d399",
+    "#22d3ee",
+    "#60a5fa",
+    "#a78bfa",
+    "#f472b6",
+]
 
 
-# Global connection manager
-manager = ConnectionManager()
+def user_color(developer_id: str) -> str:
+    """A stable colour per person, so their caret does not change hue between
+    sessions."""
+    return _PALETTE[sum(ord(c) for c in developer_id) % len(_PALETTE)]
 
 
 @router.websocket("/ws/{document_id}")
 async def document_websocket(
     websocket: WebSocket,
     document_id: str,
-    token: str = Query(...),
+    token: str = Query(..., description="A bearer token — the same one the REST API takes"),
 ):
-    """WebSocket endpoint for document collaboration.
+    """Collaborative editing socket, speaking the standard y-protocol.
 
-    Protocol:
-    - Client connects with document_id and auth token
-    - Server sends current document state and awareness
-    - Client sends updates (Yjs sync messages, awareness updates)
-    - Server broadcasts updates to other clients
+    The token arrives as a query parameter because browsers cannot set headers
+    on a WebSocket handshake. It is a real signed token and is verified as one;
+    the previous implementation's "token" was a colon-joined user id and name
+    supplied by the client.
     """
-    # Validate token and get user info
-    user_info = await validate_token_and_get_user(token)
-    if not user_info:
-        await websocket.close(code=4001, reason="Invalid token")
-        return
+    async with get_async_session() as db:
+        identity = await verify_token(token, db)
+        if identity is None:
+            await websocket.close(code=WS_INVALID_TOKEN, reason="Invalid token")
+            return
+        developer_id, _actor = identity
 
-    # Check document access
-    # Note: In production, verify user has access to document
-    db = None  # We'd need to get db session here
+        document = (
+            await db.execute(select(Document).where(Document.id == document_id))
+        ).scalar_one_or_none()
+        if document is None or document.deleted_at is not None:
+            await websocket.close(code=WS_NOT_FOUND, reason="Document not found")
+            return
 
+        if document.is_docx:
+            # A Word document's body is a file; there is no CRDT to share and
+            # flattening one into it would produce a document whose two bodies
+            # disagree.
+            await websocket.close(
+                code=WS_FORBIDDEN, reason="Word documents are edited through their own endpoints"
+            )
+            return
+
+        level = await DocumentAccess(db).resolve(document, developer_id)
+        if level == AccessLevel.NONE:
+            # Same 404-shaped answer the REST API gives: confirming that a
+            # document exists but is not yours is itself a disclosure.
+            await websocket.close(code=WS_NOT_FOUND, reason="Document not found")
+            return
+
+        # A space that reviews changes does not get live co-editing, and this
+        # is where that decision is enforced.
+        #
+        # `DocumentRoom._flatten` writes the CRDT straight through
+        # `update_document` on a debounce, so a room in an approval space would
+        # bypass the gate entirely — and a gate anyone can step over by opening
+        # the editor is worse than no gate, because it is believed. The
+        # alternative that keeps both is a draft body separate from an approved
+        # one, which is a much larger change; until somebody asks for it, these
+        # spaces use single-writer saves, which become proposals.
+        approvals = DocumentApprovalService(db)
+        policy = await approvals.policy_for(document, developer_id)
+        if policy.gates:
+            await websocket.close(
+                code=WS_REVIEWED_SPACE,
+                reason="This space reviews changes before publishing",
+            )
+            return
+
+        developer = (
+            await db.execute(select(Developer).where(Developer.id == developer_id))
+        ).scalar_one_or_none()
+
+        try:
+            room = await get_room(document_id, str(document.workspace_id), db)
+        except CollaborationError:
+            await websocket.close(code=WS_NOT_FOUND, reason="Document not found")
+            return
+
+    await websocket.accept()
+
+    participant = Participant(
+        id=str(uuid.uuid4()),
+        developer_id=developer_id,
+        name=(developer.name if developer else "Unknown"),
+        avatar_url=(getattr(developer, "avatar_url", None) if developer else None),
+        color=user_color(developer_id),
+        # A viewer may watch the document being edited and may not change it.
+        # The old relay had no way to express this: every connection could
+        # write, because every connection was just a source of bytes.
+        can_write=level >= AccessLevel.EDIT,
+        send=websocket.send_bytes,
+    )
+
+    flusher: asyncio.Task | None = None
     try:
-        await manager.connect(websocket, document_id, user_info)
+        await room.join(participant)
+        flusher = asyncio.create_task(_flush_loop(room))
 
-        # Send initial state
-        await websocket.send_json({
-            "type": "connected",
-            "documentId": document_id,
-            "userId": user_info.get("id"),
-            "users": manager.get_active_users(document_id),
-        })
-
-        # Message handling loop
         while True:
+            message = await websocket.receive_bytes()
             try:
-                data = await websocket.receive_json()
-                await handle_message(websocket, document_id, user_info, data)
-            except WebSocketDisconnect:
+                await room.handle_client_message(participant, message)
+            except PermissionError as exc:
+                await websocket.close(code=WS_FORBIDDEN, reason=str(exc))
                 break
-            except Exception as e:
-                logger.error(f"Error handling message: {e}")
-                await websocket.send_json({
-                    "type": "error",
-                    "message": str(e),
-                })
 
     except WebSocketDisconnect:
         pass
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-    finally:
-        disconnected_doc = manager.disconnect(websocket)
-        if disconnected_doc:
-            await manager.broadcast_awareness(disconnected_doc)
-
-
-async def validate_token_and_get_user(token: str) -> dict | None:
-    """Validate auth token and return user info.
-
-    In production, this would validate a JWT or session token.
-    """
-    # For now, parse token as "user_id:name:email"
-    # In production, use proper JWT validation
-    try:
-        parts = token.split(":")
-        if len(parts) >= 2:
-            return {
-                "id": parts[0],
-                "name": parts[1] if len(parts) > 1 else "Unknown",
-                "email": parts[2] if len(parts) > 2 else None,
-                "color": generate_user_color(parts[0]),
-            }
     except Exception:
+        logger.exception("collab: socket error on %s", document_id)
+    finally:
+        if flusher is not None:
+            flusher.cancel()
+        await room.leave(participant.id)
+        # Flushes before dropping the room, so the last edit before the last
+        # tab closed is written rather than left in a dying process's memory.
+        await release_room(document_id)
+
+
+async def _flush_loop(room) -> None:
+    """Write the document out while people are still typing in it.
+
+    A room that only flushed at teardown would lose everything if the process
+    died, and would leave search and the AI paths reading a body from whenever
+    the document was last closed.
+    """
+    try:
+        while True:
+            await asyncio.sleep(1.0)
+            async with get_async_session() as db:
+                try:
+                    await room.flush(db)
+                except Exception:
+                    logger.exception("collab: flush failed for %s", room.document_id)
+    except asyncio.CancelledError:
         pass
 
-    return None
 
-
-def generate_user_color(user_id: str) -> str:
-    """Generate a consistent color for a user based on their ID."""
-    colors = [
-        "#f87171",  # red
-        "#fb923c",  # orange
-        "#fbbf24",  # amber
-        "#a3e635",  # lime
-        "#34d399",  # emerald
-        "#22d3ee",  # cyan
-        "#60a5fa",  # blue
-        "#a78bfa",  # violet
-        "#f472b6",  # pink
-    ]
-    # Use hash of user_id to pick consistent color
-    hash_val = sum(ord(c) for c in user_id)
-    return colors[hash_val % len(colors)]
-
-
-async def handle_message(
-    websocket: WebSocket,
-    document_id: str,
-    user_info: dict,
-    data: dict,
-) -> None:
-    """Handle incoming WebSocket message."""
-    msg_type = data.get("type")
-    user_id = user_info.get("id")
-
-    if msg_type == "sync":
-        # Yjs sync message - broadcast to other clients
-        await manager.broadcast(
-            document_id,
-            {
-                "type": "sync",
-                "data": data.get("data"),
-                "from": user_id,
-            },
-            exclude=websocket,
-        )
-
-    elif msg_type == "awareness":
-        # Update user's awareness state
-        manager.update_awareness(
-            document_id,
-            user_id,
-            cursor=data.get("cursor"),
-            selection=data.get("selection"),
-        )
-        # Broadcast updated awareness
-        await manager.broadcast_awareness(document_id)
-
-    elif msg_type == "update":
-        # Document content update - broadcast and optionally persist
-        await manager.broadcast(
-            document_id,
-            {
-                "type": "update",
-                "data": data.get("data"),
-                "from": user_id,
-            },
-            exclude=websocket,
-        )
-
-    elif msg_type == "ping":
-        # Keep-alive ping
-        await websocket.send_json({"type": "pong"})
-
-    else:
-        logger.warning(f"Unknown message type: {msg_type}")
-
-
-# REST endpoints for collaboration info
-
-@router.get("/{document_id}/users")
-async def get_active_users(document_id: str) -> dict:
-    """Get active users for a document."""
-    return {
-        "documentId": document_id,
-        "users": manager.get_active_users(document_id),
-        "count": manager.get_connection_count(document_id),
-    }
+# ==================== REST ====================
+#
+# Both of these were unauthenticated and returned who was editing any document
+# in any workspace to anyone who asked.
 
 
 @router.get("/{document_id}/status")
-async def get_collaboration_status(document_id: str) -> dict:
-    """Get collaboration status for a document."""
+async def get_collaboration_status(
+    document_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Who is currently editing this document."""
+    document = (
+        await db.execute(select(Document).where(Document.id == document_id))
+    ).scalar_one_or_none()
+    if document is None or document.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    level = await DocumentAccess(db).resolve(document, str(current_user.id))
+    if level == AccessLevel.NONE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    from aexy.services.document_collaboration import _rooms
+
+    room = _rooms.get(document_id)
+    users = (
+        [
+            {
+                "id": p.developer_id,
+                "name": p.name,
+                "avatar_url": p.avatar_url,
+                "color": p.color,
+                "can_write": p.can_write,
+            }
+            for p in room.participants.values()
+        ]
+        if room
+        else []
+    )
+
     return {
         "documentId": document_id,
-        "isActive": manager.get_connection_count(document_id) > 0,
-        "userCount": manager.get_connection_count(document_id),
-        "users": manager.get_active_users(document_id),
+        "users": users,
+        "count": len(users),
+        "can_write": level >= AccessLevel.EDIT,
     }

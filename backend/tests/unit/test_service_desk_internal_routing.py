@@ -351,8 +351,8 @@ async def test_an_insurer_on_the_thread_is_linked_without_deciding_the_owner(
 
 @pytest.mark.asyncio
 async def test_a_request_a_colleague_raised_is_theirs(db_session: AsyncSession) -> None:
-    """The ops head's own words: "Neha requested this ticket so it should be
-    assigned to Neha."
+    """The ops head's own words: "Dana requested this ticket so it should be
+    assigned to Dana."
 
     Nothing here is configured — no account maps this person, and the message
     names no counterparty. The one person it is known to concern is the one who

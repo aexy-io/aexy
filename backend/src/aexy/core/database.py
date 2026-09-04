@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB, TSVECTOR
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -37,6 +37,15 @@ def _compile_jsonb_sqlite(type_, compiler, **kw):  # noqa: ANN001
 @compiles(INET, "sqlite")
 def _compile_inet_sqlite(type_, compiler, **kw):  # noqa: ANN001
     return "VARCHAR(45)"
+
+
+@compiles(TSVECTOR, "sqlite")
+def _compile_tsvector_sqlite(type_, compiler, **kw):  # noqa: ANN001
+    # `documents.search_vector` is a PostgreSQL generated column with a GIN
+    # index behind it. SQLite gets an inert TEXT column that nothing reads —
+    # `DocumentService.search_documents` branches on the dialect and never
+    # touches this column outside PostgreSQL.
+    return "TEXT"
 
 
 class Base(DeclarativeBase):

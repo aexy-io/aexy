@@ -83,6 +83,10 @@ from aexy.api.notifications import router as notifications_router
 from aexy.api.oncall import router as oncall_router
 from aexy.api.google_calendar import router as google_calendar_router
 # Documentation
+from aexy.api.document_governance import router as document_governance_router
+from aexy.api.document_import import router as document_import_router
+from aexy.api.documents import guard_document_route
+from aexy.api.kb_portal import router as kb_portal_router
 from aexy.api.documents import router as documents_router
 from aexy.api.documents import template_router as templates_router
 from aexy.api.document_impact import router as document_impact_router
@@ -303,7 +307,42 @@ api_router.include_router(notifications_router, tags=["notifications"])
 api_router.include_router(oncall_router, tags=["oncall"], dependencies=[Depends(require_app_access("oncall"))])
 api_router.include_router(google_calendar_router, tags=["google-calendar"])
 # Documentation
-api_router.include_router(documents_router, tags=["documents"], dependencies=[Depends(require_app_access("docs"))])
+# Governance shares the documents prefix, the docs app gate and the same
+# baseline document guard — a route added there cannot forget the access check
+# any more than one added to `documents.py` can.
+api_router.include_router(
+    document_governance_router,
+    tags=["document-governance"],
+    dependencies=[
+        Depends(require_app_access("docs")),
+        Depends(guard_document_route),
+    ],
+)
+
+# Import shares the documents prefix and the docs app gate. Not the document
+# guard: its routes carry no `{document_id}`, and it enforces space admin
+# itself because importing writes in bulk.
+api_router.include_router(
+    document_import_router,
+    tags=["document-import"],
+    dependencies=[Depends(require_app_access("docs"))],
+)
+
+# The public portal is deliberately outside both gates: it is unauthenticated
+# and reads only `published_documents`, never `documents`.
+api_router.include_router(kb_portal_router)
+
+api_router.include_router(
+    documents_router,
+    tags=["documents"],
+    dependencies=[
+        Depends(require_app_access("docs")),
+        # Baseline document-level read gate. Router-level rather than
+        # per-endpoint so a route added later fails closed. See
+        # `guard_document_route` for why that placement matters.
+        Depends(guard_document_route),
+    ],
+)
 # templates_router mixes system templates (no workspace) with workspace-owned
 # ones, so the docs toggle is enforced per-endpoint inside documents.py
 # (ensure_app_enabled) rather than as a blanket router dependency.

@@ -17,10 +17,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.access_guard import ensure_app_enabled
-from aexy.api.developers import get_current_developer
+from aexy.api.developers import get_current_developer, get_current_developer_id
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
-from aexy.models.documentation import DocumentPermission
+from aexy.models.documentation import Document
+from sqlalchemy import select
 from typing import Any
 
 from aexy.schemas.document import (
@@ -45,6 +46,7 @@ from aexy.schemas.document import (
     DocumentNeedsUpdateItem,
     MergedChangeItem,
     DocumentResponse,
+    DocumentTrashItem,
     DocumentTreeItem,
     DocumentUpdate,
     DocumentVersionResponse,
@@ -69,6 +71,8 @@ from aexy.services.github_app_service import (
 )
 from aexy.services.document_service import (
     DOCX_CONTENT_TYPE,
+    DocumentCycleError,
+    DocumentTooLargeError,
     DocumentService,
     DocxConflictError,
     DocxStorageError,
@@ -85,6 +89,13 @@ from aexy.services.proposed_edits_service import (
     current_document_sha,
     proposal_is_stale,
 )
+from aexy.models.document_audit import DocumentAuditAction
+from aexy.services.document_access import AccessLevel, DocumentAccess
+from aexy.services.document_approval import (
+    DocumentApprovalService,
+    NotAReviewer,
+)
+from aexy.services.document_audit_service import Actor, DocumentAuditService
 from aexy.services.workspace_service import WorkspaceService
 from aexy.models.documentation import (
     CONTENT_FORMAT_DOCX,
@@ -112,6 +123,194 @@ async def check_workspace_permission(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this workspace",
         )
+
+
+def _semantic_search(db: AsyncSession):
+    """The vector half of search, or None when no embedding provider is configured.
+
+    Returning None rather than raising is the documented degraded mode:
+    `FileSearchService` already behaves this way, and a deployment without LLM
+    keys should get keyword search rather than a 500 on every query.
+    """
+    from aexy.services.document_embedding_service import DocumentEmbeddingService
+
+    try:
+        from aexy.llm.gateway import LLMGateway
+
+        gateway = LLMGateway()
+    except Exception:
+        return None
+    return DocumentEmbeddingService(db, gateway)
+
+
+#: Routes whose write needs *less* than EDIT, with the reason each one does.
+#:
+#: Keyed by the route's path template so the entry is exact and greppable —
+#: matching on a suffix would silently start covering a future route that
+#: happened to end the same way.
+#:
+#: Everything not listed here follows the default in `minimum_for_route`, and
+#: `test_document_route_levels.py` fails if a new route appears that nobody has
+#: made a decision about.
+_WRITE_LEVEL_EXCEPTIONS: dict[str, AccessLevel] = {
+    # Commenting is what COMMENT access is *for*. Requiring EDIT would make the
+    # grade meaningless — the service enforces it precisely again.
+    "/workspaces/{workspace_id}/documents/{document_id}/comments": AccessLevel.COMMENT,
+    "/workspaces/{workspace_id}/documents/{document_id}/comments/{comment_id}": AccessLevel.COMMENT,
+    "/workspaces/{workspace_id}/documents/{document_id}/comments/{comment_id}/resolve": AccessLevel.COMMENT,
+    # Proposing a change is the opposite of writing one: the whole point is
+    # that somebody who may not edit can suggest, and a reviewer decides.
+    "/workspaces/{workspace_id}/documents/{document_id}/propose": AccessLevel.COMMENT,
+    # A personal bookmark. Nothing about the document changes.
+    "/workspaces/{workspace_id}/documents/{document_id}/favorite": AccessLevel.VIEW,
+    # Produces a *new* document owned by the caller; the original is untouched.
+    "/workspaces/{workspace_id}/documents/{document_id}/duplicate": AccessLevel.VIEW,
+    # Restoring from the trash resolves to NONE for everyone by design, so it
+    # does its own check against pre-deletion access.
+    "/workspaces/{workspace_id}/documents/{document_id}/restore": AccessLevel.NONE,
+}
+
+#: Methods that change something.
+_WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+#: Where the workspace-scoped part of a route path begins. Routes are mounted
+#: under an API-version prefix (`/api/v1/...`), and the exceptions table is
+#: keyed without it so the table survives that prefix changing — and so an
+#: entry cannot silently stop matching, which is exactly what happened the
+#: first time this was written.
+_PATH_ROOT = "/workspaces/"
+
+
+def normalise_route_path(route_path: str) -> str:
+    """A route path with any mount prefix stripped."""
+    index = route_path.find(_PATH_ROOT)
+    return route_path[index:] if index >= 0 else route_path
+
+
+def minimum_for_route(method: str, route_path: str) -> AccessLevel:
+    """The access a route needs before its handler runs.
+
+    A read needs VIEW; **a write needs EDIT unless it is listed as an
+    exception**. That default is the whole value of this function. The first
+    version of this guard defaulted everything to VIEW, which meant a write
+    endpoint that forgot to escalate was gated at *read* level — better than
+    the nothing that came before it, and still wrong. An audit of the router
+    found nine such endpoints, including the one that overwrites a Word
+    document's bytes.
+
+    Endpoints may still escalate further (sharing needs ADMIN); this is the
+    floor, not the answer.
+    """
+    if method.upper() not in _WRITE_METHODS:
+        return AccessLevel.VIEW
+    return _WRITE_LEVEL_EXCEPTIONS.get(
+        normalise_route_path(route_path), AccessLevel.EDIT
+    )
+
+
+async def guard_document_route(
+    request: Request,
+    workspace_id: str,
+    document_id: str | None = None,
+    developer_id: str = Depends(get_current_developer_id),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Access gate on every route in this router that names a document.
+
+    Mounted as a router dependency rather than called from each endpoint, and
+    that placement is the point. Before this, document-level access was checked
+    by three collaborator-management endpoints and nowhere else — not because
+    anyone decided reads should be open, but because the check was something
+    each endpoint had to remember. Twenty-three of them did not.
+
+    It grants nothing; it only refuses. Endpoints still escalate where they
+    need more (sharing needs ADMIN), and a route that forgets now fails closed
+    at the floor its method implies rather than at read level.
+
+    `document_id` is optional because the same router serves collection routes
+    (`/tree`, `/favorites`, `/trash`) that have no document in the path; those
+    filter with `visible_clause` instead.
+    """
+    if not document_id:
+        return
+
+    route = request.scope.get("route")
+    minimum = minimum_for_route(
+        request.method, getattr(route, "path", "") or ""
+    )
+
+    access = DocumentAccess(db)
+    document = (
+        await db.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if document is None:
+        # Not found *or* not in this workspace. Both are 404: confirming that
+        # an id exists in some other tenant is itself a disclosure.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    # A trashed document is still reachable by the restore route, which does
+    # its own check; everything else treats it as gone.
+    if document.deleted_at is not None:
+        return
+
+    level = await access.resolve(document, developer_id, workspace_id=workspace_id)
+    if level == AccessLevel.NONE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    if level < minimum:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"This document requires {minimum.name.lower()} access",
+        )
+
+
+async def require_document(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer,
+    db: AsyncSession,
+    minimum: AccessLevel = AccessLevel.VIEW,
+):
+    """Load a document the caller is actually entitled to, or raise.
+
+    Workspace membership used to be the only check on every read and write in
+    this router — `check_workspace_permission(..., "viewer")` and nothing else.
+    `Document.visibility`, `DocumentSpaceMember` roles and
+    `DocumentCollaborator` grades were all stored, surfaced in responses, and
+    enforced nowhere, so a private document was readable by any workspace
+    viewer holding its id.
+
+    Returns `(document, level)` so a caller that needs to know *how much*
+    access — the agent-proposal gate, the sharing panel — does not resolve it
+    twice.
+    """
+    service = DocumentService(db)
+    document = await service.get_document(document_id, workspace_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    access = DocumentAccess(db)
+    level = await access.require(
+        document,
+        str(current_user.id),
+        minimum,
+        workspace_id=workspace_id,
+    )
+    return document, level
 
 
 def document_to_response(doc) -> DocumentResponse:
@@ -151,8 +350,19 @@ def document_to_response(doc) -> DocumentResponse:
     )
 
 
-def document_to_list_response(doc) -> DocumentListResponse:
-    """Convert Document model to list response schema."""
+def document_to_list_response(
+    doc,
+    *,
+    snippet: str | None = None,
+    score: float | None = None,
+) -> DocumentListResponse:
+    """Convert Document model to list response schema.
+
+    `snippet` and `score` come from a `SearchHit` and are keyword-only, so a
+    browse-path caller cannot supply them by accident and a search-path one
+    cannot forget them silently — the two reads of this function look
+    different at the call site.
+    """
     return DocumentListResponse(
         id=str(doc.id),
         workspace_id=str(doc.workspace_id),
@@ -163,6 +373,8 @@ def document_to_list_response(doc) -> DocumentListResponse:
         generation_status=doc.generation_status,
         created_at=doc.created_at,
         updated_at=doc.updated_at,
+        snippet=snippet,
+        score=score,
     )
 
 
@@ -201,6 +413,13 @@ async def list_documents(
     workspace_id: str,
     parent_id: str | None = None,
     search: str | None = None,
+    semantic: bool = Query(
+        default=True,
+        description=(
+            "Blend vector search with keyword search. Set false for an exact "
+            "keyword-only match."
+        ),
+    ),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     current_user: Developer = Depends(get_current_developer),
@@ -210,20 +429,38 @@ async def list_documents(
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
     service = DocumentService(db)
+    clause = await DocumentAccess(db).visible_clause(
+        workspace_id, str(current_user.id)
+    )
 
     if search:
-        documents = await service.search_documents(
+        hits = await service.search_documents(
             workspace_id=workspace_id,
             query=search,
             limit=limit,
             offset=offset,
+            access_clause=clause,
+            semantic=_semantic_search(db) if semantic else None,
         )
+        # The hit, not just the document it points at. `search_documents` does
+        # the work of ranking each row and excerpting the passage that matched,
+        # and this line used to drop both on the floor — so the API answered a
+        # search with a bare list of titles, and the search UI had no snippet
+        # to show because none was ever sent.
+        return [
+            document_to_list_response(
+                hit.document, snippet=hit.snippet, score=hit.score
+            )
+            for hit in hits
+        ]
     else:
         # Get flat list at parent level
         tree = await service.get_document_tree(
             workspace_id=workspace_id,
+            developer_id=str(current_user.id),
             parent_id=parent_id,
             include_templates=False,
+            access_clause=clause,
         )
         # Convert tree items to list responses
         return [
@@ -239,8 +476,6 @@ async def list_documents(
             )
             for item in tree
         ]
-
-    return [document_to_list_response(doc) for doc in documents]
 
 
 @router.get("/tree", response_model=list[DocumentTreeItem])
@@ -264,9 +499,117 @@ async def get_document_tree(
         include_templates=include_templates,
         visibility=visibility,
         space_id=space_id,
+        access_clause=await DocumentAccess(db).visible_clause(
+            workspace_id, str(current_user.id)
+        ),
     )
 
     return tree
+
+
+# ==================== Trash ====================
+# NOTE: Literal paths MUST stay before /{document_id}, or "trash" is read as
+# a document id and the listing 404s.
+
+
+@router.get("/trash", response_model=list[DocumentTrashItem])
+async def list_trash(
+    workspace_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Documents in the trash, newest deletion first.
+
+    Only the root of each deleted subtree: deleting a section is one action and
+    should be one row to restore, not one per page it contained.
+    """
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    access = DocumentAccess(db)
+    clause = await access.visible_clause(
+        workspace_id, str(current_user.id), include_deleted=True
+    )
+
+    documents = await service.list_trash(
+        workspace_id=workspace_id,
+        limit=limit,
+        offset=offset,
+        access_clause=clause,
+    )
+
+    return [
+        DocumentTrashItem(
+            id=str(doc.id),
+            title=doc.title,
+            icon=doc.icon,
+            space_id=str(doc.space_id) if doc.space_id else None,
+            deleted_at=doc.deleted_at,
+            deleted_by_id=str(doc.deleted_by_id) if doc.deleted_by_id else None,
+            descendant_count=len(
+                await service._subtree_ids(str(doc.id), include_deleted=True)
+            )
+            - 1,
+        )
+        for doc in documents
+    ]
+
+
+@router.post("/{document_id}/restore", response_model=DocumentResponse)
+async def restore_document(
+    workspace_id: str,
+    document_id: str,
+    current_user: Developer = Depends(get_current_developer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bring a trashed document and its subtree back."""
+    await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    service = DocumentService(db)
+    document = await service.get_document(
+        document_id, workspace_id, include_deleted=True
+    )
+    if not document or document.deleted_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No such document in the trash",
+        )
+
+    # `resolve` refuses a deleted document by design, so restore asks the
+    # question the trash listing asks — could this person have opened it before
+    # it was deleted? Checking workspace membership alone, which is what this
+    # did first, let any colleague pull somebody's private page back out of
+    # the bin.
+    #
+    # ADMIN, matching delete: taking a document out of the trash is the same
+    # authority as putting it there.
+    level = await DocumentAccess(db).resolve(
+        document,
+        str(current_user.id),
+        workspace_id=workspace_id,
+        allow_deleted=True,
+    )
+    if level == AccessLevel.NONE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    if level < AccessLevel.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Restoring a document requires admin access to it",
+        )
+
+    restored = await service.restore_document(
+        document_id, workspace_id, restored_by_id=str(current_user.id)
+    )
+    if not restored:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No such document in the trash",
+        )
+    return document_to_response(restored)
 
 
 # ==================== Favorites ====================
@@ -286,6 +629,9 @@ async def get_favorites(
     favorites = await service.get_favorites(
         workspace_id=workspace_id,
         developer_id=str(current_user.id),
+        access_clause=await DocumentAccess(db).visible_clause(
+            workspace_id, str(current_user.id)
+        ),
     )
 
     return favorites
@@ -605,20 +951,30 @@ async def resolve_document_comment(
 async def get_document(
     workspace_id: str,
     document_id: str,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a document by ID."""
     await check_workspace_permission(workspace_id, current_user, db, "viewer")
 
-    service = DocumentService(db)
-    document = await service.get_document(document_id, workspace_id)
+    document, _ = await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.VIEW
+    )
 
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+    # Reads are recorded. "Who opened this document, and from where" is the
+    # question that actually gets asked after an incident, and an audit log
+    # that covers only writes cannot answer it. The counter and the event are
+    # separate on purpose — see `document_audit_service`.
+    audit = DocumentAuditService(db)
+    actor = Actor.from_request(request, current_user)
+    await audit.record_view(document=document, viewer_id=str(current_user.id))
+    await audit.log(
+        workspace_id=workspace_id,
+        action=DocumentAuditAction.VIEWED,
+        actor=actor,
+        document=document,
+    )
 
     return document_to_response(document)
 
@@ -670,19 +1026,64 @@ async def update_document(
 
     service = DocumentService(db)
 
-    # Check document exists in workspace
-    existing = await service.get_document(document_id, workspace_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+    existing, _ = await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.EDIT
+    )
 
     # A Word document's body is a file. Both branches below write TipTap
     # content, and for a docx document either would produce a document whose
     # two bodies disagree.
     if data.content is not None:
         require_tiptap_body(existing)
+
+    # Optimistic concurrency. The editor autosaves a whole body on a debounce
+    # and there was no version check at all, so two people on one page meant
+    # the slower save silently discarded the faster one. The docx path has
+    # guarded this since it was written; this is the TipTap counterpart.
+    if data.content is not None and data.base_sha is not None:
+        current = current_document_sha(existing)
+        if current is not None and current != data.base_sha:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": (
+                        "This document changed since you opened it. "
+                        "Reload to merge your edit."
+                    ),
+                    "current_sha": current,
+                    "content": existing.content,
+                },
+            )
+
+    # A space that reviews changes turns a person's write into a proposal too,
+    # not only an agent's. Checked before the agent branch because the two
+    # produce the same outcome and the space's policy is the broader rule.
+    if data.content is not None and (existing.content or {}).get("content"):
+        approvals = DocumentApprovalService(db)
+        policy = await approvals.policy_for(existing, str(current_user.id))
+        if policy.gates:
+            reviewer = await approvals.pick_reviewer(
+                policy, exclude=str(current_user.id)
+            )
+            proposal = await ProposedEditsService(db).create_proposal(
+                document_id=document_id,
+                source=ProposedEditSource.MANUAL_AI_EDIT,
+                proposed_content=data.content,
+                proposed_by_id=str(current_user.id),
+                assigned_reviewer_id=reviewer,
+            )
+            await DocumentAuditService(db).log(
+                workspace_id=workspace_id,
+                action=DocumentAuditAction.UPDATED,
+                actor=Actor.from_request(request, current_user),
+                document=existing,
+                after={"proposal_id": str(proposal.id), "gated": True},
+            )
+            await db.commit()
+            # Returned unchanged, deliberately, for the same reason the agent
+            # path does it: a client that reads back its own text reports
+            # success for a change nobody has approved.
+            return document_to_response(existing)
 
     if (
         data.content is not None
@@ -702,16 +1103,37 @@ async def update_document(
         # nobody has approved yet.
         return document_to_response(existing)
 
-    document = await service.update_document(
-        document_id=document_id,
-        updated_by_id=str(current_user.id),
-        title=data.title,
-        content=data.content,
-        icon=data.icon,
-        cover_image=data.cover_image,
-        visibility=data.visibility,
-        is_auto_save=data.is_auto_save,
-    )
+    previous_visibility = existing.visibility
+
+    try:
+        document = await service.update_document(
+            document_id=document_id,
+            updated_by_id=str(current_user.id),
+            title=data.title,
+            content=data.content,
+            icon=data.icon,
+            cover_image=data.cover_image,
+            visibility=data.visibility,
+            is_auto_save=data.is_auto_save,
+        )
+    except DocumentTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
+        ) from exc
+
+    # Only the visibility flip is audited here, not the edit. Every content
+    # change already produces a version and an activity row; what neither of
+    # those records is somebody widening who can read the page, which is the
+    # change a security review is looking for.
+    if data.visibility is not None and data.visibility != previous_visibility:
+        await DocumentAuditService(db).log(
+            workspace_id=workspace_id,
+            action=DocumentAuditAction.VISIBILITY_CHANGED,
+            actor=Actor.from_request(request, current_user),
+            document=document,
+            before={"visibility": previous_visibility},
+            after={"visibility": data.visibility},
+        )
 
     return document_to_response(document)
 
@@ -720,14 +1142,31 @@ async def update_document(
 async def delete_document(
     workspace_id: str,
     document_id: str,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a document and its children."""
+    """Move a document and its children to the trash."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.ADMIN
+    )
+
     service = DocumentService(db)
-    deleted = await service.delete_document(document_id, workspace_id)
+    doomed = await service.get_document(document_id, workspace_id)
+    deleted = await service.delete_document(
+        document_id, workspace_id, deleted_by_id=str(current_user.id)
+    )
+    if deleted and doomed is not None:
+        await DocumentAuditService(db).log(
+            workspace_id=workspace_id,
+            action=DocumentAuditAction.DELETED,
+            actor=Actor.from_request(request, current_user),
+            document_id=document_id,
+            document_title=doomed.title,
+            commit=True,
+        )
 
     if not deleted:
         raise HTTPException(
@@ -747,13 +1186,29 @@ async def move_document(
     """Move a document to a new parent and/or position."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
 
-    service = DocumentService(db)
-    document = await service.move_document(
-        document_id=document_id,
-        workspace_id=workspace_id,
-        new_parent_id=data.new_parent_id,
-        position=data.position,
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.EDIT
     )
+    if data.new_parent_id:
+        # Filing a page under one you cannot see would make it disappear from
+        # your own sidebar while remaining perfectly readable to whoever owns
+        # the destination.
+        await require_document(
+            workspace_id, data.new_parent_id, current_user, db, AccessLevel.EDIT
+        )
+
+    service = DocumentService(db)
+    try:
+        document = await service.move_document(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            new_parent_id=data.new_parent_id,
+            position=data.position,
+        )
+    except DocumentCycleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     if not document:
         raise HTTPException(
@@ -774,6 +1229,10 @@ async def duplicate_document(
 ):
     """Duplicate a document."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.VIEW
+    )
 
     service = DocumentService(db)
     document = await service.duplicate_document(
@@ -848,6 +1307,10 @@ async def restore_version(
 ):
     """Restore a document to a previous version."""
     await check_workspace_permission(workspace_id, current_user, db, "member")
+
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.EDIT
+    )
 
     service = DocumentService(db)
 
@@ -1126,6 +1589,7 @@ async def add_collaborator(
     workspace_id: str,
     document_id: str,
     data: CollaboratorAdd,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1142,16 +1606,21 @@ async def add_collaborator(
             detail="Document not found",
         )
 
-    # Only creator or admin can add collaborators
-    if document.created_by_id != str(current_user.id):
-        has_permission = await service.check_permission(
-            document_id, str(current_user.id), DocumentPermission.ADMIN.value
-        )
-        if not has_permission:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to add collaborators",
-            )
+    # Sharing is an admin act. The hand-rolled check this replaces read
+    # only `created_by_id` and the collaborator table, so a space admin
+    # could not manage sharing in their own space and a workspace admin
+    # could not fix a document whose author had left.
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.ADMIN
+    )
+
+    await DocumentAuditService(db).log(
+        workspace_id=workspace_id,
+        action=DocumentAuditAction.COLLABORATOR_ADDED,
+        actor=Actor.from_request(request, current_user),
+        document=document,
+        after={"developer_id": data.developer_id, "permission": data.permission},
+    )
 
     collaborator = await service.add_collaborator(
         document_id=document_id,
@@ -1189,6 +1658,7 @@ async def update_collaborator(
     document_id: str,
     developer_id: str,
     data: CollaboratorUpdate,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1205,15 +1675,18 @@ async def update_collaborator(
             detail="Document not found",
         )
 
-    if document.created_by_id != str(current_user.id):
-        has_permission = await service.check_permission(
-            document_id, str(current_user.id), DocumentPermission.ADMIN.value
-        )
-        if not has_permission:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to update collaborators",
-            )
+    # Sharing is an admin act — see `add_collaborator`.
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.ADMIN
+    )
+
+    await DocumentAuditService(db).log(
+        workspace_id=workspace_id,
+        action=DocumentAuditAction.COLLABORATOR_CHANGED,
+        actor=Actor.from_request(request, current_user),
+        document=document,
+        after={"developer_id": developer_id, "permission": data.permission},
+    )
 
     updated = await service.update_collaborator_permission(
         document_id=document_id,
@@ -1236,6 +1709,7 @@ async def remove_collaborator(
     workspace_id: str,
     document_id: str,
     developer_id: str,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1252,15 +1726,18 @@ async def remove_collaborator(
             detail="Document not found",
         )
 
-    if document.created_by_id != str(current_user.id):
-        has_permission = await service.check_permission(
-            document_id, str(current_user.id), DocumentPermission.ADMIN.value
-        )
-        if not has_permission:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to remove collaborators",
-            )
+    # Sharing is an admin act — see `add_collaborator`.
+    await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.ADMIN
+    )
+
+    await DocumentAuditService(db).log(
+        workspace_id=workspace_id,
+        action=DocumentAuditAction.COLLABORATOR_REMOVED,
+        actor=Actor.from_request(request, current_user),
+        document=document,
+        before={"developer_id": developer_id},
+    )
 
     removed = await service.remove_collaborator(
         document_id=document_id,
@@ -2593,6 +3070,7 @@ async def approve_proposed_edit(
     workspace_id: str,
     document_id: str,
     proposal_id: str,
+    request: Request,
     current_user: Developer = Depends(get_current_developer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -2618,7 +3096,33 @@ async def approve_proposed_edit(
             status_code=status.HTTP_404_NOT_FOUND, detail="Proposed edit not found"
         )
 
+    # Who may approve, and whether you may approve your own. `approve()` took
+    # a reviewer id and applied — and the endpoint's own access check passes
+    # for the proposer by definition, so self-approval was possible and
+    # unexamined. That is the central question of an approval gate.
+    try:
+        await DocumentApprovalService(db).may_approve(
+            document, proposal, str(current_user.id)
+        )
+    except NotAReviewer as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+
     approved = await proposed_edits.approve(proposal_id, str(current_user.id))
+
+    await DocumentAuditService(db).log(
+        workspace_id=workspace_id,
+        action=DocumentAuditAction.UPDATED,
+        actor=Actor.from_request(request, current_user),
+        document=document,
+        after={
+            "proposal_id": proposal_id,
+            "approved": True,
+            "self_approved": str(proposal.requested_by_id or "")
+            == str(current_user.id),
+        },
+    )
     await db.commit()
     # Recompute stale after approval (it's False post-apply because
     # we just wrote the content).
@@ -2715,14 +3219,17 @@ async def _load_document_for_write(
     current_user: Developer,
     db: AsyncSession,
 ):
+    """Load a document the caller may actually change.
+
+    Checked workspace membership and nothing else, which meant a VIEW-only
+    collaborator could overwrite a Word document's bytes — the one write path
+    where "overwrite" means replacing a binary nobody can diff.
+    """
     await check_workspace_permission(workspace_id, current_user, db, "member")
-    service = DocumentService(db)
-    document = await service.get_document(document_id, workspace_id)
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
-    return service, document
+    document, _ = await require_document(
+        workspace_id, document_id, current_user, db, AccessLevel.EDIT
+    )
+    return DocumentService(db), document
 
 
 async def _read_docx_upload(file: UploadFile) -> bytes:

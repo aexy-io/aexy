@@ -66,6 +66,11 @@ from aexy.schemas.service_desk import (
     DigestPreview,
     ServiceDeskTicketResponse,
     TicketCount,
+    ScorecardBandInput,
+    ScorecardConfigResponse,
+    ScorecardConfigUpdate,
+    ScorecardKPIResponse,
+    ScorecardPreviewRequest,
     TicketFilters,
     TicketFieldsUpdate,
 )
@@ -414,6 +419,276 @@ async def get_analytics(
         developer_id=str(current.id),
         filters=filters,
         limit=limit,
+    )
+
+
+@router.get("/reports/tat")
+async def get_tat_report(
+    workspace_id: str,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """One row per ticket, with the pending ledger unfolded per stakeholder.
+
+    Returns column *descriptors* alongside the rows because the stakeholder
+    columns come from this workspace's taxonomy — a client holding its own
+    column list would be right for one desk and wrong for every other.
+
+    Same scope and same filters as the ticket list: this is the desk's own work,
+    counted, not a wider read with a report label on it.
+    """
+    from aexy.services.service_desk_reporting import ServiceDeskReporting
+
+    return await ServiceDeskReporting(db).tat_report(
+        workspace_id, developer_id=str(current.id), filters=filters
+    )
+
+
+@router.get("/reports/tat/export")
+async def export_tat_report(
+    workspace_id: str,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The TAT report as CSV — the screen, in a file."""
+    from aexy.services.service_desk_reporting import ServiceDeskReporting
+
+    csv_text, filename = await ServiceDeskReporting(db).export_tat_csv(
+        workspace_id, developer_id=str(current.id), filters=filters
+    )
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def _scorecard_restriction(
+    db: AsyncSession, workspace_id: str, developer_id: str
+) -> str | None:
+    """None if the caller may see the whole desk, else their own developer id.
+
+    A scorecard grades named colleagues, so it is not a ticket list and
+    ``resolve_scope_clause`` does not answer the question. Anyone with full desk
+    visibility sees every owner; everyone else sees exactly their own row.
+
+    They are not simply denied, because an owner has a legitimate interest in
+    their own rating — and the restriction narrows the rows *returned*, never the
+    tickets the figures are computed from. Productivity is a ratio against the
+    desk average; computed over a cohort of one it would divide a number by
+    itself and read 100 forever, which is a wrong number wearing a restricted
+    view's clothes.
+    """
+    from aexy.services.service_desk_service import has_full_service_desk_view
+
+    if await has_full_service_desk_view(db, workspace_id, developer_id):
+        return None
+    return developer_id
+
+
+@router.get("/reports/scorecard")
+async def get_scorecard(
+    workspace_id: str,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """Weighted KPI scores and a rating per owner.
+
+    A manager gets every owner. Anyone else gets their own row only, with every
+    cohort figure still measured across the whole desk — see
+    ``_scorecard_restriction``.
+    """
+    from aexy.services.service_desk_scorecard import ServiceDeskScorecard
+
+    developer_id = str(current.id)
+    return await ServiceDeskScorecard(db).scorecard(
+        workspace_id,
+        viewer_id=developer_id,
+        restrict_to_owner_id=await _scorecard_restriction(db, workspace_id, developer_id),
+        filters=filters,
+    )
+
+
+@router.get("/reports/scorecard/export")
+async def export_scorecard(
+    workspace_id: str,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The scorecard as CSV, under the same restriction as the screen."""
+    from aexy.services.service_desk_scorecard import ServiceDeskScorecard
+
+    developer_id = str(current.id)
+    csv_text, filename = await ServiceDeskScorecard(db).export_csv(
+        workspace_id,
+        viewer_id=developer_id,
+        restrict_to_owner_id=await _scorecard_restriction(db, workspace_id, developer_id),
+        filters=filters,
+    )
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/reports/scorecard/vocabulary")
+async def get_scorecard_vocabulary(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    """What a custom KPI may be built out of, in this desk's own nouns.
+
+    Served rather than compiled into the client for the same reason the TAT
+    report's columns are: adding a Legal bucket adds "Time in Legal" with no
+    frontend release, and a desk that renames its nouns sees its own words.
+
+    Manager-only — it is the builder's palette, and only a manager can build.
+    """
+    from aexy.services.service_desk_clock import load_clock
+    from aexy.services.service_desk_formula import vocabulary
+    from aexy.services.service_desk_taxonomy import load_taxonomy
+
+    return vocabulary(
+        await load_taxonomy(db, workspace_id, seed=False),
+        await load_clock(db, workspace_id),
+    )
+
+
+@router.post("/reports/scorecard/preview")
+async def preview_scorecard(
+    workspace_id: str,
+    data: ScorecardPreviewRequest,
+    filters: TicketFilters = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    """Score a config that has not been saved, next to the one that is.
+
+    A POST because the body is a whole proposed config, but it writes nothing.
+    Manager-only, and unscoped like the scorecard itself: it returns every
+    owner's figures, which is exactly what the impact diff is for — adding a KPI
+    rescales every weight and re-grades named people, and that has to be visible
+    before anyone commits to it.
+    """
+    from aexy.services.service_desk_scorecard import ServiceDeskScorecard
+
+    return await ServiceDeskScorecard(db).preview(
+        workspace_id,
+        draft_kpis=[k.model_dump() for k in data.kpis],
+        draft_bands=[b.model_dump() for b in data.bands],
+        filters=filters,
+    )
+
+
+@router.get("/reports/scorecard/config", response_model=ScorecardConfigResponse)
+async def get_scorecard_config(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(get_current_developer),
+):
+    """The workspace's KPI weights, curves and rating bands.
+
+    Readable by anyone who can open the desk: an owner being graded should be
+    able to see what they are graded on. ``can_manage`` says whether they may
+    change it.
+    """
+    from aexy.services.permission_service import PermissionService
+    from aexy.services.service_desk_scorecard import METRICS, metric_catalogue
+    from aexy.services.service_desk_scorecard_config import load_scorecard_config
+
+    config = await load_scorecard_config(db, workspace_id)
+    can_manage = await PermissionService(db).check_permission(
+        workspace_id, str(current.id), "can_manage_service_desk"
+    )
+    return ScorecardConfigResponse(
+        kpis=[
+            ScorecardKPIResponse(
+                metric_key=k.metric_key,
+                label=k.label,
+                weight=k.weight,
+                direction=k.direction,
+                benchmark=k.benchmark,
+                penalty_per_unit=k.penalty_per_unit,
+                target=k.target,
+                threshold=k.threshold,
+                enabled=k.enabled,
+                source=k.source,
+                definition=k.definition,
+                definition_version=k.definition_version,
+                status=k.status,
+                unit=METRICS[k.metric_key].unit if k.metric_key in METRICS else "rate",
+            )
+            for k in config.kpis
+        ],
+        bands=[
+            ScorecardBandInput(rating=b.rating, min_score=b.min_score, label=b.label)
+            for b in config.bands
+        ],
+        available_metrics=metric_catalogue(),
+        can_manage=can_manage,
+    )
+
+
+@router.put("/reports/scorecard/config", response_model=ScorecardConfigResponse)
+async def update_scorecard_config(
+    workspace_id: str,
+    data: ScorecardConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current: Developer = Depends(require_manage),
+):
+    """Replace the scorecard rules.
+
+    Whole-set, because the enabled weights must total 1 — an invariant across
+    rows that only holds between complete writes.
+    """
+    from aexy.services.service_desk_scorecard import METRICS, metric_catalogue
+    from aexy.services.service_desk_scorecard_config import replace_config
+
+    from aexy.services.service_desk_taxonomy import load_taxonomy
+
+    config = await replace_config(
+        db,
+        workspace_id,
+        [k.model_dump() for k in data.kpis],
+        [b.model_dump() for b in data.bands],
+        await load_taxonomy(db, workspace_id, seed=False),
+    )
+    logger.info(
+        "Scorecard config replaced for workspace %s by %s (%d KPIs, %d bands)",
+        workspace_id, current.id, len(data.kpis), len(data.bands),
+    )
+    return ScorecardConfigResponse(
+        kpis=[
+            ScorecardKPIResponse(
+                metric_key=k.metric_key,
+                label=k.label,
+                weight=k.weight,
+                direction=k.direction,
+                benchmark=k.benchmark,
+                penalty_per_unit=k.penalty_per_unit,
+                target=k.target,
+                threshold=k.threshold,
+                enabled=k.enabled,
+                source=k.source,
+                definition=k.definition,
+                definition_version=k.definition_version,
+                status=k.status,
+                unit=METRICS[k.metric_key].unit if k.metric_key in METRICS else "rate",
+            )
+            for k in config.kpis
+        ],
+        bands=[
+            ScorecardBandInput(rating=b.rating, min_score=b.min_score, label=b.label)
+            for b in config.bands
+        ],
+        available_metrics=metric_catalogue(),
+        can_manage=True,
     )
 
 

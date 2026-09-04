@@ -6913,6 +6913,18 @@ export interface DocumentListItem {
   generation_status: DocumentStatus;
   created_at: string;
   updated_at: string;
+  /**
+   * Why this row matched — present only on a search, null when browsing.
+   *
+   * Wraps the matched terms in `<mark>…</mark>` (Postgres `ts_headline`).
+   * The surrounding text is a document body and is NOT escaped. Render it
+   * with `highlightSnippet`, which parses those markers into elements;
+   * passing it to `dangerouslySetInnerHTML` would inject whatever somebody
+   * typed into a page.
+   */
+  snippet?: string | null;
+  /** Relevance rank, search-only. Higher is better; scales differ by backend. */
+  score?: number | null;
 }
 
 export interface DocumentVersion {

@@ -133,7 +133,7 @@ async def test_the_receipt_carries_the_link(db_session: AsyncSession):
 
     _, body = await render_sd(
         db_session, ws.id, "receipt",
-        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Priya",
+        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Sam",
          "ticket_url": url},
     )
 
@@ -147,7 +147,7 @@ async def test_a_missing_link_leaves_no_dangling_label(db_session: AsyncSession)
 
     _, body = await render_sd(
         db_session, ws.id, "closure",
-        {"display_id": "SD-21", "requester_name": "Priya", "closure_note": "Resolved.",
+        {"display_id": "SD-21", "requester_name": "Sam", "closure_note": "Resolved.",
          "overall_days": "0.71", "ticket_url": ""},
     )
 
@@ -207,7 +207,7 @@ async def test_a_customised_template_renders_the_appended_block(db_session: Asyn
 
     _, body = await render_sd(
         db_session, ws.id, "receipt",
-        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Priya",
+        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Sam",
          "ticket_url": url},
     )
 
@@ -231,7 +231,7 @@ async def test_the_appended_block_still_degrades_without_a_link(db_session: Asyn
 
     _, body = await render_sd(
         db_session, ws.id, "receipt",
-        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Priya",
+        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Sam",
          "ticket_url": ""},
     )
 
@@ -331,7 +331,7 @@ async def test_the_copy_stays_intact_with_publishing_off(db_session: AsyncSessio
 
     _, body = await render_sd(
         db_session, ws.id, "receipt",
-        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Priya",
+        {"display_id": "SD-21", "subject": "Endorsement", "requester_name": "Sam",
          "ticket_url": ""},
     )
 

@@ -5,6 +5,119 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-09-04
+
+The Service Desk can now say where a ticket's time went, and how its owners are
+doing — and you decide what "doing well" means.
+
+### Feature: a turnaround report that unfolds the hand-off ledger
+
+The ticket list told you which tickets you had; the dashboard told you how many
+were breaching. Neither could answer the question a desk review opens with —
+*where did this ticket's time actually go* — because that needs the pending-with
+ledger unfolded per stakeholder. Reports → TAT Report does it: one row per
+ticket, with a column for every stakeholder your desk defines, plus the measures
+you would otherwise count by hand — total hand-offs, whether it was reopened, its
+longest single stage, and whether any stage ever ran past your breach target.
+
+The columns are yours. Add a Legal bucket and a Legal column appears; rename your
+nouns and the headings follow. Nothing about the shape of the table is fixed in
+the app.
+
+Two clocks run side by side, and the report says which is which. Stage and
+stakeholder figures accrue only during your working hours, because that is what
+the desk is measured against. Overall turnaround is elapsed time, because the
+requester waited through the night and the weekend too. A stage that ran 30 hours
+across a 09:30–18:30 day reads as 14.
+
+### Feature: an owner scorecard, with the thresholds in your hands
+
+Reports → Scorecard grades each owner on six weighted KPIs — volume against the
+desk average, first response, clean resolution, time in their own queue,
+zero-breach and not-reopened — and maps the weighted total onto rating bands.
+
+Every number behind it is a setting, not a constant: the weight of each KPI, what
+counts as a fast first response, how steeply a miss is punished, the hand-off
+limit inside "resolved cleanly", and where the rating boundaries sit. Settings →
+Service Desk → Owner Scorecard shows each KPI with what it measures, how it is
+calculated, and a drawing of its scoring curve, so a benchmark is something you
+can judge rather than two numbers you have to imagine.
+
+Two things it deliberately will not do. A KPI nobody has eligible tickets for
+scores nothing at all rather than zero — a quiet month is not a bad month, and
+the weighted total is renormalised over the KPIs that did apply. And a manager
+sees every owner while everyone else sees only their own row, with the comparison
+still made across the whole desk: a scorecard measured against yourself is not a
+restricted view, it is a wrong number.
+
+### Feature: build your own KPI, without writing a formula
+
+Add custom KPI composes a measure out of your desk's own data as a sentence —
+*share of tickets where hand-offs is more than 2, among closed tickets* — with
+every choice picked from a list. There is no formula syntax, so there is nothing
+to get wrong, and the KPI reads back as a sentence to whoever opens it later.
+
+A filter can point at a live setting rather than a number, so "no longer than the
+breach target" keeps meaning that after you change your working hours. A KPI can
+be scored against the desk average instead of in absolute terms. And "the desk's
+own queue" follows your taxonomy rather than freezing today's answer.
+
+Before it counts for anything, you can try it: the builder scores the proposed
+KPI against your real tickets and shows what it would do to each person's
+rating — *81 → 76*, by name — because adding a KPI rescales every other weight
+and re-grades people who have nothing to do with it. Save it as a draft and it
+stays out of the scoring until you publish.
+
+### Also
+
+Both reports export to CSV, matching the screen row for row. Turnaround figures
+now read from a single shared definition, so the report, the scorecard and the
+dashboard cannot drift apart on what a hand-off or a breach is.
+
+## [0.32.2] - 2026-09-03
+
+A broken GitHub connection stopped filling your inbox, and now says whose it is.
+
+### Fixed: one disconnected GitHub account sent hundreds of emails a day
+
+When GitHub stopped accepting a saved connection, everyone who could act on it
+— the developer whose account it was, plus the workspace's owner and admins —
+was told. Correctly, once. Then told again five minutes later, and every five
+minutes after that, for as long as nobody had reconnected. A connection that
+broke overnight produced a few hundred identical emails by morning, to each of
+them.
+
+The check that found the breakage ran on a five-minute schedule, and a broken
+connection stays broken until a person fixes it, so every pass rediscovered the
+same problem and reported it as though it were new. The one guard against
+repeats was thrown away at the end of each pass, so it only ever suppressed
+duplicates within a single run.
+
+The notice is now sent at most once per person per account per day. It still
+arrives daily while the account is still broken, because that is a real reminder
+rather than a repeat, and the day's first one now arrives the moment the
+connection fails instead of up to five minutes later. Developers who sync by
+hand rather than on a schedule get told at all, which they previously did not.
+
+### Fixed: the disconnection notice named the wrong account, and the wrong problem
+
+The email identified the broken connection by the person's Aexy email address,
+which is not how the account is named on GitHub. An admin reading it about a
+colleague had nothing to go on. It uses the GitHub username now.
+
+Two smaller pieces of the same message were also untrue. It said work had
+stopped "including service desk tickets from this mailbox" — wording written for
+a disconnected email inbox, which makes no sense about a code repository. And
+when the cause was that no GitHub account had ever been connected, it reported
+that GitHub had refused credentials that did not exist.
+
+### Fixed: only one workspace was told when a shared contributor's account broke
+
+A developer whose repositories are adopted into more than one workspace has one
+GitHub connection, and when it breaks, syncing stops in all of them. Only one
+workspace's admins were notified, chosen arbitrarily. The others saw syncing
+stop with no explanation. Every affected workspace is told now.
+
 ## [0.32.1] - 2026-09-01
 
 Attaching a file to a service-desk reply works again.
@@ -3308,7 +3421,7 @@ read "Partners, insurers, LOBs" as well.
 ### Fix: Service Desk hardening — cross-tenant mail, an open webhook, and one customer's constants
 
 Review follow-up on 0.11.0. Three of these are tenancy bugs, one is an
-authentication gap, and the rest is the module quietly being Bimaplan-shaped in
+authentication gap, and the rest is the module quietly being shaped around a single customer in
 ways no other workspace could change.
 
 **A mailbox could point at another workspace's Google account.** `integration_id`
@@ -3353,11 +3466,11 @@ swallowed by the placement's own error handler, so the person joined with no
 department at all: the one outcome the feature exists to prevent.
 
 **Everything that was one customer's operation is now per workspace.** The ticket
-prefix (`BSD`, for "Bimaplan Service Desk", written as a constant in four
+prefix (`BSD`, for "Service Desk", written as a constant in four
 modules), the timezone the breach clock resolves day boundaries in
 (`Asia/Kolkata`, hardcoded), the 2-business-day breach target and its amber
-warning, and the built-in email copy that signed off as "Bimaplan Operations" —
-so every other company sent Bimaplan-branded acknowledgements until someone
+warning, and the built-in email copy that signed off as "a single company’s operations team" —
+so every other company sent one company’s branded acknowledgements until someone
 edited three templates. All of it is editable on `Service Desk → Master Data`,
 and **every default reproduces the previous behaviour exactly**: display ids are
 rendered from `ticket_number` rather than stored, so changing the default would
@@ -3480,14 +3593,14 @@ docker exec aexy-backend python scripts/run_migrations.py --file migrate_workspa
 
 ## [0.11.0] - 2026-07-30
 
-### Feature: Bimaplan Service Desk — email-intake ticketing + Organization structure
+### Feature: Service Desk — email-intake ticketing + Organization structure
 
 Three parts, released together: the two modules, the onboarding paths that
 turned out never to place anyone in a department, and the breach clock.
 
 Adds two new modules. **Organization** models the company itself — departments,
 reporting lines, headcount — and **Service Desk** is an email-first ticketing
-desk for Bimaplan's insurance operations: mail sent to a shared mailbox becomes
+desk for Northwind's insurance operations: mail sent to a shared mailbox becomes
 a ticket, gets classified and auto-assigned to a KAM, and is tracked by *who
 currently owes an action* rather than by a status column.
 
@@ -3516,7 +3629,7 @@ acknowledgement. Replies thread back onto the original ticket by subject token
 
 **Pending-with ledger.** Instead of a status field, every hand-off appends to
 `ticket_pending_segments` — an append-only ledger of who held the ticket and for
-how long. The TAT/breach clock counts only time held by *Bimaplan* functions
+how long. The TAT/breach clock counts only time held by *Northwind* functions
 (`kam`, `sales`, `finance`, `marketing`), so a ticket parked with an insurer or
 partner doesn't accrue against us. Dashboard aggregates open volume, breaches
 and per-function load off the same ledger.
@@ -6731,7 +6844,7 @@ zero-contribution members.
   any name/email overlap with their ghost rows cannot be linked
   automatically. The three "Mobashir" rows in the original example
   collapse from 3 → 2 (two ghosts merge), but the active member
-  `mobashir.r@bimaplan.co` stays separate until either an admin
+  `mobashir.r@northwind.example` stays separate until either an admin
   links their GitHub login, or a manual "merge identities" action
   is added.
 

@@ -91,7 +91,7 @@ export default async function DocPage({ params }: DocPageProps) {
           )}
         </header>
 
-        <DocsArticle content={bodyContent} />
+        <DocsArticle content={bodyContent} slug={slugStr} />
 
         <DocsPager pager={pager} />
       </div>

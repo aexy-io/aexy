@@ -62,19 +62,27 @@ class DocumentCommentService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
             )
 
-        if document.visibility == "private":
-            required = (
-                DocumentPermission.COMMENT.value
-                if write
-                else DocumentPermission.VIEW.value
+        # Was: check only when `visibility == "private"`, through
+        # `DocumentService.check_permission`, which knew about the collaborator
+        # table and nothing else. A document in a restricted space was
+        # `visibility="workspace"`, so it took this branch never — anyone in
+        # the workspace could read and post on the comment thread of a document
+        # they could not open.
+        from aexy.services.document_access import AccessLevel, DocumentAccess
+
+        required = AccessLevel.COMMENT if write else AccessLevel.VIEW
+        level = await DocumentAccess(self.db).resolve(
+            document, developer_id, workspace_id=workspace_id
+        )
+        if level == AccessLevel.NONE:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
             )
-            allowed = await DocumentService(self.db).check_permission(
-                document_id, developer_id, required
+        if level < required:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to comment on this document",
             )
-            if not allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-                )
 
         return document
 

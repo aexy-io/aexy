@@ -1,4 +1,4 @@
--- Bimaplan Service Desk — hardening follow-up to migrate_service_desk.sql.
+-- Service Desk — hardening follow-up to migrate_service_desk.sql.
 --
 -- 1) service_desk_ingested_messages: real idempotency for inbound mail. The
 --    original intake only compared against service_desk_tickets.source_message_id,

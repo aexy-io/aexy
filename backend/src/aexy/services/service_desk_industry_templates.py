@@ -74,6 +74,165 @@ DEFAULT_TERMINOLOGY: dict[str, str] = {
 TERMINOLOGY_KEYS = tuple(DEFAULT_TERMINOLOGY)
 
 
+# ---------------------------------------------------------------------------
+# Performance scorecard — the KPI set a desk grades its owners on.
+# ---------------------------------------------------------------------------
+
+# Direction of merit. Which one a KPI uses decides which scoring curve applies,
+# so it is part of the vocabulary rather than a free-text note.
+HIGHER_IS_BETTER = "higher_is_better"
+LOWER_IS_BETTER = "lower_is_better"
+DIRECTIONS = (HIGHER_IS_BETTER, LOWER_IS_BETTER)
+
+# How a KPI's raw figure should be read, so a UI does not render 0.83 as 83
+# hours. Mirrors `service_desk_analytics.Measure.unit`.
+UNIT_RATIO = "ratio"
+UNIT_RATE = "rate"
+UNIT_HOURS = "hours"
+
+# The metric vocabulary. A template may enable, weight, relabel and retune any
+# of these; it may not invent one, because each needs a computation. The
+# compute functions live in `services/service_desk_scorecard.py`, which asserts
+# at import that it implements every key declared here — the dependency runs
+# that way round so this module stays free of database imports.
+METRIC_PRODUCTIVITY = "productivity"
+METRIC_FIRST_RESPONSE = "first_response"
+METRIC_HANDSHAKE_EFFICIENCY = "handshake_efficiency"
+METRIC_OWNER_TAT = "owner_attributable_tat"
+METRIC_ZERO_BREACH = "zero_breach"
+METRIC_NOT_REOPENED = "not_reopened"
+
+METRIC_KEYS = (
+    METRIC_PRODUCTIVITY,
+    METRIC_FIRST_RESPONSE,
+    METRIC_HANDSHAKE_EFFICIENCY,
+    METRIC_OWNER_TAT,
+    METRIC_ZERO_BREACH,
+    METRIC_NOT_REOPENED,
+)
+
+
+@dataclass(frozen=True)
+class ScorecardKPISpec:
+    """One weighted KPI on the owner scorecard.
+
+    Everything a score depends on is here, which is the point: the weights, the
+    benchmarks and the slope of the penalty were numbers typed into a
+    business's opinion, and reproducing them as module constants would have
+    moved the problem rather than solved it. A workspace edits rows seeded from this.
+    """
+
+    metric_key: str
+    label: str
+    weight: float
+    direction: str
+    unit: str
+    # LOWER_IS_BETTER only: full marks at or under `benchmark`, then
+    # `penalty_per_unit` points off for every unit over it.
+    benchmark: float | None = None
+    penalty_per_unit: float | None = None
+    # HIGHER_IS_BETTER only: the value that scores 100.
+    target: float | None = None
+    # A number inside the metric's own question, for the metrics that ask one:
+    # "resolved in at most N hand-offs". Distinct from `benchmark`, which grades
+    # the resulting figure — this one decides which tickets count in the first
+    # place. Only the metrics declaring `uses_threshold` read it.
+    threshold: float | None = None
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class ScorecardBandSpec:
+    """One rating band: a floor on the weighted total, and what to call it."""
+
+    rating: int
+    min_score: float
+    label: str
+
+
+# The default KPI set. Industry-neutral on purpose — "did the owner answer quickly and cleanly"
+# is not an insurance question — so templates inherit these unless they say
+# otherwise, the same way they inherit DEFAULT_TERMINOLOGY.
+#
+# On `target` for the three rate KPIs: 1.0 means a perfect rate scores 100, which
+# is the reading most desks expect. A desk that wants full marks at, say, 95%
+# edits three rows.
+DEFAULT_SCORECARD_KPIS: tuple[ScorecardKPISpec, ...] = (
+    ScorecardKPISpec(
+        METRIC_PRODUCTIVITY,
+        "Productivity",
+        weight=0.20,
+        direction=HIGHER_IS_BETTER,
+        unit=UNIT_RATIO,
+        # Closed count as a multiple of the desk average, so 1.0 is "at the team
+        # average" and scores full marks. Capped, so a high-volume outlier does
+        # not stretch the scale for everyone else.
+        target=1.0,
+    ),
+    ScorecardKPISpec(
+        METRIC_FIRST_RESPONSE,
+        "First Time Response",
+        weight=0.20,
+        direction=LOWER_IS_BETTER,
+        unit=UNIT_HOURS,
+        benchmark=4.0,
+        penalty_per_unit=10.0,
+    ),
+    ScorecardKPISpec(
+        METRIC_HANDSHAKE_EFFICIENCY,
+        "Handshake Efficiency",
+        weight=0.20,
+        direction=HIGHER_IS_BETTER,
+        unit=UNIT_RATE,
+        target=1.0,
+        # "2 or fewer hand-offs" — the number belongs in the KPI's own title.
+        # It was a module constant, which made the one figure on this scorecard
+        # a desk could not tune.
+        threshold=2.0,
+    ),
+    ScorecardKPISpec(
+        METRIC_OWNER_TAT,
+        "Owner-Attributable TAT",
+        weight=0.15,
+        direction=LOWER_IS_BETTER,
+        unit=UNIT_HOURS,
+        benchmark=8.0,
+        penalty_per_unit=5.0,
+    ),
+    ScorecardKPISpec(
+        METRIC_ZERO_BREACH,
+        "Zero-Breach",
+        weight=0.15,
+        direction=HIGHER_IS_BETTER,
+        unit=UNIT_RATE,
+        target=1.0,
+    ),
+    ScorecardKPISpec(
+        METRIC_NOT_REOPENED,
+        "Not Reopened",
+        weight=0.10,
+        direction=HIGHER_IS_BETTER,
+        unit=UNIT_RATE,
+        target=1.0,
+    ),
+)
+
+# Rating bands, highest first. The lowest band is open-ended downward so no
+# weighted total can fall through unrated.
+DEFAULT_SCORECARD_BANDS: tuple[ScorecardBandSpec, ...] = (
+    ScorecardBandSpec(5, 90.0, "Outstanding"),
+    ScorecardBandSpec(4, 75.0, "Exceeds Expectations"),
+    ScorecardBandSpec(3, 60.0, "Meets Expectations"),
+    ScorecardBandSpec(2, 40.0, "Needs Improvement"),
+    ScorecardBandSpec(1, 0.0, "Unsatisfactory"),
+)
+
+# Weights are compared against 1.0 with this tolerance. Float addition of six
+# two-decimal numbers does not land on exactly 1.0, and rejecting a valid set
+# over the last bit would be its own bug.
+WEIGHT_SUM_TOLERANCE = 1e-6
+
+
 @dataclass(frozen=True)
 class StakeholderSpec:
     """One "pending with" bucket a ticket can sit in."""
@@ -121,10 +280,23 @@ class IndustryTemplate:
     stakeholders: tuple[StakeholderSpec, ...]
     request_types: tuple[RequestTypeSpec, ...]
     departments: tuple[DepartmentSpec, ...]
+    # Both default to empty and resolve to the shared sets below. An industry
+    # that grades its desk differently overrides them; most do not, and an
+    # omitted field must not mean "this template has no scorecard".
+    scorecard_kpis: tuple[ScorecardKPISpec, ...] = ()
+    scorecard_bands: tuple[ScorecardBandSpec, ...] = ()
 
     def resolved_terminology(self) -> dict[str, str]:
         """Template labels over the generic defaults."""
         return {**DEFAULT_TERMINOLOGY, **self.terminology}
+
+    def resolved_scorecard_kpis(self) -> tuple[ScorecardKPISpec, ...]:
+        """The template's KPI set, or the shared default one."""
+        return self.scorecard_kpis or DEFAULT_SCORECARD_KPIS
+
+    def resolved_scorecard_bands(self) -> tuple[ScorecardBandSpec, ...]:
+        """The template's rating bands, or the shared default ones."""
+        return self.scorecard_bands or DEFAULT_SCORECARD_BANDS
 
     @property
     def default_request_type(self) -> RequestTypeSpec:
@@ -378,6 +550,50 @@ def _validate() -> None:
             raise ValueError(f"{t.slug}: duplicate request type slugs")
         if len([r for r in t.request_types if r.is_default]) > 1:
             raise ValueError(f"{t.slug}: more than one default request type")
+
+        # The scorecard set, resolved so a template inheriting the defaults is
+        # validated too — a bad default would otherwise only fail for whichever
+        # template happened to override it.
+        kpis = t.resolved_scorecard_kpis()
+        keys = [k.metric_key for k in kpis]
+        if len(keys) != len(set(keys)):
+            raise ValueError(f"{t.slug}: duplicate scorecard metric keys")
+        if unknown := set(keys) - set(METRIC_KEYS):
+            raise ValueError(f"{t.slug}: unknown scorecard metrics {sorted(unknown)}")
+        for k in kpis:
+            if k.direction not in DIRECTIONS:
+                raise ValueError(f"{t.slug}: {k.metric_key} has invalid direction {k.direction!r}")
+            if k.weight <= 0:
+                raise ValueError(f"{t.slug}: {k.metric_key} has a non-positive weight")
+            # A curve missing its numbers scores every owner identically, which
+            # looks like a working report rather than a misconfigured one.
+            if k.direction == LOWER_IS_BETTER and (k.benchmark is None or k.penalty_per_unit is None):
+                raise ValueError(
+                    f"{t.slug}: {k.metric_key} is lower-is-better and needs benchmark + penalty_per_unit"
+                )
+            if k.direction == HIGHER_IS_BETTER and not k.target:
+                raise ValueError(f"{t.slug}: {k.metric_key} is higher-is-better and needs a positive target")
+
+        # Enabled weights must sum to 1. At 0.9 every score is silently deflated
+        # by a tenth and the rating bands quietly become stricter — a wrong
+        # number that looks exactly like a right one.
+        total = sum(k.weight for k in kpis if k.enabled)
+        if abs(total - 1.0) > WEIGHT_SUM_TOLERANCE:
+            raise ValueError(f"{t.slug}: enabled scorecard weights sum to {total}, expected 1.0")
+
+        bands = t.resolved_scorecard_bands()
+        if not bands:
+            raise ValueError(f"{t.slug}: needs at least one rating band")
+        ratings = [b.rating for b in bands]
+        if len(ratings) != len(set(ratings)):
+            raise ValueError(f"{t.slug}: duplicate rating values")
+        # Highest first, and the last one open-ended downward, so every possible
+        # total lands in exactly one band.
+        floors = [b.min_score for b in bands]
+        if floors != sorted(floors, reverse=True):
+            raise ValueError(f"{t.slug}: rating bands must be ordered highest score first")
+        if bands[-1].min_score > 0:
+            raise ValueError(f"{t.slug}: the lowest rating band must start at 0")
 
 
 _validate()

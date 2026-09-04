@@ -1,43 +1,98 @@
 # Documents, Drive & Knowledge Graph
 
+The architecture. For how to **run** a knowledge base — spaces, review dates,
+approval, publishing — read [Knowledge base](./knowledge-base.md) instead.
+
 Three closely related modules that share a single AI metadata pipeline:
 
-- **Documents** — Notion-like rich-text docs grouped into **Document Spaces**
+- **Documents** — rich-text docs grouped into **Document Spaces**
 - **Drive** — file browser (S3-backed) with folders and previews
 - **Knowledge Graph** — entities + relationships extracted from documents and other content, surfaced as a queryable graph
 
-All three flow through the same `FileMetadata` table and the same Temporal `extract_file_ai_metadata` activity for summaries, embeddings, and tagging.
+> **Field tables are deliberately absent from the Documents section below.**
+> The version of this page they replaced listed four columns that do not exist
+> — `is_public`, `public_slug`, `version_count`, `last_edited_at` — and pointed
+> at a frontend directory (`(app)/documents/`) that was never the path. A
+> hand-written mirror of a schema has nothing keeping it honest, and this page
+> is published publicly. Read `models/documentation.py`; it is the only copy
+> that cannot drift.
 
 ## Documents
-
-Rich-text collaborative docs organized into spaces.
 
 ### Routers
 
 | Router | Purpose |
 |---|---|
-| `api/documents.py` | Document CRUD, versions, comments |
-| `api/document_spaces.py` | Space (folder) management, sharing |
+| `api/documents.py` | Document CRUD, versions, comments, code links, docx |
+| `api/document_spaces.py` | Space management, membership, roles |
+| `api/document_governance.py` | Lifecycle, audit, analytics, export, publishing |
+| `api/document_import.py` | Notion / Confluence import jobs |
+| `api/collaboration.py` | The collaborative editing socket |
+| `api/kb_portal.py` | The public portal — unauthenticated, reads published snapshots only |
 
 ### Models
 
-**`DocumentSpace`** — a top-level container, like a Notion workspace section.
+All in `models/documentation.py` unless noted.
 
-**`Document`** — the document.
+`Document` is the page: a TipTap body, or — when `content_format` is `docx` —
+a Word file in object storage with its extracted text in `content_text`, which
+is what lets search, embeddings and the knowledge graph stay format-agnostic.
+It nests through `parent_id`, files under a `DocumentSpace`, and carries its
+own visibility, ownership, review dates and soft-delete columns.
 
-| Field | Note |
+Around it:
+
+| Model | What it holds |
 |---|---|
-| `workspace_id`, `space_id` | Scope |
-| `title`, `content` (ProseMirror JSON) | |
-| `parent_id` | For nested docs |
-| `is_public`, `public_slug` | For shareable URLs |
-| `version_count`, `last_edited_by_id`, `last_edited_at` | |
+| `DocumentSpace` / `DocumentSpaceMember` | Sections and who belongs to them, with `visibility` deciding whether membership is the access list |
+| `DocumentVersion` | A full snapshot per content change, pruned by a retention sweep |
+| `DocumentCollaborator` | Per-person grants: view, comment, edit, admin |
+| `DocumentCodeLink` | The attachment to a repository path, and its sync mode |
+| `DocumentComment` | Threads, anchored to a passage |
+| `DocumentYjsState` | The server's copy of the CRDT — see [Collaboration](#collaboration) |
+| `DocumentEmbedding` | Chunk embeddings for semantic search, `Vector(1024)` |
+| `PublishedDocument` | The public snapshot; deliberately not a live mirror |
+| `DocumentImportJob` | An in-flight migration, including the `source_id → document_id` map that makes it resumable |
+| `DocumentAuditEvent` / `DocumentView` (`models/document_audit.py`) | The append-only trail, and per-day read counters |
 
-Documents support embedded references to other Aexy entities (records, tasks, files) via inline block types in the ProseMirror schema.
+### Access
+
+`services/document_access.py` is the single answer, and every read and write
+goes through one of its two shapes:
+
+- `resolve(document, developer)` → an `AccessLevel` for one document;
+- `visible_clause(workspace, developer)` → a SQL predicate that list, tree,
+  search, favourites, export and the trash compose into their own queries.
+
+A predicate rather than a Python filter, so `LIMIT`/`OFFSET` stay correct and a
+new listing cannot quietly skip the check. `guard_document_route` in
+`api/documents.py` is mounted as a **router-level dependency**, and derives its
+floor from the HTTP method: a write needs `EDIT` unless it appears in
+`_WRITE_LEVEL_EXCEPTIONS` with a stated reason.
+
+Decisions are cached per request on the session (`AsyncSession.info`), so the
+guard and the endpoint do not resolve the same document twice; every mutation
+that changes access calls `DocumentAccess.invalidate`.
+
+### Collaboration
+
+`services/document_collaboration.py`. The server holds a `pycrdt.Doc` per open
+document, persisted in `document_yjs_state`, with updates fanned out across
+replicas over Redis. Clients speak the standard y-protocol against **the
+server**, not each other.
+
+The room flattens the CRDT back into `documents.content` on a debounce, through
+`DocumentService.update_document`, so version history, activity and
+`content_text` extraction happen exactly as they do for an ordinary save.
+
+A space that requires approval refuses the socket (close code `4005`) and falls
+back to single-writer saves, because a debounced CRDT flush would write straight
+past the gate.
 
 ### Frontend
 
-`/frontend/src/app/(app)/documents/` — Notion-like UI: tree of spaces and docs, rich-text editor, comment threads, version history.
+`/frontend/src/app/(app)/docs/` — tree of spaces and pages, rich-text editor,
+comment rail, version history, proposal review.
 
 ## Drive
 

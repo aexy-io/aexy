@@ -871,6 +871,92 @@ class TestSLAOverride(BaseModel):
             raise ValueError("test SLA overrides may last at most 24 hours")
         return expires_at
 
+class ScorecardKPIInput(BaseModel):
+    """One KPI as the settings page sends it back.
+
+    Nothing here is optional-with-a-default beyond ``enabled``: the config is
+    replaced as a whole set (the weights must total 1, so a partial edit is
+    either invalid on its own or opens a window where every score is wrong), and
+    a field silently defaulting during a whole-set write is how a benchmark
+    somebody tuned gets reset by a page that forgot to send it back.
+    """
+
+    metric_key: str = Field(max_length=64)
+    label: str = Field(max_length=100)
+    weight: float = Field(ge=0, le=1)
+    direction: Literal["higher_is_better", "lower_is_better"]
+    # The curve. Which pair applies depends on `direction`; validated in
+    # `service_desk_scorecard_config.validate_config`, which is also what the
+    # template catalogue is checked against, so the two cannot diverge.
+    benchmark: float | None = Field(None, ge=0)
+    penalty_per_unit: float | None = Field(None, ge=0)
+    target: float | None = Field(None, gt=0)
+    # A number inside the metric's own question ("resolved in at most N
+    # hand-offs"), for the metrics that declare one. Ignored by the rest — see
+    # `uses_threshold` in the metric catalogue.
+    threshold: float | None = Field(None, ge=0)
+    enabled: bool = True
+    # "builtin" — `metric_key` names a computation. "custom" — `definition`
+    # holds a sentence over the closed vocabulary in service_desk_formula, and
+    # `metric_key` is just a slug unique within the workspace.
+    source: Literal["builtin", "custom"] = "builtin"
+    # Deliberately untyped here: every slot is validated against the workspace's
+    # own vocabulary in `service_desk_formula.validate`, which is the only place
+    # that knows which stakeholders exist. A Pydantic model would have to
+    # duplicate that and would drift.
+    definition: dict | None = None
+    # A draft is previewable and never scored, so somebody can build a KPI over
+    # several sittings without moving anyone's rating in the meantime.
+    status: Literal["draft", "published"] = "published"
+
+
+class ScorecardBandInput(BaseModel):
+    rating: int = Field(ge=1, le=10)
+    min_score: float = Field(ge=0, le=100)
+    label: str = Field(max_length=100)
+
+
+class ScorecardConfigUpdate(BaseModel):
+    """A complete replacement of the scorecard rules."""
+
+    kpis: list[ScorecardKPIInput] = Field(min_length=1, max_length=50)
+    bands: list[ScorecardBandInput] = Field(min_length=1, max_length=20)
+
+
+class ScorecardKPIResponse(ScorecardKPIInput):
+    # How the raw figure should be read, so a client does not render a 0.83 rate
+    # as 83 hours. From the metric registry for a built-in; from the shape of
+    # its own sentence for a custom one.
+    unit: str
+    # Bumped when the definition changes, so a rendered scorecard can say which
+    # version produced it and a review stays reproducible.
+    definition_version: int = 1
+
+
+class ScorecardPreviewRequest(BaseModel):
+    """A config that has not been saved, to be scored against real tickets.
+
+    Same shape as the update, because the whole point is to answer "what would
+    happen if I saved this" — a preview taking a different shape from the save
+    would eventually preview something else.
+    """
+
+    kpis: list[ScorecardKPIInput] = Field(min_length=1, max_length=50)
+    bands: list[ScorecardBandInput] = Field(min_length=1, max_length=20)
+
+
+class ScorecardConfigResponse(BaseModel):
+    kpis: list[ScorecardKPIResponse]
+    bands: list[ScorecardBandInput]
+    # The metrics this build can compute, so the settings page offers the real
+    # list rather than one hardcoded in the client.
+    available_metrics: list[dict]
+    # Whether the CALLER may edit this. Same pattern as `ServiceDeskSettings`:
+    # the page hides controls it would only get a 403 from, and the server-side
+    # gate remains the authority.
+    can_manage: bool = False
+
+
 class ServiceDeskSettings(BaseModel):
     """Workspace-level Service Desk settings."""
 

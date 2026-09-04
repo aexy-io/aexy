@@ -22,6 +22,7 @@ from aexy.api.developers import get_current_developer
 from aexy.core.database import get_db
 from aexy.models.developer import Developer
 from aexy.models.documentation import Document
+from aexy.services.document_access import DocumentAccess
 from aexy.models.proposed_change import ChangeKind, ChangeStatus, ProposedChange
 from aexy.services.proposed_edits_service import proposal_is_stale
 from aexy.services.workspace_service import WorkspaceService
@@ -187,10 +188,21 @@ async def list_review_items(
     ]
     documents: dict[str, Document] = {}
     if document_ids:
+        # Access-filtered, like every other document listing. The queue shows a
+        # document's title, the heading names in the change, and an
+        # AI-written summary of what it does — so an unfiltered fetch here
+        # leaks the contents of a private page in prose, without ever serving
+        # the page. Same disclosure as the old search leak, through a
+        # different door.
+        clause = await DocumentAccess(db).visible_clause(
+            workspace_id, str(current_user.id)
+        )
         found = (
             (
                 await db.execute(
-                    select(Document).where(Document.id.in_(document_ids))
+                    select(Document)
+                    .where(Document.id.in_(document_ids))
+                    .where(clause)
                 )
             )
             .scalars()
@@ -205,7 +217,11 @@ async def list_review_items(
         if row.kind == ChangeKind.CONTENT.value:
             document = documents.get(str(row.entity_id))
             if not document:
-                # The record it concerns is gone; nothing to review against.
+                # Either the document is gone, or it is one this person cannot
+                # open. Both are "nothing to review against" from here, and
+                # deliberately indistinguishable: telling a reviewer that a
+                # proposal exists against a page they may not see is the
+                # disclosure the filter above exists to prevent.
                 continue
             items.append(
                 ReviewItem(
@@ -281,8 +297,38 @@ async def review_summary(
     ).all()
     counts = {kind: count for kind, count in rows}
 
+    # The badge has to agree with the list. Counting every pending proposal in
+    # the workspace would tell somebody that three things await their decision
+    # and then show them one — and the difference is itself a signal about
+    # documents they cannot see.
+    document_proposals = await _visible_document_proposal_count(
+        db, workspace_id, str(current_user.id)
+    )
+    counts[ChangeKind.CONTENT.value] = document_proposals
+
     return ReviewSummary(
         total=sum(counts.values()),
-        document_proposals=counts.get(ChangeKind.CONTENT.value, 0),
+        document_proposals=document_proposals,
         agent_actions=counts.get(ChangeKind.ACTION.value, 0),
+    )
+
+
+async def _visible_document_proposal_count(
+    db: AsyncSession, workspace_id: str, developer_id: str
+) -> int:
+    """Pending document proposals against pages this person can actually open."""
+    clause = await DocumentAccess(db).visible_clause(workspace_id, developer_id)
+    return int(
+        (
+            await db.execute(
+                select(func.count(ProposedChange.id))
+                .select_from(ProposedChange)
+                .join(Document, Document.id == ProposedChange.entity_id)
+                .where(ProposedChange.workspace_id == workspace_id)
+                .where(ProposedChange.status == ChangeStatus.PENDING.value)
+                .where(ProposedChange.kind == ChangeKind.CONTENT.value)
+                .where(clause)
+            )
+        ).scalar()
+        or 0
     )
