@@ -1112,7 +1112,10 @@ export default function ServiceDeskTicketDetailPage() {
           )}
 
           {/* Timeline */}
-          <Card className="p-4">
+          {/* Photographed on its own by `e2e/docs-shots/service-desk.spec.ts`
+              — the handoff ledger is the thing the docs need to show, and a
+              full-page shot reduced to article width makes it unreadable. */}
+          <Card className="p-4" data-testid="sd-timeline">
             <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-4 w-4" /> {t("detail.timeline")}</div>
             <ol className="space-y-3">
               {ticket.segments.map((s) => {

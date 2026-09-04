@@ -27,7 +27,7 @@
     "test:e2e:invoices:headed": "playwright test e2e/admin-invoices.spec.ts --headed",
     "changelog": "node scripts/generate-changelog.mjs",
     "docs:gen": "node scripts/generate-docs.mjs",
-    "docs:shots": "playwright test e2e/docs-screenshots.spec.ts",
+    "docs:shots": "playwright test e2e/docs-shots",
     "mcp:manifest": "node scripts/fetch-tool-manifest.mjs",
     "mcp:manifest:check": "node scripts/fetch-tool-manifest.mjs --check",
     "mcp:doc": "node scripts/generate-mcp-doc.mjs",

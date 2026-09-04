@@ -10,6 +10,8 @@ service-desk ticket has a **pending-with** — the party the ball is currently
 with, which is frequently not your company at all. Most of the design follows
 from that.
 
+![The queue board: open tickets by stakeholder and age, anything past the breach target in red](./images/service-desk/dashboard.png)
+
 ## Mental model
 
 - **Ticket** — a `Ticket` row (shared with the sprint ticketing system) plus a
@@ -24,6 +26,8 @@ from that.
   and an optional note. A ticket's history is the ordered list of its segments,
   which is what makes "we were waiting on the vendor for nine days" a fact
   rather than an argument.
+
+  ![A ticket's handoff timeline: one entry per pending segment, the last still open](./images/service-desk/ticket-timeline.png)
 - **Stakeholder** — a party the desk can be pending with. Workspace-defined,
   not an enum, so a desk can have "Customer", "Vendor", "Finance" and "Legal"
   without a migration.

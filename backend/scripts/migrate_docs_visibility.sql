@@ -13,10 +13,15 @@ BEGIN
 END $$;
 
 -- Create document_favorites table (if not exists)
+-- UUID, not VARCHAR(36). This file was written when `documents.id` was a
+-- string; the model has been `UUID` for a long time, and a VARCHAR(36) column
+-- cannot carry a foreign key to a uuid one — Postgres rejects the constraint
+-- outright rather than casting. On any database old enough to have this table
+-- already the CREATE is skipped and the types were never noticed.
 CREATE TABLE IF NOT EXISTS document_favorites (
-    id VARCHAR(36) PRIMARY KEY,
-    document_id VARCHAR(36) NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    developer_id VARCHAR(36) NOT NULL REFERENCES developers(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    developer_id UUID NOT NULL REFERENCES developers(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_document_favorites_doc_dev UNIQUE (document_id, developer_id)
 );
@@ -25,24 +30,19 @@ CREATE TABLE IF NOT EXISTS document_favorites (
 CREATE INDEX IF NOT EXISTS ix_document_favorites_document_id ON document_favorites(document_id);
 CREATE INDEX IF NOT EXISTS ix_document_favorites_developer_id ON document_favorites(developer_id);
 
--- Create document_notifications table (if not exists)
-CREATE TABLE IF NOT EXISTS document_notifications (
-    id VARCHAR(36) PRIMARY KEY,
-    document_id VARCHAR(36) NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    developer_id VARCHAR(36) NOT NULL REFERENCES developers(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    read_at TIMESTAMP WITH TIME ZONE,
-    created_by_id VARCHAR(36) REFERENCES developers(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create indexes for document_notifications
-CREATE INDEX IF NOT EXISTS ix_document_notifications_document_id ON document_notifications(document_id);
-CREATE INDEX IF NOT EXISTS ix_document_notifications_developer_id ON document_notifications(developer_id);
-CREATE INDEX IF NOT EXISTS ix_document_notifications_is_read ON document_notifications(is_read);
-CREATE INDEX IF NOT EXISTS ix_document_notifications_created_at ON document_notifications(created_at);
+-- `document_notifications` used to be created here: a second inbox, rendered
+-- in the docs sidebar, that no longer exists. Document notifications now go
+-- through the ordinary `notifications` table (`NotificationType.DOCUMENT_*`),
+-- which is what gives them an email, a per-user preference and a place in the
+-- notification bell.
+--
+-- It is deleted rather than left in place because it was **breaking every
+-- fresh database**: its `document_id VARCHAR(36) REFERENCES documents(id)`
+-- cannot be created against today's uuid `documents.id`, `run_migrations.py`
+-- stops at the first failure, and so nothing after this file in alphabetical
+-- order — the whole `migrate_kb_enterprise_*` set, service desk hardening and
+-- reporting — was ever applied. Any database that already has the table keeps
+-- it; dropping a table this migration no longer owns is not its business.
 
 -- Show success message
 SELECT 'Migration completed successfully!' as status;

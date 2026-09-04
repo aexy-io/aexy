@@ -1,8 +1,8 @@
 /**
  * The screenshots in `docs/knowledge-base.md`, taken from the running app.
  *
- * Documentation screenshots normally die the same way: somebody takes twenty by
- * hand, the UI shifts, and two releases later every one is a picture of
+ * Documentation screenshots normally die the same way: somebody takes twenty
+ * by hand, the UI shifts, and two releases later every one is a picture of
  * software that no longer exists. Nothing catches it, because an image cannot
  * fail a build.
  *
@@ -15,31 +15,13 @@
  *   - **loud** — a selector that disappears fails the run, which is the
  *     earliest possible signal that a screenshot has gone stale.
  *
- * Deliberately NOT in CI. It needs a running stack, and a docs job that breaks
- * the build every time a button moves is a docs job somebody disables.
- *
- *   docker compose up -d
- *   docker exec aexy-backend python scripts/generate_test_token.py --first
- *
- *   E2E_REAL_BACKEND=1 \
- *     AEXY_TEST_TOKEN=<jwt> \
- *     AEXY_TEST_WORKSPACE_ID=<workspace-uuid> \
- *     npm run docs:shots
- *
- * Skips itself with a reason when those are absent, rather than failing — the
- * ordinary `npm run test:e2e` run must not go red because docs tooling needs a
- * database.
+ * See `harness.ts` for how to run it, and for everything shared with the other
+ * documents' shots. Skips itself with a reason when the stack is absent, rather
+ * than failing — the ordinary `npm run test:e2e` run must not go red because
+ * docs tooling needs a database.
  */
 
-import fs from "fs";
-import path from "path";
-import sharp from "sharp";
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
 import {
   API_BASE,
@@ -47,47 +29,11 @@ import {
   backendOnlyReady,
   setupAiLiveAuth,
   REAL_BACKEND_WORKSPACE_ID,
-} from "./fixtures/ai-env";
+} from "../fixtures/ai-env";
+import { SHOT_CONTEXT, createShooter, forceLightTheme, ready } from "./harness";
 
-/** Beside the prose, so a moved document takes its pictures with it. */
-const OUT_DIR = path.resolve(__dirname, "..", "..", "docs", "images", "knowledge-base");
-
-/**
- * Fixed so the set looks like one product rather than twelve sessions.
- *
- * 1440×900 at 2x: retina, and narrow enough that text stays legible after the
- * docs site scales the image down to article width. A 2560-wide full-page shot
- * reduced to 700px is unreadable, which is the most common way a screenshot
- * ends up decorative.
- *
- * The 2x capture is downsampled to `MAX_WIDTH` before it is written; see there.
- */
-const VIEWPORT = { width: 1440, height: 900 };
-
+const shooter = createShooter("knowledge-base");
 const API = API_BASE;
-
-/**
- * Screenshots are optimised here rather than by hand, for the same reason they
- * are taken here: a manual step decays. The raw capture is 2880px wide (1440
- * viewport at 2x) and ~290 KB, and the docs site renders it into a ~630px
- * column — so most of those bytes are downloaded, decoded, and thrown away on
- * every page view, twice over, because `public/docs/` holds a second copy that
- * ships in the image.
- *
- * 1440 is still 2.3x the rendered width, which is retina at the size anyone
- * actually sees. Clicking through to the file gets 1440 rather than 2880; that
- * is the trade, and it is the right way round for a page of UI screenshots.
- *
- * Palette PNG rather than WebP: measured on the most text-dense shot, palette
- * costs an RMSE of 0.24 against the unquantised resize (invisible) where WebP
- * q90 costs 0.91 for a further 16 KB. Text is the entire point of a screenshot
- * of a text editor, so the error matters more than the last few kilobytes.
- */
-const MAX_WIDTH = 1440;
-
-/** Reported at the end, so a regression in image weight is visible. */
-let bytesRaw = 0;
-let bytesOut = 0;
 
 /**
  * Matched on *name*, because the backend does not accept a slug.
@@ -98,55 +44,6 @@ let bytesOut = 0;
  * sidebar screenshot had three identical "Payments" entries in it.
  */
 const SAMPLE_SPACE_NAME = "Payments";
-
-const taken: string[] = [];
-
-/**
- * Wait for the app to have actually rendered.
- *
- * Not `networkidle`: this app holds connections open — live collaboration,
- * polling — so the network never goes idle and the wait times out on a page
- * that finished rendering twenty seconds earlier.
- */
-async function ready(page: Page, marker = "main, [role='main']") {
-  await page.waitForLoadState("domcontentloaded");
-  await expect(page.locator(marker).first()).toBeVisible({ timeout: 30_000 });
-  // Let React settle and the first data fetch paint.
-  await page.waitForTimeout(2_500);
-}
-
-async function shoot(page: Page, name: string, locator?: string) {
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-  const file = path.join(OUT_DIR, `${name}.png`);
-
-  // Captured to a buffer rather than straight to disk, so the only file ever
-  // written is the optimised one — an unoptimised PNG cannot be left behind by
-  // a run that fails between the capture and the resize.
-  //
-  // An element shot wherever the subject is one panel. A full page reduced to
-  // article width makes the thing being explained too small to read.
-  let raw: Buffer;
-  if (locator) {
-    const target = page.locator(locator).first();
-    await expect(target).toBeVisible({ timeout: 15_000 });
-    raw = await target.screenshot();
-  } else {
-    raw = await page.screenshot();
-  }
-
-  const optimised = await sharp(raw)
-    // `withoutEnlargement` so an element shot narrower than MAX_WIDTH is left
-    // at its own size rather than being blown up into a blurry one.
-    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-    .png({ compressionLevel: 9, palette: true })
-    .toBuffer();
-
-  fs.writeFileSync(file, optimised);
-
-  bytesRaw += raw.length;
-  bytesOut += optimised.length;
-  taken.push(name);
-}
 
 /** A sample knowledge base, so the shots tell one coherent story. */
 async function seed(
@@ -238,23 +135,13 @@ async function seed(
 
 // ──────────────────────────────────────────────────────────────────────
 
-test.describe("documentation screenshots", () => {
+test.describe("knowledge base screenshots", () => {
   // Not serial: one shot that cannot find its selector must not prevent the
-  // other eleven from being retaken. The seed runs first via `beforeAll`
-  // ordering, and every shot navigates independently.
+  // others from being retaken. The seed runs first via `beforeAll` ordering,
+  // and every shot navigates independently.
   test.describe.configure({ mode: "default" });
 
-  // `deviceScaleFactor` has to be set on the context, so it goes here rather
-  // than in `setViewportSize` — which silently ignores it, and is how a set of
-  // screenshots ends up soft on a retina display.
-  //
-  // Light theme fixed: the site renders both, but a page mixing light and dark
-  // screenshots looks broken rather than configurable.
-  test.use({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 2,
-    colorScheme: "light",
-  });
+  test.use(SHOT_CONTEXT);
 
   let ids: Record<string, string> = {};
 
@@ -269,24 +156,7 @@ test.describe("documentation screenshots", () => {
 
   test.beforeEach(async ({ page }) => {
     await setupAiLiveAuth(page);
-
-    // Light theme, forced through the app's own store.
-    //
-    // `colorScheme: "light"` on the context only sets `prefers-color-scheme`,
-    // which this app ignores — it keeps an explicit preference in a Zustand
-    // store persisted at `aexy-theme`. Without this every screenshot comes out
-    // dark regardless of what the Playwright config says, and a docs page that
-    // mixes light and dark shots looks broken rather than configurable.
-    await page.addInitScript(() => {
-      try {
-        localStorage.setItem(
-          "aexy-theme",
-          JSON.stringify({ state: { theme: "light" }, version: 0 }),
-        );
-      } catch {
-        // Storage can be unavailable; the shot is merely dark, not wrong.
-      }
-    });
+    await forceLightTheme(page);
   });
 
   test("the sample knowledge base exists", async () => {
@@ -296,14 +166,14 @@ test.describe("documentation screenshots", () => {
   test("sidebar-tree — spaces and nested pages", async ({ page }) => {
     await page.goto("/docs");
     await ready(page);
-    await shoot(page, "sidebar-tree");
+    await shooter.shoot(page, "sidebar-tree");
   });
 
   test("editor — a page being written", async ({ page }) => {
     test.skip(!ids.page0, "no seeded page");
     await page.goto(`/docs/${ids.page0}`);
     await ready(page);
-    await shoot(page, "editor");
+    await shooter.shoot(page, "editor");
   });
 
   test("editor-slash — the slash command menu", async ({ page }) => {
@@ -318,7 +188,7 @@ test.describe("documentation screenshots", () => {
     await editor.type("/");
     await page.waitForTimeout(400);
 
-    await shoot(page, "editor-slash");
+    await shooter.shoot(page, "editor-slash");
   });
 
   test("search — results for a query", async ({ page }) => {
@@ -365,23 +235,12 @@ test.describe("documentation screenshots", () => {
     await expect(dialog.locator("mark").first()).toBeVisible();
     await expect(dialog.getByText("Chargeback handling")).toBeVisible();
 
-    await shoot(page, "search");
+    await shooter.shoot(page, "search");
   });
 
   // No trash shot: the restore API exists but no screen reaches it yet, and a
   // screenshot named "trash" that is actually the documents home is worse than
   // no screenshot. Add one here when the UI lands.
 
-  test.afterAll(() => {
-    if (taken.length) {
-      const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
-      console.log(
-        `\n  ${taken.length} screenshot(s) → docs/images/knowledge-base/\n` +
-          taken.map((n) => `    ${n}.png`).join("\n") +
-          `\n\n  optimised ${kb(bytesRaw)} → ${kb(bytesOut)} ` +
-          `(${(100 - (bytesOut / bytesRaw) * 100).toFixed(0)}% smaller)\n` +
-          "  run `node scripts/generate-docs.mjs` to publish them\n",
-      );
-    }
-  });
+  test.afterAll(() => shooter.report());
 });
