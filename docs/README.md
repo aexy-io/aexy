@@ -65,7 +65,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths
 - [Compliance](./compliance.md) - Mandatory training, certifications, reminders, escalation, audit
 - [Reminders (guide)](./guides/reminders.md) - The narrower how-to for recurring compliance reminders
-- [Leave](./leave.md) - Time-off types, policies, approvals, balances
+- [Leave](./leave.md) - Types, policies, balances, requesting and approving, the holiday calendar
+- [Leave architecture](./leave-architecture.md) - Endpoints, models, the request workflow, carry-forward
 
 ### Modules — Customers
 - [CRM](./crm.md) - Companies, people, deals, custom objects, sequences, automations

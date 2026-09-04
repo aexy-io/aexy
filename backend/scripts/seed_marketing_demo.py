@@ -38,6 +38,12 @@ from sqlalchemy import func, select  # noqa: E402
 from aexy.core.database import async_session_maker  # noqa: E402
 from aexy.models.crm import CRMAttribute, CRMAutomation, CRMObject, CRMRecord  # noqa: E402
 from aexy.models.developer import Developer  # noqa: E402
+from aexy.models.leave import (  # noqa: E402
+    Holiday,
+    LeavePolicy,
+    LeaveRequest,
+    LeaveType,
+)
 from aexy.models.documentation import Document  # noqa: E402
 from aexy.models.project import Project, ProjectMember, ProjectTeam  # noqa: E402
 from aexy.models.review import IndividualReview, ReviewCycle  # noqa: E402
@@ -1178,6 +1184,148 @@ async def seed_tickets(db, workspace: Workspace, dev: Developer) -> None:
         note("ticket", title, True)
 
 
+# ----------------------------------------------------------------------- leave
+
+#: (name, slug, colour, paid?, quota, notice days)
+LEAVE_TYPES = [
+    ("Annual leave", "annual", "#3b82f6", True, 20.0, 3),
+    ("Sick leave", "sick", "#ef4444", True, 10.0, 0),
+    ("Unpaid leave", "unpaid", "#6b7280", False, 0.0, 7),
+]
+
+#: Public holidays. Mandatory, workspace-wide ones are also what the Service
+#: Desk's breach clock stops for, so a demo with none makes the two modules look
+#: unrelated when they are not.
+HOLIDAYS = [
+    ("New Year's Day", date(2027, 1, 1), False),
+    ("Republic Day", date(2027, 1, 26), False),
+    ("Holi", date(2027, 3, 22), False),
+    ("Founders' Day", date(2027, 5, 14), True),
+]
+
+
+async def seed_leave(db, workspace: Workspace, dev: Developer) -> None:
+    """Leave types, a policy each, a holiday calendar and a couple of requests.
+
+    One request is left **pending** on purpose: an approvals queue with nothing
+    in it photographs as a module nobody uses, and "there is a decision waiting
+    for you" is the state the page exists for.
+    """
+    types: dict[str, LeaveType] = {}
+    for name, slug, colour, paid, quota, notice in LEAVE_TYPES:
+        found = (
+            await db.execute(
+                select(LeaveType).where(
+                    LeaveType.workspace_id == workspace.id, LeaveType.slug == slug
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            found = LeaveType(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                name=name,
+                slug=slug,
+                color=colour,
+                is_paid=paid,
+                min_notice_days=notice,
+            )
+            db.add(found)
+            await db.flush()
+            note("leave type", name, True)
+        else:
+            note("leave type", name, False)
+        types[slug] = found
+
+        policy = (
+            await db.execute(
+                select(LeavePolicy).where(
+                    LeavePolicy.workspace_id == workspace.id,
+                    LeavePolicy.leave_type_id == found.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if policy is None and quota:
+            db.add(
+                LeavePolicy(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    leave_type_id=found.id,
+                    annual_quota=quota,
+                    carry_forward_enabled=slug == "annual",
+                    max_carry_forward_days=5.0 if slug == "annual" else 0.0,
+                )
+            )
+
+    for name, when, optional in HOLIDAYS:
+        found = (
+            await db.execute(
+                select(Holiday).where(
+                    Holiday.workspace_id == workspace.id, Holiday.date == when
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                Holiday(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    date=when,
+                    is_optional=optional,
+                )
+            )
+        note("holiday", name, found is None)
+
+    # Balances are not implied by a policy — they are rows, created per person
+    # per year. Without them the page says "no leave balances found, contact
+    # your admin", which is the state a workspace is in *before* it is set up,
+    # not after.
+    await db.flush()
+    from aexy.services.leave_balance_service import LeaveBalanceService
+
+    balances = LeaveBalanceService(db)
+    for member_id in {dev.id, *(p.id for p in [])}:
+        await balances.initialize_yearly_balances(
+            workspace.id, member_id, date.today().year
+        )
+
+    today = date.today()
+    requests = [
+        # (type, start offset, days, status, reason)
+        ("annual", 21, 5, "pending", "Family wedding"),
+        ("annual", -30, 3, "approved", "Long weekend"),
+        ("sick", -6, 1, "approved", None),
+    ]
+    for slug, offset, days, status, reason in requests:
+        start = today + timedelta(days=offset)
+        end = start + timedelta(days=days - 1)
+        found = (
+            await db.execute(
+                select(LeaveRequest).where(
+                    LeaveRequest.workspace_id == workspace.id,
+                    LeaveRequest.developer_id == dev.id,
+                    LeaveRequest.start_date == start,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                LeaveRequest(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    developer_id=dev.id,
+                    leave_type_id=types[slug].id,
+                    start_date=start,
+                    end_date=end,
+                    total_days=float(days),
+                    status=status,
+                    reason=reason,
+                )
+            )
+        note("leave request", f"{slug} from {start}", found is None)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1263,6 +1411,7 @@ async def main() -> int:
         print()
         await seed_organization(db, workspace, dev)
         await seed_tickets(db, workspace, dev)
+        await seed_leave(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)

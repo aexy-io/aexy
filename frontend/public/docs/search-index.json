@@ -1361,9 +1361,23 @@
     "slug": "leave",
     "title": "Leave",
     "section": "Modules — People",
-    "description": "Time-off types, policies, approvals, balances",
+    "description": "Types, policies, balances, requesting and approving, the holiday calendar",
     "headings": [
-      "Leave Management",
+      "Leave",
+      "Setting it up",
+      "Balances",
+      "Asking for time off",
+      "Approving",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "leave-architecture",
+    "title": "Leave architecture",
+    "section": "Modules — People",
+    "description": "Endpoints, models, the request workflow, carry-forward",
+    "headings": [
+      "Leave — architecture",
       "Router",
       "Types",
       "Policies",

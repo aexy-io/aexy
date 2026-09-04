@@ -288,7 +288,13 @@
           "title": "Leave",
           "slug": "leave",
           "path": "leave.md",
-          "description": "Time-off types, policies, approvals, balances"
+          "description": "Types, policies, balances, requesting and approving, the holiday calendar"
+        },
+        {
+          "title": "Leave architecture",
+          "slug": "leave-architecture",
+          "path": "leave-architecture.md",
+          "description": "Endpoints, models, the request workflow, carry-forward"
         }
       ]
     },
@@ -681,8 +687,14 @@
     "leave": {
       "title": "Leave",
       "section": "Modules — People",
-      "description": "Time-off types, policies, approvals, balances",
+      "description": "Types, policies, balances, requesting and approving, the holiday calendar",
       "path": "leave.md"
+    },
+    "leave-architecture": {
+      "title": "Leave architecture",
+      "section": "Modules — People",
+      "description": "Endpoints, models, the request workflow, carry-forward",
+      "path": "leave-architecture.md"
     },
     "crm": {
       "title": "CRM",
@@ -1207,14 +1219,24 @@
         "slug": "guides/reminders"
       },
       "next": {
+        "title": "Leave architecture",
+        "slug": "leave-architecture"
+      }
+    },
+    "leave-architecture": {
+      "prev": {
+        "title": "Leave",
+        "slug": "leave"
+      },
+      "next": {
         "title": "CRM",
         "slug": "crm"
       }
     },
     "crm": {
       "prev": {
-        "title": "Leave",
-        "slug": "leave"
+        "title": "Leave architecture",
+        "slug": "leave-architecture"
       },
       "next": {
         "title": "GTM",
