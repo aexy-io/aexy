@@ -166,7 +166,12 @@ export default function ServiceDeskDashboardPage() {
           </div>
 
           {/* Stakeholder × age matrix */}
-          <Card className="overflow-x-auto p-4">
+          {/* `data-testid` so `e2e/docs-shots/service-desk.spec.ts` can wait for
+              the matrix itself before photographing the dashboard: the page
+              renders its heading and stat tiles while this table is still
+              loading, and a shot taken then is a picture of the module's
+              signature screen with its subject missing. */}
+          <Card className="overflow-x-auto p-4" data-testid="sd-matrix">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-muted-foreground">{t("dashboard.matrixTitle")}</h2>
               <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">

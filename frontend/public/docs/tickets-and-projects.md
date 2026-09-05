@@ -1,201 +1,112 @@
-# Tickets, Projects & Tasks
+# Tickets & projects
 
-Aexy has **four distinct work-item concepts** that look similar but solve different problems. This doc explains which to use when.
+Work that comes *in* from outside the team, and work the team *plans*. They are
+different things here, they use different objects, and choosing the wrong one
+is the mistake this module produces most often.
 
-## The four concepts
+For how it is built — models, endpoints, sync — see
+[Tickets, projects & tasks architecture](./tickets-and-projects-architecture.md).
 
-| Concept | Model | Source of truth | Used for |
-|---|---|---|---|
-| **Ticket** | `Ticket` (`models/ticketing.py:284`) | Public form submissions | Support, feedback, bug intake — anything from outside the team |
-| **SprintTask** | `SprintTask` (`models/sprint.py:243`) | Development planning | The unit teams pick up, estimate, sprint, and ship |
-| **TaskTemplate** | `TaskTemplate` (`models/sprint.py:918`) | Workspace setup | Reusable scaffolding for repetitive task types |
-| **WorkspaceTask** | `SprintTask` (same model, different lens) | Workspace-wide rollups | Read-only aggregation across all teams |
+## Which thing do I want?
 
-Rule of thumb:
-
-- Came from a form or external user? **Ticket.**
-- Going into a sprint and getting estimated? **SprintTask.**
-- Same task you create repeatedly with minor variations? **TaskTemplate.**
-- You want "all tasks in the workspace" for an exec dashboard? **WorkspaceTask** (just a view).
-
-Tickets can become SprintTasks via `POST /tickets/{id}/create-task` (`api/tickets.py:382`) — the link is recorded on `Ticket.linked_task_id`.
-
-## Tickets
-
-### Lifecycle
-
-`Ticket.status` (`ticketing.py:35-42`):
-
-```
-new → acknowledged → in_progress → [waiting_on_submitter] → resolved → closed
-```
-
-SLA tracking is built in (`ticketing.py:390-394`):
-
-| Field | Set when |
-|---|---|
-| `first_response_at` | First comment or status change after `new` |
-| `resolved_at` | Status transitions to `resolved` |
-| `closed_at` | Status transitions to `closed` |
-| `sla_due_at` | Computed from form's SLA config + creation time |
-| `sla_breached` | Boolean, flipped by the SLA checker |
-
-### Forms-driven creation
-
-Tickets are almost always created from a `TicketForm` — the public form sitting at `/public/forms/{public_token}`. The form defines the fields, and submission produces a ticket with `field_values` JSONB.
-
-`TicketForm` (`ticketing.py:78-202`):
-
-| Field | Note |
-|---|---|
-| `workspace_id` | Owner |
-| `public_url_token` | Unique slug for the public URL |
-| `fields` | List of `TicketFormField` rows |
-| `destinations` | External sync targets (GitHub, Jira, Linear) |
-| `auto_create_task` | Whether to spin a SprintTask immediately |
-| `default_team_id`, `ticket_assignment_mode` | Routing |
-| `conditional_rules` (JSONB) | `[{fieldId, condition, value, targetFieldId, action}]` — show/hide/require |
-
-`TicketFormField` (`ticketing.py:205-281`) supports 8 types: `TEXT`, `TEXTAREA`, `EMAIL`, `SELECT`, `MULTISELECT`, `CHECKBOX`, `FILE`, `DATE`. `validation_rules` JSONB stores `minLength`, `maxLength`, `pattern`, `allowedFileTypes`, `maxFileSize`. `external_mappings` JSONB defines how each field maps to a GitHub issue label, Jira summary, etc.
-
-Pre-built templates exist (`ticketing.py:28-31`): `BUG_REPORT`, `FEATURE_REQUEST`, `SUPPORT`. `POST /ticket-forms/from-template` clones one.
-
-### Routers
-
-| Router | Prefix | Tag |
+| You have… | Use | Because |
 |---|---|---|
-| `api/tickets.py` | `/workspaces/{ws}/tickets` | `Tickets` |
-| `api/ticket_forms.py` | `/workspaces/{ws}/ticket-forms` | `Ticket Forms` |
-| `api/public_forms.py` | `/public/forms` | `Public Forms` |
-| `api/visual_builder.py` | n/a | `Visual Builder` |
+| A request from a customer or colleague, usually via a form | **Ticket** | It has a requester who needs answering, and a status the requester can be told about |
+| Something the team will estimate and ship | **Task** | It belongs to a sprint, a board and a burndown |
+| The same task you create over and over | **Task template** | Scaffolding, not work |
+| Email arriving at a shared mailbox | **[Service Desk](./service-desk.md)** | A different module, with handoffs and a turnaround clock |
 
-Key endpoints:
+A ticket becomes a task when the team decides to *do* it — not before. The
+ticket keeps its own life and its link to the requester; the task carries the
+work. Converting is one click and the two stay linked.
+
+## Where the queue lives
+
+![Form tickets in the My Work queue, filtered to everyone's](./images/tickets-and-projects/queue.png)
+
+**On the dashboard, not at `/tickets`.** The work list on the home dashboard is
+the queue, with a source filter across the top: everything, tasks, form
+tickets, or the service desk. `/tickets` still resolves — it is linked from the
+command palette, the `t` shortcut and several widgets — but it redirects here.
+
+Two controls on that widget are worth knowing, because the defaults hide most
+of the queue:
+
+* **Everyone's tickets / Assigned to me.** It opens on yours. A queue nobody
+  has picked up yet is, by definition, not assigned to you.
+* **Show completed.** Off by default, so resolved and closed tickets are not in
+  the list you are looking at.
+
+A row is labelled by **who raised it** and carries its number, status and
+priority. Opening one goes to the ticket.
+
+## A ticket's life
 
 ```
-GET   /workspaces/{ws}/tickets                       list (line 119)
-PATCH /workspaces/{ws}/tickets/{ticket_id}           update status/assignee (220, 248)
-DELETE /workspaces/{ws}/tickets/{ticket_id}          (277)
-GET   /workspaces/{ws}/tickets/{ticket_id}/comments  (301)
-POST  /workspaces/{ws}/tickets/{ticket_id}/responses comment (328)
-POST  /workspaces/{ws}/tickets/{ticket_id}/create-task → SprintTask (382)
-POST  /workspaces/{ws}/ticket-forms                  create form
-POST  /workspaces/{ws}/ticket-forms/from-template    clone template (131)
-PATCH /workspaces/{ws}/ticket-forms/{form_id}/fields/{field_id}
-POST  /workspaces/{ws}/ticket-forms/{form_id}/fields/reorder  (453)
-
-GET  /public/forms/{public_token}                    fetch form for rendering (61)
-POST /public/forms/{public_token}/submit             unauthenticated submission
+new → acknowledged → in progress → [waiting on submitter] → resolved → closed
 ```
 
-The public submission endpoint is rate-limited and supports two auth modes: `anonymous` and `email_verification` (OTP).
+*Waiting on submitter* is the one worth using deliberately: it says the ball is
+with the person who raised the ticket, which is what stops it counting against
+you while you wait for the account name you asked for.
 
-### External sync
+![A ticket, its fields and the thread with whoever raised it](./images/tickets-and-projects/ticket-detail.png)
 
-When `Ticket.external_issues` (JSONB array) is populated, the ticket has shadow copies in third-party systems:
+The detail page is the ticket and the conversation about it in one place.
+Replies go to the requester; internal notes do not. Attachments, priority,
+assignee and any custom fields live in the same view.
 
-```json
-[{ "platform": "github", "issue_id": "owner/repo#42", "issue_url": "...", "synced_at": "..." }]
-```
+## Getting tickets in
 
-These are created on submission if the form's `destinations` includes the platform, and kept in sync by `services/github_task_sync_service.py` and friends. Updates flow both ways.
+![The ticket form builder](./images/tickets-and-projects/form-builder.png)
 
-## SprintTasks
+A **form** is how work arrives. Build it at **Settings → Ticket Forms**: add
+fields, decide whether the person has to sign in or can submit anonymously, set
+the message they see afterwards, and style it to look like your product.
 
-The full story is in [sprints.md](./sprints.md). Quick reference:
+Each form has its own public link:
 
-- `sprint_id` is nullable — null means backlog
-- `source_type`: `github_issue` / `jira` / `linear` / `manual` — drives sync behavior
-- `status` is either a hardcoded string (`backlog`/`todo`/`in_progress`/`review`/`done`) or a `status_id` pointing at a workspace-defined `WorkspaceTaskStatus` (with `category` for burndown)
-- `epic_id`, `story_id` for hierarchy
-- `custom_fields` JSONB keyed by `WorkspaceCustomField.slug`
+![The public form somebody outside the workspace fills in](./images/tickets-and-projects/public-form.png)
 
-### Routers
+Anyone with the link can submit; each submission becomes a ticket on the queue
+above. There is no account required unless you asked for one.
 
-| Router | Prefix | Tag |
-|---|---|---|
-| `api/sprint_tasks.py` | `/sprints/{sprint_id}/tasks` | `Sprint Tasks` |
-| `api/project_tasks.py` | `/teams/{team_id}/tasks` | `Project Tasks` |
-| `api/workspace_tasks.py` | `/workspaces/{ws}/tasks` | `Workspace Tasks` |
-| `api/task_templates.py` | `/workspaces/{ws}/task-templates` | `Task Templates` |
-| `api/task_config.py` | `/workspaces/{ws}/{task-statuses,custom-fields}` | `Task Configuration` |
+A form can also route what it collects — into a ticket, a CRM record, or a
+deal. See [Forms](./forms.md) for the routing side of it.
 
-`project_tasks.py` is the workhorse — full CRUD, assignment, status updates, GitHub linking (`GET /github-issues` line 448; `POST /github-links` line 649; `DELETE /github-links/{id}` line 697), and `POST /move-to-sprint` (line 783) to promote a backlog item.
+## Statuses and fields of your own
 
-`workspace_tasks.py` is intentionally minimal — `GET /workspaces/{ws}/tasks` (line 18) and `PATCH /.../status` (line 63). It's the read-only lens for "all tasks, all teams, this workspace."
+The six built-in statuses fit most desks, and a workspace can define its own.
+Each custom status belongs to a **category** — to do, in progress, or done —
+and that category is what analytics count.
 
-## Task templates
-
-`TaskTemplate` (`sprint.py:918-986`):
-
-| Field | Note |
-|---|---|
-| `workspace_id`, `created_by_id` | Scope |
-| `title_template` | `"Onboard new hire: {{name}}"` with `{{var}}` substitution |
-| `default_priority`, `default_story_points` | Sensible defaults |
-| `subtasks` (JSONB) | List of pre-defined subtasks to spawn alongside |
-| `checklist` (JSONB) | Checklist items pre-populated on the created task |
-| `usage_count` | Cached for popularity sort |
-
-POST `/from-template` creates a task from the template, filling `{{var}}`s from the request body.
-
-## Custom statuses & fields
-
-Workspaces can redefine the task lifecycle without changing code.
-
-**`WorkspaceTaskStatus`** (`sprint.py:31-80`):
-
-| Field | Note |
-|---|---|
-| `workspace_id` | Scope |
-| `name`, `slug`, `color`, `position` | Display |
-| `category` | `todo` / `in_progress` / `done` — load-bearing for burndown |
-
-Once a workspace defines its own statuses, tasks should reference them via `SprintTask.status_id`. The legacy hardcoded `status` string still works (used by older tasks and external imports that don't know about the custom statuses), but **`category` is what burndown queries against** — so a workspace can have "Awaiting Design", "Code Review", "QA", "Blocked" as their own statuses and burndown will still compute correctly.
-
-**`WorkspaceCustomField`** (`sprint.py:83+`) — per-workspace extra fields. Stored in `SprintTask.custom_fields` JSONB keyed by `slug`.
-
-## Visual builder (forms)
-
-`api/visual_builder.py` exposes a block-based UI for building forms:
-
-| Concept | Note |
-|---|---|
-| Block | A reusable form widget |
-| `block_type` | The block's identifier (e.g. `multi_choice_with_other`) |
-| `block_schema` | JSON Schema describing the block's configurable props |
-| `default_props` | Default values for those props |
-| `html_template` | The rendered form output |
-
-This same machinery is shared with the email-marketing visual builder.
+A status named "Done" filed under *in progress* looks perfectly right on the
+board and quietly breaks every burndown in the workspace. Set the category
+deliberately; it is the field nobody notices until a chart is wrong.
 
 ## Projects
 
-`Project` (`models/project.py:39-152`) is the **organizational container** above sprints/tasks. A project belongs to a workspace, has members (`ProjectMember` with per-project role overrides), teams (`ProjectTeam` many-to-many), and an optional `public_slug` for the public read-only roadmap.
+A **project** is the container above sprints, boards and tasks: it has members,
+teams, and its own settings. Most of what you do inside one is described in
+[Sprints & planning](./sprints.md).
 
-Public projects expose a configurable set of tabs (`project.settings.public_tabs.enabled_tabs`):
+The part that belongs here is the **public roadmap**. A project can publish a
+read-only view of itself at its own link, with only the tabs you enable —
+overview, roadmap, releases, board, and so on. Optionally, visitors can request
+features, vote and comment, which is the lightest way to run a public backlog
+without giving anyone access to the workspace.
 
-```
-overview, backlog, board, bugs, goals, releases, roadmap, stories, sprints, timeline
-```
+## Common mistakes
 
-`api/public_projects.py` returns read-only views of the project at `/public/projects/{slug}` with the enabled tabs only. Optional voting/comments on the public roadmap are gated by project settings (`RoadmapRequest`, `RoadmapVote`, `RoadmapComment`).
-
-## Frontend
-
-Pages:
-
-| Route | Purpose |
-|---|---|
-| `/tickets` | Ticket list |
-| `/tickets/[ticketId]` | Ticket detail with response thread |
-| `/sprints/[projectId]/...` | See [sprints.md](./sprints.md) |
-| `/public/forms/{token}` | Public ticket submission |
-| `/public/projects/{slug}` | Public read-only project roadmap |
-
-## Common pitfalls
-
-- **Choosing the wrong abstraction.** If users submit a form, the canonical artifact is a `Ticket`, not a `SprintTask`. Convert to a task only when the team decides to work on it.
-- **Two statuses on the same task.** The legacy `status` string and the new `status_id` can both exist. Reading code should prefer `status_id` if non-null, otherwise fall back to `status`. Writing code on the modern path should *only* set `status_id`.
-- **Custom status with wrong `category`.** Burndown queries `category`. A status named "Done" with `category="in_progress"` will look right in the UI and silently break analytics. Always set `category` deliberately.
-- **External issue updates lag.** `SprintTask.sync_status="pending"` means a write is in flight to GitHub/Jira/Linear. If the third-party API is down, expect `conflict` until reconciled. Don't bypass `*SyncService` with raw `UPDATE` statements — they own the cursor state.
-- **Public form rate-limiting.** The public submission endpoint has aggressive rate limits to deter spam. If a legitimate batch import needs to push many tickets, use the authenticated POST instead.
+- **Looking for the queue at `/tickets`.** It is the dashboard's work list,
+  filtered to *tickets*, with *everyone's* switched on.
+- **Converting every ticket to a task.** A ticket is already a work item. Turn
+  it into a task when the team commits to it, or the board fills with requests
+  nobody has agreed to do.
+- **A custom status in the wrong category.** The board looks right; the
+  burndown does not.
+- **Answering a requester in an internal note.** They will not see it, and the
+  ticket will look ignored from their side.
+- **Using a form ticket where the Service Desk belongs.** If it arrives by
+  email, needs a turnaround clock and passes between parties, it is a desk
+  ticket. The two modules deliberately do not share a queue.

@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "private": true,
   "scripts": {
     "predev": "npm run i18n:merge",
@@ -27,7 +27,7 @@
     "test:e2e:invoices:headed": "playwright test e2e/admin-invoices.spec.ts --headed",
     "changelog": "node scripts/generate-changelog.mjs",
     "docs:gen": "node scripts/generate-docs.mjs",
-    "docs:shots": "playwright test e2e/docs-screenshots.spec.ts",
+    "docs:shots": "playwright test e2e/docs-shots",
     "mcp:manifest": "node scripts/fetch-tool-manifest.mjs",
     "mcp:manifest:check": "node scripts/fetch-tool-manifest.mjs --check",
     "mcp:doc": "node scripts/generate-mcp-doc.mjs",
@@ -99,6 +99,7 @@
     "rehype-highlight": "^7.0.2",
     "rehype-pretty-code": "^0.14.3",
     "rehype-slug": "^6.0.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "shiki": "^1.29.2",
     "sonner": "^2.0.7",

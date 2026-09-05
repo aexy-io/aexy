@@ -1,6 +1,14 @@
 # GTM (Go-To-Market)
 
-Aexy's GTM module is a full sales-and-marketing stack: lead scoring, account-based marketing, outreach sequences, intent signals, routing & SLAs, customer-health monitoring, expansion playbooks, competitor intelligence, SEO/content analysis, compliance, alerts, webhooks. **19 sub-routers** aggregated under one parent prefix; **15 dedicated services**; **13 model files**; **24+ Temporal activities**.
+**For a revenue team, not an engineering one.** Everything between "somebody
+might buy this" and "they renewed": scoring the leads, working the accounts,
+running the outreach, watching the health of the customers you already have.
+
+It leans on the [CRM](./crm.md) for the records themselves — GTM is the
+motion, the CRM is the memory — and on
+[Email setup](./guides/email-setup.md) for anything it sends.
+
+The rest of this document is how it is built and configured.
 
 Most everything sits at `/api/v1/workspaces/{workspace_id}/gtm/...`, aggregated via `backend/src/aexy/api/gtm/__init__.py:28-51`. Tag: `GTM`.
 

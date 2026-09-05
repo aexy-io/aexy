@@ -195,15 +195,31 @@ that should not be on the open internet.
 
 ### From Notion or Confluence
 
-Export your space from either product and upload the archive. Aexy works out
-which it came from, recreates the page hierarchy, uploads the attachments, and
-**rewrites internal links so they point at the new pages** — a migrated wiki
-whose links 404 is worse than no migration.
+Export your space from either product, then **Import a wiki** in the documents
+sidebar.
 
-A large space takes a while, so it runs in the background with a progress count.
+![Choosing an export and where it should land](./images/knowledge-base/import.png)
+
+Aexy works out which product it came from, recreates the page hierarchy,
+uploads the attachments, and **rewrites internal links so they point at the new
+pages** — a migrated wiki whose links 404 is worse than no migration.
+
+Pick a destination space, or let Aexy choose one. Either way you need **admin
+on the space it lands in**: the import creates pages in bulk, and edit rights
+are not enough to fill somebody else's space.
+
+A large space takes a while, so it runs in the background with a progress
+count. **Closing the dialog does not stop it** — the pages appear in the
+sidebar as they arrive.
+
 Pages that do not convert cleanly are listed with a reason rather than failing
-the whole import, and re-running an import continues where it stopped instead of
-creating a second copy of everything.
+the whole import. That end state is *imported, with pages skipped*, and it is
+not a failure: one page with a table nothing can convert must not roll back the
+four thousand that came in fine.
+
+An import that stops can be resumed, and resuming continues where it stopped
+rather than starting again — so a retry does not produce a second copy of
+everything that already arrived.
 
 Importing needs admin access to the destination space.
 
@@ -221,17 +237,27 @@ exports as a zip with folders mirroring the page hierarchy.
 The export contains what you can read: a bulk export is a read of every page in
 it, and is filtered accordingly.
 
-> **PDF and non-Latin scripts.** A page written in Hindi or another script that
-> needs reshaping — Devanagari, Arabic, Thai and similar — exports to PDF with
-> its characters drawn individually and not reshaped, so vowel signs and
-> conjuncts can come out in the wrong order or unjoined. The export says so
-> when it happens. **Use Markdown or HTML for a faithful copy of those pages**;
-> those formats keep the text exactly as written.
+> **PDF and non-Latin scripts.** Hindi, Arabic, Hebrew, Thai and other scripts
+> that reshape or join their characters export correctly: the text is shaped
+> before it is drawn, so vowel signs sit where they belong, conjuncts stay
+> joined, and right-to-left runs come out right to left.
 >
-> Latin text is unaffected. Nothing needs configuring — the shipped Docker
-> image includes a font covering Latin and Devanagari. Running outside Docker,
-> an administrator points `AEXY_PDF_FONT_DIR` at a directory holding a font
-> that covers the script, or non-Latin pages export blank.
+> Two things can still go wrong, and the export says so on the page rather than
+> leaving you to notice:
+>
+> * **A glyph the font does not have** — the page names the script and the
+>   characters cannot be drawn.
+> * **Shaping unavailable** — a deployment without the text shaper falls back
+>   to drawing characters individually, which is the old behaviour and is
+>   wrong for those scripts.
+>
+> If either warning appears, **export as Markdown or HTML for a faithful
+> copy**; those formats keep the text exactly as written.
+>
+> Nothing needs configuring in the shipped Docker image: it carries a font
+> covering Latin and Devanagari, and the shaper is a dependency. Running
+> outside Docker, an administrator points `AEXY_PDF_FONT_DIR` at a directory
+> holding a font that covers the script, or non-Latin pages export blank.
 
 ---
 

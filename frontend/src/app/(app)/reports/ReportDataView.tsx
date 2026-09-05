@@ -122,7 +122,15 @@ function WidgetCard({ id, widget }: { id: string; widget: WidgetResult }) {
   );
 }
 
-export function ReportDataView({ report }: { report: CustomReport }) {
+export function ReportDataView({
+  report,
+  workspaceId,
+}: {
+  report: CustomReport;
+  /** Passed down rather than read here: the parent already knows it, and a
+      second `useWorkspace` in a child is a second source of truth. */
+  workspaceId: string;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [widgets, setWidgets] = useState<Record<string, WidgetResult>>({});
@@ -134,7 +142,7 @@ export function ReportDataView({ report }: { report: CustomReport }) {
       setError(null);
       try {
         const developerIds = report.filters?.developer_ids;
-        const result = await reportsApi.getReportData(report.id, developerIds);
+        const result = await reportsApi.getReportData(workspaceId, report.id, developerIds);
         if (!active) return;
         setWidgets((result?.widgets as Record<string, WidgetResult>) || {});
       } catch (e) {
@@ -147,7 +155,7 @@ export function ReportDataView({ report }: { report: CustomReport }) {
     return () => {
       active = false;
     };
-  }, [report.id, report.filters]);
+  }, [report.id, report.filters, workspaceId]);
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import { communityPublicApi } from "@/lib/api";
@@ -9,8 +9,16 @@ import { stashPostLoginRedirect } from "@/lib/oauth";
 import type { PublicMessage } from "@/lib/community-api";
 import { ReactionBar, useMyReactions } from "@/components/community/ReactionBar";
 import { revalidateCommunityTopic } from "@/app/community/actions";
+import { renderCommunityMarkdown } from "@/app/community/markdown-action";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+/**
+ * A post paired with its rendered body. The body is elements, not a string:
+ * built on the server for messages that came from it, and fetched from a server
+ * action for a reply the visitor just wrote.
+ */
+type RenderedMessage = { message: PublicMessage; body: ReactNode };
 
 /**
  * The interactive half of a public thread: the posts, their reactions, the
@@ -20,12 +28,18 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/a
  * lets the thread be both crawlable and interactive. The messages arrive as
  * props from the server fetch rather than being fetched here, so the HTML a
  * crawler (or a reader on a slow connection) sees is the complete conversation.
+ *
+ * Post *bodies* arrive as already-rendered elements for the same reason, one
+ * step further: markdown is parsed on the server, so a page that anyone can
+ * read anonymously does not also download a markdown parser to display text it
+ * was already sent as HTML.
  */
 export function TopicThread({
   communitySlug,
   channelSlug,
   topicParam,
   messages,
+  bodies,
   acceptedMessageId,
   allowParticipation,
   isFirstPage,
@@ -34,6 +48,8 @@ export function TopicThread({
   channelSlug: string;
   topicParam: string;
   messages: PublicMessage[];
+  /** Server-rendered markdown for each message, keyed by message id. */
+  bodies: Record<string, ReactNode>;
   acceptedMessageId: string | null;
   allowParticipation: boolean;
   /** Only the first page hoists the accepted answer — page 3 has no question. */
@@ -46,7 +62,7 @@ export function TopicThread({
   // Posts made in this session, shown immediately. The page itself is cached, so
   // without this the author is returned to a thread that doesn't contain what
   // they just wrote — which reads as a failed save.
-  const [ownPosts, setOwnPosts] = useState<PublicMessage[]>([]);
+  const [ownPosts, setOwnPosts] = useState<RenderedMessage[]>([]);
   const [acceptBusy, setAcceptBusy] = useState(false);
 
   useEffect(() => {
@@ -67,7 +83,7 @@ export function TopicThread({
     setAccepted(acceptedMessageId);
     if (ownPosts.length > 0) {
       const arrived = new Set(messages.map((m) => m.id));
-      const stillMissing = ownPosts.filter((p) => !arrived.has(p.id));
+      const stillMissing = ownPosts.filter((p) => !arrived.has(p.message.id));
       if (stillMissing.length !== ownPosts.length) setOwnPosts(stillMissing);
     }
   }
@@ -102,33 +118,37 @@ export function TopicThread({
     }
   };
 
-  const all = [...messages, ...ownPosts];
+  const all: RenderedMessage[] = [
+    ...messages.map((message) => ({ message, body: bodies[message.id] })),
+    ...ownPosts,
+  ];
   // The answer belongs directly under the question, not wherever it landed
   // chronologically — that is the entire point of marking one.
   const hoisted =
     isFirstPage && accepted
       ? (() => {
-          const answer = all.find((m) => m.id === accepted);
+          const answer = all.find((r) => r.message.id === accepted);
           if (!answer || all.indexOf(answer) <= 0) return null;
           return answer;
         })()
       : null;
   const ordered = hoisted
-    ? [all[0], hoisted, ...all.slice(1).filter((m) => m.id !== hoisted.id)]
+    ? [all[0], hoisted, ...all.slice(1).filter((r) => r.message.id !== hoisted.message.id)]
     : all;
 
   return (
     <>
       <ul className="divide-y divide-ledger-ink/10 rounded-[3px] border border-ledger-ink/12 bg-ledger-card">
-        {ordered.map((message, index) => (
+        {ordered.map(({ message, body }, index) => (
           <MessageItem
             key={message.id}
             message={message}
+            body={body}
             communitySlug={communitySlug}
             channelSlug={channelSlug}
             topicParam={topicParam}
             isAccepted={message.id === accepted}
-            isHoisted={hoisted?.id === message.id}
+            isHoisted={hoisted?.message.id === message.id}
             canReact={mounted && signedIn && allowParticipation}
             canAccept={mounted && signedIn && index > 0}
             acceptBusy={acceptBusy}
@@ -145,8 +165,8 @@ export function TopicThread({
           topicParam={topicParam}
           mounted={mounted}
           signedIn={signedIn}
-          onPosted={(message) => {
-            setOwnPosts((prev) => [...prev, message]);
+          onPosted={(posted) => {
+            setOwnPosts((prev) => [...prev, posted]);
             void revalidateFromClient();
           }}
         />
@@ -159,23 +179,9 @@ export function TopicThread({
   );
 }
 
-function MessageBody({ content }: { content: string }) {
-  // React escapes by default, so this only has to preserve line breaks.
-  const lines = content.split("\n");
-  return (
-    <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-ledger-ink/85">
-      {lines.map((line, i) => (
-        <span key={i}>
-          {line}
-          {i < lines.length - 1 && <br />}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function MessageItem({
   message,
+  body,
   communitySlug,
   channelSlug,
   topicParam,
@@ -188,6 +194,7 @@ function MessageItem({
   mine,
 }: {
   message: PublicMessage;
+  body: ReactNode;
   communitySlug: string;
   channelSlug: string;
   topicParam: string;
@@ -256,7 +263,13 @@ function MessageItem({
         )}
       </div>
 
-      <MessageBody content={message.content} />
+      {body ?? (
+        // Only reachable if a body went missing, which would otherwise blank the
+        // post. Plain text is the honest fallback — no parser on this side.
+        <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-ledger-ink/85">
+          {message.content}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <ReactionBar
@@ -297,7 +310,7 @@ function Composer({
   topicParam: string;
   mounted: boolean;
   signedIn: boolean;
-  onPosted: (message: PublicMessage) => void;
+  onPosted: (posted: RenderedMessage) => void;
 }) {
   const t = useTranslations("community");
   const [content, setContent] = useState("");
@@ -365,15 +378,27 @@ function Composer({
         setNotice(t("reply.held"));
       } else {
         setNotice(t("reply.posted"));
+        // Rendered by the server, like every other post on the page. Falling
+        // back to the raw text if that round trip fails is better than dropping
+        // the reply the author can see they just wrote.
+        let rendered: ReactNode = null;
+        try {
+          rendered = await renderCommunityMarkdown(body);
+        } catch {
+          rendered = null;
+        }
         onPosted({
-          id: res.id,
-          author: t("reply.you"),
-          author_handle: null,
-          content: body,
-          is_edited: false,
-          created_at: new Date().toISOString(),
-          reactions: [],
-          is_accepted: false,
+          message: {
+            id: res.id,
+            author: t("reply.you"),
+            author_handle: null,
+            content: body,
+            is_edited: false,
+            created_at: new Date().toISOString(),
+            reactions: [],
+            is_accepted: false,
+          },
+          body: rendered,
         });
       }
     } catch (err: unknown) {
@@ -392,12 +417,17 @@ function Composer({
       data-testid="community-reply-form"
       className="mt-8 rounded-[3px] border border-ledger-ink/12 bg-ledger-card p-5"
     >
-      <label
-        htmlFor="community-reply"
-        className="mb-2 block font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/60"
-      >
-        {t("reply.label")}
-      </label>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+        <label
+          htmlFor="community-reply"
+          className="block font-brand-mono text-[11px] uppercase tracking-[0.12em] text-ledger-ink/60"
+        >
+          {t("reply.label")}
+        </label>
+        <span className="font-brand-mono text-[10px] uppercase tracking-[0.12em] text-ledger-ink/40">
+          {t("reply.markdownHint")}
+        </span>
+      </div>
       <textarea
         id="community-reply"
         data-testid="community-reply-input"

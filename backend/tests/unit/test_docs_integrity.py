@@ -149,3 +149,44 @@ def test_the_knowledge_base_guide_is_linked():
         "knowledge-base.md exists but README.md does not link it, so it would "
         "publish under its raw filename with no nav entry"
     )
+
+
+def test_every_image_directory_has_a_spec_that_can_retake_it():
+    """A screenshot nobody can retake is a screenshot that will go stale.
+
+    The convention `docs/images/<doc>/` ↔ `frontend/e2e/docs-shots/<doc>.spec.ts`
+    is what makes a UI change one command away from correct documentation. A
+    directory of hand-taken PNGs looks identical on the site and has no such
+    command, so it survives every redesign until a reader notices — which is
+    the failure this whole arrangement exists to prevent, and it does not
+    announce itself.
+
+    The document itself is checked by stem rather than at the top level,
+    because a guide under `docs/guides/` illustrates itself the same way.
+    """
+    images_dir = DOCS / "images"
+    if not images_dir.is_dir():
+        pytest.skip("no docs/images yet")
+
+    shots_dir = REPO / "frontend" / "e2e" / "docs-shots"
+    if not shots_dir.is_dir():
+        pytest.skip("frontend not present in this checkout")
+
+    stems = {page.stem for page in _markdown_files()}
+
+    no_spec, no_page = [], []
+    for directory in sorted(p for p in images_dir.iterdir() if p.is_dir()):
+        if not (shots_dir / f"{directory.name}.spec.ts").exists():
+            no_spec.append(directory.name)
+        if directory.name not in stems:
+            no_page.append(directory.name)
+
+    assert not no_spec, (
+        f"image directories with no spec to retake them: {no_spec}. Add "
+        f"frontend/e2e/docs-shots/<name>.spec.ts, or delete the images — a "
+        "hand-made screenshot has nothing keeping it honest."
+    )
+    assert not no_page, (
+        f"image directories named after no document: {no_page}. The directory "
+        "is named for the page it illustrates."
+    )

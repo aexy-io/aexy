@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-09-05
+
+Documentation you can trust, a screen for an import that had none, and Hindi
+PDFs that are correct rather than merely present.
+
+### Feature: the wiki import has a way in
+
+Bringing a Notion or Confluence export into the knowledge base was complete on
+the server — upload, background job, progress, resume, link rewriting — and had
+no way to start it. No button, no client method, nothing. **Documents → Import
+a wiki**, beside "Add space", is that way in: choose the archive, choose where
+it lands, and watch it.
+
+The dialog refuses an empty or oversized archive before it uploads anything,
+because a 500 MB upload refused after it finishes has already cost you ten
+minutes. It polls only while the job is running. It treats *imported, with
+pages skipped* as what it is — a finished import, not a failure — and lists the
+pages that would not convert with the reason. A stopped import resumes where it
+stopped rather than starting again, so a retry never gives you a second copy of
+everything.
+
+### Feature: Hindi, Arabic and Hebrew PDFs come out right
+
+A PDF of a page written in Devanagari used to be drawn one character at a time:
+`नीति` came out with its leading vowel sign stranded after the consonant it
+belongs in front of, conjuncts broken open, and Arabic unjoined and in the
+wrong direction. The text is now shaped before it is drawn — vowel signs sit
+where they belong, conjuncts stay joined, right-to-left runs run right to left.
+
+The warning that used to appear on every such export is gone, because it is no
+longer true. Two narrower ones remain and are worth reading when they show up:
+a character the font cannot draw, and a deployment without the text shaper.
+Either one means Markdown or HTML is the faithful copy.
+
+### Feature: community posts render as markdown
+
+Posts are written as markdown and were shown as plain text, so a release note
+published to a channel arrived with its `##` and `-` on display. They render
+properly now, with a single newline treated as a line break — which is how
+people write in a chat box.
+
+The other half is quieter: a post quoted into a search-result snippet, an
+OpenGraph description or an RSS item is prose with no renderer behind it, and
+was arriving as `## Added - Changelog script…`. Those surfaces now strip the
+markup instead.
+
+### Documentation: nineteen guides, fifty-nine screenshots, taken from the app
+
+The published documentation was thirty-six architecture references — "Routers ·
+Models · Frontend · Common pitfalls" — sitting under headings that promise a
+product manual, and four screenshots in the entire tree. Each module a reader
+is likely to arrive at now has a **guide** written for somebody standing in
+front of the app, with the architecture reference kept beside it, and a new
+**For administrators** section covering workspace setup, roles and access,
+email, imports, the working-hours clock, exports, and notifications.
+
+Every screenshot is produced by a spec that drives the real application against
+a seeded demo workspace, so a UI change is one command away from correct
+documentation rather than a slow drift into fiction.
+
+Writing them found things reading the code had not: `/tickets` had not been the
+ticket list for a while and the docs still sent readers there; the Service
+Desk's seeded tickets were counted by the generic ticketing module as its own;
+leave balances are rows a policy does not create; and app access shapes
+navigation without being a security boundary, which the guide now says plainly
+rather than implying the opposite.
+
+## [0.34.0] - 2026-09-04
+
+### Fix: anyone in a workspace could read every document in it
+
+The knowledge base had three access-control concepts — document visibility,
+space membership and collaborator grades — stored, returned in API responses,
+and enforced on no read path. A private document was readable by any workspace
+viewer holding its id, and search filtered on the workspace alone, which made
+that id findable by content.
+
+`DocumentAccess` is now the single answer, in two shapes: one document, or a
+SQL predicate that list, tree, search and export all share.
+
 ## [0.33.0] - 2026-09-04
 
 The Service Desk can now say where a ticket's time went, and how its owners are

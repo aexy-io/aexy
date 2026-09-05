@@ -196,6 +196,105 @@
     ]
   },
   {
+    "slug": "guides/workspace-setup",
+    "title": "Setting up a workspace",
+    "section": "For administrators",
+    "description": "The first hour: people, apps, departments, modules",
+    "headings": [
+      "Setting up a workspace",
+      "What a workspace is",
+      "1. Invite the people",
+      "2. Switch on the apps you will use",
+      "3. Build the departments",
+      "4. Set up the modules you turned on",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/roles-and-access",
+    "title": "Roles, permissions & app access",
+    "section": "For administrators",
+    "description": "Why two colleagues see different things, and how to change it",
+    "headings": [
+      "Roles, permissions and app access",
+      "Two different questions",
+      "Workspace roles",
+      "Where app access comes from",
+      "Asking for access",
+      "Project permissions are separate",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/email-setup",
+    "title": "Email and inbox setup",
+    "section": "For administrators",
+    "description": "Mail arriving and mail leaving, and which module reads which",
+    "headings": [
+      "Email and inbox setup",
+      "Mail arriving",
+      "Which module reads which",
+      "Mail leaving",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/importing-data",
+    "title": "Importing your data",
+    "section": "For administrators",
+    "description": "CRM, prospects, wikis and spreadsheets, and what no import does for you",
+    "headings": [
+      "Importing your data",
+      "Contacts and companies",
+      "Prospect lists",
+      "Documents",
+      "Reminders and compliance records",
+      "What no import will do for you"
+    ]
+  },
+  {
+    "slug": "guides/working-hours-and-clocks",
+    "title": "Working hours, holidays & the clocks",
+    "section": "For administrators",
+    "description": "The shift, the one holiday calendar, and which clock is which",
+    "headings": [
+      "Working hours, holidays and the clocks",
+      "The shift",
+      "The calendar",
+      "Which clock is which",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/exports",
+    "title": "Getting your data out",
+    "section": "For administrators",
+    "description": "What each module exports, which format to choose, and the PDF caveat",
+    "headings": [
+      "Getting your data out",
+      "What comes out, and in what shape",
+      "Choosing a format",
+      "The PDF caveat worth knowing",
+      "Scheduled exports",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/notifications-and-digests",
+    "title": "Notifications & digests",
+    "section": "For administrators",
+    "description": "Per-person notifications, per-module digests, and how to stop each",
+    "headings": [
+      "Notifications and digests",
+      "The two different things",
+      "Notifications: the per-person settings",
+      "Digests: the per-module schedules",
+      "Reminders and escalations",
+      "When somebody says they get too much",
+      "Common mistakes"
+    ]
+  },
+  {
     "slug": "guides/getting-started",
     "title": "Getting Started",
     "section": "Getting started & operations",
@@ -975,9 +1074,25 @@
     "slug": "sprints",
     "title": "Sprints & planning",
     "section": "Modules — Work & planning",
-    "description": "Sprints, epics, stories, planning poker, retrospectives, releases",
+    "description": "The board, the backlog, running a cycle, estimating together",
     "headings": [
-      "Sprints & Planning",
+      "Sprints & planning",
+      "The pieces",
+      "The board",
+      "The backlog",
+      "Running a cycle",
+      "Estimating together",
+      "Work from GitHub, Jira or Linear",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "sprints-architecture",
+    "title": "Sprints & planning architecture",
+    "section": "Modules — Work & planning",
+    "description": "Models, lifecycle endpoints, poker sessions, external sync",
+    "headings": [
+      "Sprints & planning — architecture",
       "Mental model",
       "Sprint lifecycle",
       "Backend routers",
@@ -994,9 +1109,25 @@
     "slug": "tickets-and-projects",
     "title": "Tickets & projects",
     "section": "Modules — Work & planning",
-    "description": "Tickets, sprint tasks, projects, templates, ticket forms",
+    "description": "Raising tickets, where the queue lives, forms, converting to work",
     "headings": [
-      "Tickets, Projects & Tasks",
+      "Tickets & projects",
+      "Which thing do I want?",
+      "Where the queue lives",
+      "A ticket's life",
+      "Getting tickets in",
+      "Statuses and fields of your own",
+      "Projects",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "tickets-and-projects-architecture",
+    "title": "Tickets & projects architecture",
+    "section": "Modules — Work & planning",
+    "description": "The four work-item models, statuses, sync, public projects",
+    "headings": [
+      "Tickets, projects & tasks — architecture",
       "The four concepts",
       "Tickets",
       "Lifecycle",
@@ -1017,9 +1148,37 @@
     "slug": "service-desk",
     "title": "Service Desk",
     "section": "Modules — Work & planning",
-    "description": "Email intake, pending-with handoffs, the breach clock, master data",
+    "description": "Running a desk: mailboxes, master data, handoffs, the clock, reports",
     "headings": [
       "Service Desk",
+      "The one idea to get right first",
+      "Setting up",
+      "1. Add the mailbox",
+      "2. Fill in the master data",
+      "3. Name the parties a ticket can wait on",
+      "4. Set the clock",
+      "5. Decide about AI classification",
+      "Running the desk",
+      "The queue board",
+      "Working the list",
+      "Handing a ticket on",
+      "Reading the clocks",
+      "The digest",
+      "Reports",
+      "Turnaround per ticket",
+      "The owner scorecard",
+      "Who sees what",
+      "Where each setting lives",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "service-desk-architecture",
+    "title": "Service Desk architecture",
+    "section": "Modules — Work & planning",
+    "description": "How it is built: intake pipeline, models, API, frontend",
+    "headings": [
+      "Service Desk — architecture",
       "Mental model",
       "Intake",
       "The breach clock",
@@ -1033,9 +1192,23 @@
     "slug": "booking",
     "title": "Booking",
     "section": "Modules — Work & planning",
-    "description": "Calendar scheduling, team bookings & RSVP",
+    "description": "Meeting types, availability, team assignment, the public link",
     "headings": [
-      "Booking Module",
+      "Booking",
+      "Meeting types",
+      "Availability",
+      "Booking with a team",
+      "The public link",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "booking-architecture",
+    "title": "Booking architecture & setup",
+    "section": "Modules — Work & planning",
+    "description": "Google/Microsoft setup, endpoints, RSVP, schema",
+    "headings": [
+      "Booking Module — architecture & setup",
       "Features",
       "Calendar Integration",
       "Supported Providers",
@@ -1141,22 +1314,41 @@
     "description": "My Work, the widget grid, presets",
     "headings": [
       "Dashboard",
-      "The widget grid",
-      "Presets",
-      "Adding a widget",
-      "Common pitfalls"
+      "My Work",
+      "Insights: the widget grid",
+      "Starting layouts",
+      "Common mistakes",
+      "For developers"
     ]
   },
   {
     "slug": "organization",
     "title": "Organization",
     "section": "Modules — Core",
-    "description": "Departments, teams, the org chart, access profiles",
+    "description": "Departments, placing people, reporting lines, and what a department switches on",
     "headings": [
       "Organization",
       "Departments are not teams",
+      "Building the structure",
+      "The function is the part with consequences",
+      "Putting people in it",
+      "Reporting lines",
+      "Open seats",
+      "What a department switches on",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "organization-architecture",
+    "title": "Organization architecture",
+    "section": "Modules — Core",
+    "description": "The tree, access resolution, positions, the directory read",
+    "headings": [
+      "Organization — architecture",
+      "Departments are not teams",
       "Access profiles",
-      "The org chart",
+      "The tree",
+      "Reporting lines",
       "Positions",
       "Directory",
       "Common pitfalls"
@@ -1166,9 +1358,25 @@
     "slug": "reviews-and-people",
     "title": "Reviews, hiring & learning",
     "section": "Modules — People",
-    "description": "Performance reviews, hiring & assessments, learning paths",
+    "description": "Running a review cycle, goals, assessments, learning paths",
     "headings": [
-      "People: Reviews, Hiring & Learning",
+      "Reviews, hiring & learning",
+      "Performance reviews",
+      "Who reviews whom",
+      "Two things to tell people honestly",
+      "Goals",
+      "Hiring",
+      "Learning",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "reviews-and-people-architecture",
+    "title": "People architecture",
+    "section": "Modules — People",
+    "description": "Models, workflow states, AI usage, external content sources",
+    "headings": [
+      "People: reviews, hiring & learning — architecture",
       "Performance Reviews",
       "Router",
       "Models (`models/review.py`)",
@@ -1195,9 +1403,25 @@
     "slug": "compliance",
     "title": "Compliance",
     "section": "Modules — People",
-    "description": "Mandatory training, certifications, reminders, escalation, audit",
+    "description": "Mandatory training, certifications, evidence, escalation",
     "headings": [
       "Compliance",
+      "Mandatory training",
+      "Acknowledged is not completed",
+      "Certifications",
+      "Reminders and evidence",
+      "When something is late",
+      "The audit log",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "compliance-architecture",
+    "title": "Compliance architecture",
+    "section": "Modules — People",
+    "description": "Models, schedules, questionnaires, the audit log",
+    "headings": [
+      "Compliance — architecture",
       "How the pieces fit",
       "Mandatory training",
       "Models (`models/gtm_compliance.py`)",
@@ -1282,9 +1506,23 @@
     "slug": "leave",
     "title": "Leave",
     "section": "Modules — People",
-    "description": "Time-off types, policies, approvals, balances",
+    "description": "Types, policies, balances, requesting and approving, the holiday calendar",
     "headings": [
-      "Leave Management",
+      "Leave",
+      "Setting it up",
+      "Balances",
+      "Asking for time off",
+      "Approving",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "leave-architecture",
+    "title": "Leave architecture",
+    "section": "Modules — People",
+    "description": "Endpoints, models, the request workflow, carry-forward",
+    "headings": [
+      "Leave — architecture",
       "Router",
       "Types",
       "Policies",
@@ -1302,9 +1540,24 @@
     "slug": "crm",
     "title": "CRM",
     "section": "Modules — Customers",
-    "description": "Companies, people, deals, custom objects, sequences, automations",
+    "description": "Objects and records, lists, pipelines, automations, sequences",
     "headings": [
       "CRM",
+      "The shape of it",
+      "Working with records",
+      "Making it do things by itself",
+      "Sequences",
+      "Mail and meetings on the record",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "crm-architecture",
+    "title": "CRM architecture",
+    "section": "Modules — Customers",
+    "description": "Storage, the attribute system, the automation engine, webhooks",
+    "headings": [
+      "CRM — architecture",
       "Mental model",
       "Backend",
       "Routers",
@@ -1371,9 +1624,24 @@
     "slug": "forms",
     "title": "Forms",
     "section": "Modules — Customers",
-    "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing",
+    "description": "Templates, building a form, the public link, routing what it collects",
     "headings": [
       "Forms",
+      "Starting from a template",
+      "Building it",
+      "The public page",
+      "Rules that show and hide fields",
+      "When part of it fails",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "forms-architecture",
+    "title": "Forms architecture",
+    "section": "Modules — Customers",
+    "description": "Model, public submission flow, the builder API, question bank",
+    "headings": [
+      "Forms — architecture",
       "Pieces",
       "Routers",
       "Form model (`models/forms.py`)",
@@ -1397,9 +1665,24 @@
     "slug": "tables",
     "title": "Tables",
     "section": "Modules — Customers",
-    "description": "Airtable-style custom data tables with saved views",
+    "description": "Custom tables, typed fields, saved views, who sees which rows",
     "headings": [
       "Tables",
+      "Tables and the CRM are the same machinery",
+      "Making one",
+      "Saved views",
+      "Who sees which rows",
+      "Deleting",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "tables-architecture",
+    "title": "Tables architecture",
+    "section": "Modules — Customers",
+    "description": "Shared CRM storage, view types, access modes, the audit trail",
+    "headings": [
+      "Tables — architecture",
       "Why it shares the CRM models",
       "Router",
       "Core",
@@ -1599,10 +1882,12 @@
     "description": "Files, folders, smart views, quota",
     "headings": [
       "Drive",
+      "What it is for",
       "Mental model",
       "API",
       "Quota",
       "Search",
+      "Smart views are not folders",
       "Common pitfalls"
     ]
   },
@@ -1709,6 +1994,7 @@
     "description": "Custom report builder, templates, schedules, exports",
     "headings": [
       "Reports",
+      "Reports or Insights?",
       "Mental model",
       "API",
       "The monthly engineering report",

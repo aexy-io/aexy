@@ -29,6 +29,28 @@ class CustomReport(Base):
         ForeignKey("developers.id", ondelete="CASCADE"),
         index=True,
     )
+    #: The tenant. Every read filters on it, so a report cannot be listed,
+    #: opened, run, cloned or scheduled from another workspace.
+    #:
+    #: Nullable in the column and required by the API: rows that predate the
+    #: scoping have no workspace to attribute them to, and deleting somebody's
+    #: saved reports to add a constraint is not a trade worth making. They are
+    #: reachable only by their creator, which is what they were before.
+    workspace_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    #: Legacy, and the wrong axis: `Organization` here is a **GitHub**
+    #: organization (`organizations.github_id`, `login`), not a tenant above
+    #: workspace. Two workspaces can share one, and a workspace with no GitHub
+    #: connection has none — which is why scoping report visibility by it never
+    #: worked. Nothing on the API path has ever written it; no reader is left.
+    #:
+    #: Kept rather than dropped until somebody checks a production database for
+    #: non-null rows: `select count(*) from custom_reports where
+    #: organization_id is not null`. Zero means it can go in its own migration.
     organization_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         nullable=True,

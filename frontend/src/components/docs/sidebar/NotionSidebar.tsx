@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Star, Lock, Users, Plus, Clock } from "lucide-react";
+import { Star, Lock, Users, Plus, Clock, Upload } from "lucide-react";
 
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { SidebarNavigation } from "./SidebarNavigation";
@@ -12,6 +13,7 @@ import { SidebarAppGroup } from "./SidebarAppGroup";
 import { DocumentItem } from "./DocumentItem";
 import { SpaceFolderWithData } from "./SpaceFolderWithData";
 import { CreateSpaceModal } from "../CreateSpaceModal";
+import { ImportWikiModal } from "../ImportWikiModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useNotionDocs } from "@/hooks/useNotionDocs";
 import { useDocumentSpaces } from "@/hooks/useDocumentSpaces";
@@ -34,6 +36,7 @@ export function NotionSidebar({
   onOpenSearch,
 }: NotionSidebarProps) {
   const router = useRouter();
+  const tImport = useTranslations("docs.import");
   const { workspaces, currentWorkspace, switchWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || null;
   const { user } = useAuth();
@@ -105,6 +108,7 @@ export function NotionSidebar({
   } = useDocumentSpaces(workspaceId);
 
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Private and shared documents (not tied to spaces)
@@ -345,6 +349,23 @@ export function NotionSidebar({
               </button>
             </div>
 
+            {/* Import an exported wiki. Beside "Add space" because that is
+                where somebody arriving with a Notion or Confluence export is
+                already looking — they are trying to make a space, and what
+                they actually want is to bring one across. */}
+            <div className="px-2 py-1">
+              <button
+                onClick={() => setShowImportModal(true)}
+                data-testid="sidebar-import-wiki"
+                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent/50 rounded-md transition-colors text-muted-foreground hover:text-muted-foreground"
+              >
+                <div className="h-5 w-5 rounded border border-dashed border-border flex items-center justify-center">
+                  <Upload className="h-3 w-3" />
+                </div>
+                <span className="text-xs">{tImport("sidebarAction")}</span>
+              </button>
+            </div>
+
             {/* Divider before apps */}
             <div className="h-px bg-muted/50 mx-3 my-2" />
 
@@ -408,6 +429,15 @@ export function NotionSidebar({
           </>
         )}
       </div>
+
+      {workspaceId && (
+        <ImportWikiModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          workspaceId={workspaceId}
+          spaces={spaces || []}
+        />
+      )}
 
       {/* Create Space Modal */}
       <CreateSpaceModal

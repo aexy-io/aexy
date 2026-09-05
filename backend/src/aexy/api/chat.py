@@ -51,6 +51,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/chat", tags=["chat"])
 
+#: The live socket, mounted **without** the app-access dependency the HTTP
+#: routes carry.
+#:
+#: A router-level `Depends(require_app_access(...))` applies to websocket routes
+#: too, and its first dependency is `get_current_developer`, which reads an
+#: `Authorization` header. A browser cannot set headers on a WebSocket
+#: handshake — this socket authenticates with a `token` query parameter — so the
+#: guard did not deny the connection, it crashed it: `HTTPBearer.__call__()
+#: missing 1 required positional argument`, and a 500 at handshake for every
+#: user whether or not chat was enabled.
+#:
+#: The check still happens, inside the handler, once the token has been verified
+#: and the workspace is known.
+ws_router = APIRouter(prefix="/workspaces/{workspace_id}/chat", tags=["chat"])
+
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -1183,7 +1198,7 @@ class ChatConnectionManager:
 chat_manager = ChatConnectionManager()
 
 
-@router.websocket("/ws")
+@ws_router.websocket("/ws")
 async def chat_websocket(
     websocket: WebSocket,
     workspace_id: str,
@@ -1206,6 +1221,17 @@ async def chat_websocket(
         ws_svc = WorkspaceService(db)
         if not await ws_svc.check_permission(workspace_id, developer_id, "member"):
             await websocket.close(code=4003, reason="Not a workspace member")
+            return
+
+        # The same gate the HTTP routes carry, applied where a websocket can
+        # actually answer it: after the token has been verified. A workspace
+        # that has switched chat off should not have a live socket either.
+        from aexy.services.app_access_service import AppAccessService
+
+        if not await AppAccessService(db).check_workspace_app_enabled(
+            workspace_id, "chat"
+        ):
+            await websocket.close(code=4003, reason="Chat is disabled for this workspace")
             return
 
     user_info = {
