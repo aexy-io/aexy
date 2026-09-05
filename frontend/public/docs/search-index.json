@@ -1853,10 +1853,12 @@
     "description": "Files, folders, smart views, quota",
     "headings": [
       "Drive",
+      "What it is for",
       "Mental model",
       "API",
       "Quota",
       "Search",
+      "Smart views are not folders",
       "Common pitfalls"
     ]
   },
@@ -1963,6 +1965,7 @@
     "description": "Custom report builder, templates, schedules, exports",
     "headings": [
       "Reports",
+      "Reports or Insights?",
       "Mental model",
       "API",
       "The monthly engineering report",
