@@ -17,13 +17,22 @@ An admin with no access to the Service Desk does not see it in their sidebar. A
 member with access to everything sees everything and can change very little.
 Both are working as designed.
 
-**App access shapes navigation; it is not a security boundary.** Switching an
-app off removes it from the sidebar and from the pickers, and that is what it
-is for — a workspace that turns on all forty modules is unusable. It does not
-stop somebody who knows the URL, and the API behind the module answers either
-way. What actually protects data is workspace membership, the workspace role,
-and each module's own permission checks. Do not switch an app off in order to
-keep somebody out of it.
+**Switching an app off for the workspace closes it.** The API refuses, for
+everybody — including admins and the owner, because "this workspace does not
+use this module" has to beat administrator reach. That is the one setting on
+this page that is a boundary rather than a preference.
+
+**The other layers shape navigation more than they restrict reach.** Where
+nothing has been configured for somebody — their departments carry no profile
+and nobody has written them an override — the role bundle decides what appears
+in their sidebar, and the API still answers. That is deliberate: enforcing a
+default that nobody chose would lock people out of modules they use today.
+Reach follows configuration, so a department profile or an explicit override is
+what actually restricts somebody.
+
+Admins and owners keep reach over everything the workspace has enabled, even
+where their own profile keeps a module out of their sidebar — they have to be
+able to administer it.
 
 ## Workspace roles
 
@@ -88,8 +97,9 @@ not a particular board, that is where to look.
 - **"I'm an admin, why can't I see it?"** The app is switched off for the
   workspace, or their department's profile does not include it. Being an admin
   is not an override.
-- **Switching an app off to keep somebody out of it.** It hides the module; it
-  does not deny access to the data behind it. Use the module's own permissions.
+- **Expecting a role default to keep somebody out.** Until a department profile
+  or an override says otherwise, the sidebar hides the module and the API does
+  not. Configure it rather than relying on the default.
 - **Fixing it with a per-person override.** It works, and it is invisible six
   months later. Fix the department profile unless the person really is an
   exception.

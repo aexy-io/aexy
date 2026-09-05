@@ -54,9 +54,11 @@ Two things to know:
 
 * **Only the owner can change this.** Admins manage people; the app list is the
   owner's.
-* **Switching an app off hides it from everybody**, whatever their role or
-  department. It is the outermost gate, which also makes it the first thing to
-  check when somebody cannot find a module they are sure they have access to.
+* **Switching an app off closes it for everybody**, whatever their role or
+  department — the module disappears from navigation *and* its API refuses,
+  admins and the owner included. It is the outermost gate, which also makes it
+  the first thing to check when somebody cannot reach a module they are sure
+  they have access to.
 
 ## 3. Build the departments
 

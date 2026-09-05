@@ -432,7 +432,10 @@ api_router.include_router(visual_builder_router, tags=["visual-builder"])
 # Knowledge Graph (Enterprise)
 api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
 # Calendar Booking
-api_router.include_router(booking_router, tags=["booking"])
+# The workspace-scoped half only. `public_booking_router`, the RSVP routes
+# and the OAuth callback below are reached by people with no account and
+# no workspace to check an app toggle against.
+api_router.include_router(booking_router, tags=["booking"], dependencies=[Depends(require_app_access("booking"))])
 api_router.include_router(public_booking_router, tags=["booking-public"])
 api_router.include_router(rsvp_booking_router, tags=["booking-rsvp"])
 api_router.include_router(calendar_callback_booking_router, tags=["booking-calendar-callback"])
@@ -464,10 +467,10 @@ api_router.include_router(file_search_router, tags=["file-search"])
 # Super-admin plan editor + AI backfill
 api_router.include_router(admin_plans_router, tags=["platform-admin-plans"])
 # Leave Management & Team Calendar
-api_router.include_router(leave_router, tags=["leave"])
+api_router.include_router(leave_router, tags=["leave"], dependencies=[Depends(require_app_access("leave"))])
 api_router.include_router(team_calendar_router, tags=["team-calendar"])
 # GTM (Go-To-Market)
-api_router.include_router(gtm_router, tags=["gtm"])
+api_router.include_router(gtm_router, tags=["gtm"], dependencies=[Depends(require_app_access("gtm"))])
 api_router.include_router(event_ingestion_router, tags=["event-ingestion"])
 api_router.include_router(tracker_ingest_router, tags=["tracker-ingest"])
 api_router.include_router(tracker_qa_router, tags=["tracker-qa"])
@@ -501,4 +504,4 @@ api_router.include_router(ask_share_router, tags=["ask"])
 # AI Feedback
 api_router.include_router(ai_feedback_router, tags=["ai-feedback"])
 # Team Chat
-api_router.include_router(chat_router, tags=["chat"])
+api_router.include_router(chat_router, tags=["chat"], dependencies=[Depends(require_app_access("chat"))])
