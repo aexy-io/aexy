@@ -1465,9 +1465,24 @@
     "slug": "crm",
     "title": "CRM",
     "section": "Modules — Customers",
-    "description": "Companies, people, deals, custom objects, sequences, automations",
+    "description": "Objects and records, lists, pipelines, automations, sequences",
     "headings": [
       "CRM",
+      "The shape of it",
+      "Working with records",
+      "Making it do things by itself",
+      "Sequences",
+      "Mail and meetings on the record",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "crm-architecture",
+    "title": "CRM architecture",
+    "section": "Modules — Customers",
+    "description": "Storage, the attribute system, the automation engine, webhooks",
+    "headings": [
+      "CRM — architecture",
       "Mental model",
       "Backend",
       "Routers",

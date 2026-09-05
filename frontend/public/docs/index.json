@@ -340,7 +340,13 @@
           "title": "CRM",
           "slug": "crm",
           "path": "crm.md",
-          "description": "Companies, people, deals, custom objects, sequences, automations"
+          "description": "Objects and records, lists, pipelines, automations, sequences"
+        },
+        {
+          "title": "CRM architecture",
+          "slug": "crm-architecture",
+          "path": "crm-architecture.md",
+          "description": "Storage, the attribute system, the automation engine, webhooks"
         },
         {
           "title": "GTM",
@@ -764,8 +770,14 @@
     "crm": {
       "title": "CRM",
       "section": "Modules — Customers",
-      "description": "Companies, people, deals, custom objects, sequences, automations",
+      "description": "Objects and records, lists, pipelines, automations, sequences",
       "path": "crm.md"
+    },
+    "crm-architecture": {
+      "title": "CRM architecture",
+      "section": "Modules — Customers",
+      "description": "Storage, the attribute system, the automation engine, webhooks",
+      "path": "crm-architecture.md"
     },
     "gtm": {
       "title": "GTM",
@@ -1354,14 +1366,24 @@
         "slug": "leave-architecture"
       },
       "next": {
+        "title": "CRM architecture",
+        "slug": "crm-architecture"
+      }
+    },
+    "crm-architecture": {
+      "prev": {
+        "title": "CRM",
+        "slug": "crm"
+      },
+      "next": {
         "title": "GTM",
         "slug": "gtm"
       }
     },
     "gtm": {
       "prev": {
-        "title": "CRM",
-        "slug": "crm"
+        "title": "CRM architecture",
+        "slug": "crm-architecture"
       },
       "next": {
         "title": "Forms",

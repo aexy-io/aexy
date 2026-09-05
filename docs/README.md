@@ -76,7 +76,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Leave architecture](./leave-architecture.md) - Endpoints, models, the request workflow, carry-forward
 
 ### Modules — Customers
-- [CRM](./crm.md) - Companies, people, deals, custom objects, sequences, automations
+- [CRM](./crm.md) - Objects and records, lists, pipelines, automations, sequences
+- [CRM architecture](./crm-architecture.md) - Storage, the attribute system, the automation engine, webhooks
 - [GTM](./gtm.md) - Lead scoring, ABM, outreach sequences, intent, expansion playbooks
 - [Forms](./forms.md) - Public form builder, themes, conditional logic, ticket/CRM/deal routing
 - [Tables](./tables.md) - Airtable-style custom data tables with saved views
