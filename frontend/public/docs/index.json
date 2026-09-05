@@ -66,6 +66,18 @@
           "slug": "guides/email-setup",
           "path": "guides/email-setup.md",
           "description": "Mail arriving and mail leaving, and which module reads which"
+        },
+        {
+          "title": "Importing your data",
+          "slug": "guides/importing-data",
+          "path": "guides/importing-data.md",
+          "description": "CRM, prospects, wikis and spreadsheets, and what no import does for you"
+        },
+        {
+          "title": "Working hours, holidays & the clocks",
+          "slug": "guides/working-hours-and-clocks",
+          "path": "guides/working-hours-and-clocks.md",
+          "description": "The shift, the one holiday calendar, and which clock is which"
         }
       ]
     },
@@ -515,6 +527,18 @@
       "description": "Mail arriving and mail leaving, and which module reads which",
       "path": "guides/email-setup.md"
     },
+    "guides/importing-data": {
+      "title": "Importing your data",
+      "section": "For administrators",
+      "description": "CRM, prospects, wikis and spreadsheets, and what no import does for you",
+      "path": "guides/importing-data.md"
+    },
+    "guides/working-hours-and-clocks": {
+      "title": "Working hours, holidays & the clocks",
+      "section": "For administrators",
+      "description": "The shift, the one holiday calendar, and which clock is which",
+      "path": "guides/working-hours-and-clocks.md"
+    },
     "guides/getting-started": {
       "title": "Getting Started",
       "section": "Getting started & operations",
@@ -930,14 +954,34 @@
         "slug": "guides/roles-and-access"
       },
       "next": {
+        "title": "Importing your data",
+        "slug": "guides/importing-data"
+      }
+    },
+    "guides/importing-data": {
+      "prev": {
+        "title": "Email and inbox setup",
+        "slug": "guides/email-setup"
+      },
+      "next": {
+        "title": "Working hours, holidays & the clocks",
+        "slug": "guides/working-hours-and-clocks"
+      }
+    },
+    "guides/working-hours-and-clocks": {
+      "prev": {
+        "title": "Importing your data",
+        "slug": "guides/importing-data"
+      },
+      "next": {
         "title": "Getting Started",
         "slug": "guides/getting-started"
       }
     },
     "guides/getting-started": {
       "prev": {
-        "title": "Email and inbox setup",
-        "slug": "guides/email-setup"
+        "title": "Working hours, holidays & the clocks",
+        "slug": "guides/working-hours-and-clocks"
       },
       "next": {
         "title": "Deployment",

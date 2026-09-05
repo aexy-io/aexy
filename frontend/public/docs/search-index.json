@@ -239,6 +239,33 @@
     ]
   },
   {
+    "slug": "guides/importing-data",
+    "title": "Importing your data",
+    "section": "For administrators",
+    "description": "CRM, prospects, wikis and spreadsheets, and what no import does for you",
+    "headings": [
+      "Importing your data",
+      "Contacts and companies",
+      "Prospect lists",
+      "Documents",
+      "Reminders and compliance records",
+      "What no import will do for you"
+    ]
+  },
+  {
+    "slug": "guides/working-hours-and-clocks",
+    "title": "Working hours, holidays & the clocks",
+    "section": "For administrators",
+    "description": "The shift, the one holiday calendar, and which clock is which",
+    "headings": [
+      "Working hours, holidays and the clocks",
+      "The shift",
+      "The calendar",
+      "Which clock is which",
+      "Common mistakes"
+    ]
+  },
+  {
     "slug": "guides/getting-started",
     "title": "Getting Started",
     "section": "Getting started & operations",

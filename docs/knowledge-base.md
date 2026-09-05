@@ -195,10 +195,14 @@ that should not be on the open internet.
 
 ### From Notion or Confluence
 
-Export your space from either product and upload the archive. Aexy works out
+Export your space from either product and import the archive. Aexy works out
 which it came from, recreates the page hierarchy, uploads the attachments, and
 **rewrites internal links so they point at the new pages** — a migrated wiki
 whose links 404 is worse than no migration.
+
+**There is no screen for this yet**: the import is started with an API request
+rather than from the sidebar. [Importing your data](./guides/importing-data.md)
+has the call, and the rest of this section describes what it then does.
 
 A large space takes a while, so it runs in the background with a progress count.
 Pages that do not convert cleanly are listed with a reason rather than failing

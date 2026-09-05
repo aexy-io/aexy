@@ -24,6 +24,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Setting up a workspace](./guides/workspace-setup.md) - The first hour: people, apps, departments, modules
 - [Roles, permissions & app access](./guides/roles-and-access.md) - Why two colleagues see different things, and how to change it
 - [Email and inbox setup](./guides/email-setup.md) - Mail arriving and mail leaving, and which module reads which
+- [Importing your data](./guides/importing-data.md) - CRM, prospects, wikis and spreadsheets, and what no import does for you
+- [Working hours, holidays & the clocks](./guides/working-hours-and-clocks.md) - The shift, the one holiday calendar, and which clock is which
 
 ### Getting started & operations
 - [Getting Started](./guides/getting-started.md) - Quick start guide
