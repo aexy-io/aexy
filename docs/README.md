@@ -59,7 +59,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Tickets & projects architecture](./tickets-and-projects-architecture.md) - The four work-item models, statuses, sync, public projects
 - [Service Desk](./service-desk.md) - Running a desk: mailboxes, master data, handoffs, the clock, reports
 - [Service Desk architecture](./service-desk-architecture.md) - How it is built: intake pipeline, models, API, frontend
-- [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
+- [Booking](./booking.md) - Meeting types, availability, team assignment, the public link
+- [Booking architecture & setup](./booking-architecture.md) - Google/Microsoft setup, endpoints, RSVP, schema
 - [Tracking](./tracking.md) - Standups, time entries, blockers, entity activity
 - [Aexy Tracker](./aexy-tracker.md) - macOS work tracker + AI auto-attribution (timesheet, journals, insights)
 

@@ -259,7 +259,13 @@
           "title": "Booking",
           "slug": "booking",
           "path": "booking.md",
-          "description": "Calendar scheduling, team bookings & RSVP"
+          "description": "Meeting types, availability, team assignment, the public link"
+        },
+        {
+          "title": "Booking architecture & setup",
+          "slug": "booking-architecture",
+          "path": "booking-architecture.md",
+          "description": "Google/Microsoft setup, endpoints, RSVP, schema"
         },
         {
           "title": "Tracking",
@@ -722,8 +728,14 @@
     "booking": {
       "title": "Booking",
       "section": "Modules — Work & planning",
-      "description": "Calendar scheduling, team bookings & RSVP",
+      "description": "Meeting types, availability, team assignment, the public link",
       "path": "booking.md"
+    },
+    "booking-architecture": {
+      "title": "Booking architecture & setup",
+      "section": "Modules — Work & planning",
+      "description": "Google/Microsoft setup, endpoints, RSVP, schema",
+      "path": "booking-architecture.md"
     },
     "tracking": {
       "title": "Tracking",
@@ -1292,14 +1304,24 @@
         "slug": "service-desk-architecture"
       },
       "next": {
+        "title": "Booking architecture & setup",
+        "slug": "booking-architecture"
+      }
+    },
+    "booking-architecture": {
+      "prev": {
+        "title": "Booking",
+        "slug": "booking"
+      },
+      "next": {
         "title": "Tracking",
         "slug": "tracking"
       }
     },
     "tracking": {
       "prev": {
-        "title": "Booking",
-        "slug": "booking"
+        "title": "Booking architecture & setup",
+        "slug": "booking-architecture"
       },
       "next": {
         "title": "Aexy Tracker",

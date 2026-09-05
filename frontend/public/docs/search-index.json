@@ -1163,9 +1163,23 @@
     "slug": "booking",
     "title": "Booking",
     "section": "Modules — Work & planning",
-    "description": "Calendar scheduling, team bookings & RSVP",
+    "description": "Meeting types, availability, team assignment, the public link",
     "headings": [
-      "Booking Module",
+      "Booking",
+      "Meeting types",
+      "Availability",
+      "Booking with a team",
+      "The public link",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "booking-architecture",
+    "title": "Booking architecture & setup",
+    "section": "Modules — Work & planning",
+    "description": "Google/Microsoft setup, endpoints, RSVP, schema",
+    "headings": [
+      "Booking Module — architecture & setup",
       "Features",
       "Calendar Integration",
       "Supported Providers",

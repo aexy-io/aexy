@@ -37,6 +37,7 @@ from sqlalchemy import func, select  # noqa: E402
 
 from aexy.core.database import async_session_maker  # noqa: E402
 from aexy.models.crm import CRMAttribute, CRMAutomation, CRMObject, CRMRecord  # noqa: E402
+from aexy.models.booking import EventType  # noqa: E402
 from aexy.models.developer import Developer  # noqa: E402
 from aexy.models.forms import Form  # noqa: E402
 from aexy.models.leave import (  # noqa: E402
@@ -1435,6 +1436,62 @@ async def seed_tables(db, workspace: Workspace, dev: Developer) -> None:
     note("table", "Contracts", True)
 
 
+# ---------------------------------------------------------------------- booking
+
+#: (name, slug, minutes, location, notice hours, description)
+DEMO_EVENT_TYPES = [
+    (
+        "Intro call", "intro-call", 30, "google_meet", 12,
+        "A first conversation about what you need and whether we can help.",
+    ),
+    (
+        "Product walkthrough", "walkthrough", 45, "google_meet", 24,
+        "A guided tour of the parts of Aexy relevant to your team.",
+    ),
+    (
+        "Onboarding session", "onboarding", 60, "custom", 48,
+        "Setting your workspace up together, with your own data.",
+    ),
+]
+
+
+async def seed_booking(db, workspace: Workspace, dev: Developer) -> None:
+    """Bookable meeting types.
+
+    Availability itself comes from a connected calendar, which a seed cannot
+    fake — so these are the definitions, and the booking page will show no slots
+    until somebody connects one. That is the honest state of a fresh workspace.
+    """
+    for name, slug, minutes, location, notice, description in DEMO_EVENT_TYPES:
+        found = (
+            await db.execute(
+                select(EventType).where(
+                    EventType.workspace_id == workspace.id, EventType.slug == slug
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            note("event type", name, False)
+            continue
+
+        db.add(
+            EventType(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                owner_id=dev.id,
+                name=name,
+                slug=slug,
+                description=description,
+                duration_minutes=minutes,
+                location_type=location,
+                custom_location="Your office, or ours" if location == "custom" else None,
+                min_notice_hours=notice,
+                buffer_after=10,
+            )
+        )
+        note("event type", name, True)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1523,6 +1580,7 @@ async def main() -> int:
         await seed_leave(db, workspace, dev)
         await seed_forms(db, workspace, dev)
         await seed_tables(db, workspace, dev)
+        await seed_booking(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)
