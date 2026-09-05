@@ -72,7 +72,8 @@ We're on a mission to bring positive change by building world-class tools actual
 ### Modules — People
 - [Reviews, hiring & learning](./reviews-and-people.md) - Running a review cycle, goals, assessments, learning paths
 - [People architecture](./reviews-and-people-architecture.md) - Models, workflow states, AI usage, external content sources
-- [Compliance](./compliance.md) - Mandatory training, certifications, reminders, escalation, audit
+- [Compliance](./compliance.md) - Mandatory training, certifications, evidence, escalation
+- [Compliance architecture](./compliance-architecture.md) - Models, schedules, questionnaires, the audit log
 - [Reminders (guide)](./guides/reminders.md) - The narrower how-to for recurring compliance reminders
 - [Leave](./leave.md) - Types, policies, balances, requesting and approving, the holiday calendar
 - [Leave architecture](./leave-architecture.md) - Endpoints, models, the request workflow, carry-forward

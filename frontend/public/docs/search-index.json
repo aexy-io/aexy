@@ -1374,9 +1374,25 @@
     "slug": "compliance",
     "title": "Compliance",
     "section": "Modules — People",
-    "description": "Mandatory training, certifications, reminders, escalation, audit",
+    "description": "Mandatory training, certifications, evidence, escalation",
     "headings": [
       "Compliance",
+      "Mandatory training",
+      "Acknowledged is not completed",
+      "Certifications",
+      "Reminders and evidence",
+      "When something is late",
+      "The audit log",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "compliance-architecture",
+    "title": "Compliance architecture",
+    "section": "Modules — People",
+    "description": "Models, schedules, questionnaires, the audit log",
+    "headings": [
+      "Compliance — architecture",
       "How the pieces fit",
       "Mandatory training",
       "Models (`models/gtm_compliance.py`)",

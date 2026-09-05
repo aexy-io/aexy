@@ -323,7 +323,13 @@
           "title": "Compliance",
           "slug": "compliance",
           "path": "compliance.md",
-          "description": "Mandatory training, certifications, reminders, escalation, audit"
+          "description": "Mandatory training, certifications, evidence, escalation"
+        },
+        {
+          "title": "Compliance architecture",
+          "slug": "compliance-architecture",
+          "path": "compliance-architecture.md",
+          "description": "Models, schedules, questionnaires, the audit log"
         },
         {
           "title": "Reminders (guide)",
@@ -782,8 +788,14 @@
     "compliance": {
       "title": "Compliance",
       "section": "Modules — People",
-      "description": "Mandatory training, certifications, reminders, escalation, audit",
+      "description": "Mandatory training, certifications, evidence, escalation",
       "path": "compliance.md"
+    },
+    "compliance-architecture": {
+      "title": "Compliance architecture",
+      "section": "Modules — People",
+      "description": "Models, schedules, questionnaires, the audit log",
+      "path": "compliance-architecture.md"
     },
     "guides/reminders": {
       "title": "Reminders (guide)",
@@ -1394,14 +1406,24 @@
         "slug": "reviews-and-people-architecture"
       },
       "next": {
+        "title": "Compliance architecture",
+        "slug": "compliance-architecture"
+      }
+    },
+    "compliance-architecture": {
+      "prev": {
+        "title": "Compliance",
+        "slug": "compliance"
+      },
+      "next": {
         "title": "Reminders (guide)",
         "slug": "guides/reminders"
       }
     },
     "guides/reminders": {
       "prev": {
-        "title": "Compliance",
-        "slug": "compliance"
+        "title": "Compliance architecture",
+        "slug": "compliance-architecture"
       },
       "next": {
         "title": "Leave",

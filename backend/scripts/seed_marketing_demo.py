@@ -38,6 +38,11 @@ from sqlalchemy import func, select  # noqa: E402
 from aexy.core.database import async_session_maker  # noqa: E402
 from aexy.models.crm import CRMAttribute, CRMAutomation, CRMObject, CRMRecord  # noqa: E402
 from aexy.models.booking import EventType  # noqa: E402
+from aexy.models.compliance import (  # noqa: E402
+    Certification,
+    MandatoryTraining,
+    TrainingAssignment,
+)
 from aexy.models.developer import Developer  # noqa: E402
 from aexy.models.forms import Form  # noqa: E402
 from aexy.models.leave import (  # noqa: E402
@@ -1492,6 +1497,156 @@ async def seed_booking(db, workspace: Workspace, dev: Developer) -> None:
         note("event type", name, True)
 
 
+# ------------------------------------------------------------------- compliance
+
+#: (name, description, applies_to, due days, recurring months)
+DEMO_TRAINING = [
+    (
+        "Information security basics",
+        "What to do with a password, a phishing email and a lost laptop.",
+        "all", 30, 12,
+    ),
+    (
+        "Data protection",
+        "Handling customer data, and what counts as personal data here.",
+        "all", 45, 24,
+    ),
+    (
+        "Code of conduct",
+        "How we treat each other, and how to raise it when somebody does not.",
+        "all", 14, None,
+    ),
+]
+
+#: (name, issuing authority, validity months, category)
+DEMO_CERTIFICATIONS = [
+    ("IRDAI Certification", "Insurance Regulatory and Development Authority", 36, "Regulatory"),
+    ("First Aid at Work", "Red Cross", 36, "Health & Safety"),
+    ("ISO 27001 Lead Implementer", "PECB", 24, "Security"),
+]
+
+
+async def seed_compliance(db, workspace: Workspace, dev: Developer) -> None:
+    """Mandatory training, its assignments, and the certifications tracked.
+
+    The assignments matter more than the programmes. A workspace where every
+    training reads "0 assigned" photographs as a module nobody uses, and one
+    where everything is complete photographs as a module with nothing to do —
+    so these are deliberately mixed: one done, one in progress, one overdue.
+    """
+    for name, description, applies_to, due_days, recurring in DEMO_TRAINING:
+        found = (
+            await db.execute(
+                select(MandatoryTraining).where(
+                    MandatoryTraining.workspace_id == workspace.id,
+                    MandatoryTraining.name == name,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                MandatoryTraining(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    description=description,
+                    applies_to_type=applies_to,
+                    applies_to_ids=[],
+                    due_days_after_assignment=due_days,
+                    recurring_months=recurring,
+                    created_by_id=dev.id,
+                )
+            )
+        note("training", name, found is None)
+
+    await db.flush()
+
+    # (training, person, days until due, status, progress) — a spread, because
+    # the state of the queue is the thing worth showing.
+    people = {
+        d.email: d
+        for d in (
+            await db.execute(
+                select(Developer)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(WorkspaceMember.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+    plan = [
+        ("Information security basics", dev.email, 12, "in_progress", 40),
+        ("Information security basics", "priya.raman@northwind.example", -5, "overdue", 0),
+        ("Data protection", dev.email, 30, "pending", 0),
+        ("Code of conduct", "marcus.bell@northwind.example", -20, "completed", 100),
+    ]
+    for training_name, email, due_in, status, progress in plan:
+        person = people.get(email)
+        if person is None:
+            continue
+        training = (
+            await db.execute(
+                select(MandatoryTraining).where(
+                    MandatoryTraining.workspace_id == workspace.id,
+                    MandatoryTraining.name == training_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if training is None:
+            continue
+
+        found = (
+            await db.execute(
+                select(TrainingAssignment).where(
+                    TrainingAssignment.workspace_id == workspace.id,
+                    TrainingAssignment.mandatory_training_id == training.id,
+                    TrainingAssignment.developer_id == person.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            continue
+
+        now = datetime.now(timezone.utc)
+        db.add(
+            TrainingAssignment(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                mandatory_training_id=training.id,
+                developer_id=person.id,
+                due_date=now + timedelta(days=due_in),
+                status=status,
+                progress_percentage=progress,
+                started_at=now - timedelta(days=3) if progress else None,
+                completed_at=now - timedelta(days=1) if status == "completed" else None,
+            )
+        )
+        note("assignment", f"{training_name} → {person.name}", True)
+
+    for name, authority, validity, category in DEMO_CERTIFICATIONS:
+        found = (
+            await db.execute(
+                select(Certification).where(
+                    Certification.workspace_id == workspace.id,
+                    Certification.name == name,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                Certification(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    issuing_authority=authority,
+                    validity_months=validity,
+                    renewal_required=True,
+                    category=category,
+                    created_by_id=dev.id,
+                )
+            )
+        note("certification", name, found is None)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1581,6 +1736,7 @@ async def main() -> int:
         await seed_forms(db, workspace, dev)
         await seed_tables(db, workspace, dev)
         await seed_booking(db, workspace, dev)
+        await seed_compliance(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)
