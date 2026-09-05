@@ -1789,7 +1789,7 @@
       "capability": "mcp.chat",
       "app": "chat",
       "privileged": false,
-      "operation_count": 49,
+      "operation_count": 51,
       "operations": [
         {
           "operation_id": "add_participant_api_v1_workspaces__workspace_id__ask_conversations__conversation_id__participants_post",
@@ -1797,6 +1797,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/ask/conversations/{conversation_id}/participants",
           "summary": "Add Participant",
+          "mutating": true
+        },
+        {
+          "operation_id": "apply_community_template_api_v1_workspaces__workspace_id__chat_community_apply_template_post",
+          "action": "apply_community_template",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/chat/community/apply-template",
+          "summary": "Apply Community Template",
           "mutating": true
         },
         {
@@ -1997,6 +2005,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/chat/channels",
           "summary": "List Channels",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_community_templates_api_v1_workspaces__workspace_id__chat_community_templates_get",
+          "action": "list_community_templates",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/chat/community/templates",
+          "summary": "List Community Templates",
           "mutating": false
         },
         {
@@ -3613,7 +3629,7 @@
       "capability": "mcp.docs",
       "app": "docs",
       "privileged": false,
-      "operation_count": 77,
+      "operation_count": 106,
       "operations": [
         {
           "operation_id": "add_all_workspace_members_api_v1_workspaces__workspace_id__spaces__space_id__members_add_all_post",
@@ -3656,6 +3672,14 @@
           "mutating": true
         },
         {
+          "operation_id": "audit_events_api_v1_workspaces__workspace_id__documents_audit_events_get",
+          "action": "audit_events",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/audit/events",
+          "summary": "Audit Events",
+          "mutating": false
+        },
+        {
           "operation_id": "create_code_link_api_v1_workspaces__workspace_id__documents__document_id__code_links_post",
           "action": "create_code_link",
           "method": "POST",
@@ -3685,6 +3709,22 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/from-repository",
           "summary": "Create Document From Repository",
+          "mutating": true
+        },
+        {
+          "operation_id": "create_docx_document_api_v1_workspaces__workspace_id__documents_docx_post",
+          "action": "create_docx_document",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/docx",
+          "summary": "Create Docx Document",
+          "mutating": true
+        },
+        {
+          "operation_id": "create_docx_intake_api_v1_workspaces__workspace_id__docx_ai_documents__document_id__intake_post",
+          "action": "create_docx_intake",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/docx-ai/documents/{document_id}/intake",
+          "summary": "Create Docx Intake",
           "mutating": true
         },
         {
@@ -3736,6 +3776,14 @@
           "mutating": true
         },
         {
+          "operation_id": "discuss_document_in_community_api_v1_workspaces__workspace_id__documents__document_id__discuss_in_community_post",
+          "action": "discuss_document_in_community",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/discuss-in-community",
+          "summary": "Discuss Document In Community",
+          "mutating": true
+        },
+        {
           "operation_id": "dismiss_document_impact_api_v1_workspaces__workspace_id__doc_impact__repository_id___pull_request_number__documents__document_id__dismiss_post",
           "action": "dismiss_document_impact",
           "method": "POST",
@@ -3744,12 +3792,60 @@
           "mutating": true
         },
         {
+          "operation_id": "document_community_targets_api_v1_workspaces__workspace_id__documents_community_targets_get",
+          "action": "document_community_targets",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/community/targets",
+          "summary": "Document Community Targets",
+          "mutating": false
+        },
+        {
+          "operation_id": "document_stats_api_v1_workspaces__workspace_id__documents__document_id__stats_get",
+          "action": "document_stats",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/stats",
+          "summary": "Document Stats",
+          "mutating": false
+        },
+        {
+          "operation_id": "download_docx_api_v1_workspaces__workspace_id__documents__document_id__docx_get",
+          "action": "download_docx",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/docx",
+          "summary": "Download Docx",
+          "mutating": false
+        },
+        {
+          "operation_id": "download_docx_version_api_v1_workspaces__workspace_id__documents__document_id__docx_versions__version_id__get",
+          "action": "download_docx_version",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/docx/versions/{version_id}",
+          "summary": "Download Docx Version",
+          "mutating": false
+        },
+        {
           "operation_id": "duplicate_document_api_v1_workspaces__workspace_id__documents__document_id__duplicate_post",
           "action": "duplicate_document",
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/duplicate",
           "summary": "Duplicate Document",
           "mutating": true
+        },
+        {
+          "operation_id": "export_archive_api_v1_workspaces__workspace_id__documents_export_archive_get",
+          "action": "export_archive",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/export/archive",
+          "summary": "Export Archive",
+          "mutating": false
+        },
+        {
+          "operation_id": "export_document_api_v1_workspaces__workspace_id__documents__document_id__export_get",
+          "action": "export_document",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/export",
+          "summary": "Export Document",
+          "mutating": false
         },
         {
           "operation_id": "export_to_github_api_v1_workspaces__workspace_id__documents__document_id__github_sync__sync_id__export_post",
@@ -3800,14 +3896,6 @@
           "mutating": true
         },
         {
-          "operation_id": "get_active_users_api_v1_collaboration__document_id__users_get",
-          "action": "get_active_users",
-          "method": "GET",
-          "path": "/api/v1/collaboration/{document_id}/users",
-          "summary": "Get Active Users",
-          "mutating": false
-        },
-        {
           "operation_id": "get_ancestors_api_v1_workspaces__workspace_id__documents__document_id__ancestors_get",
           "action": "get_ancestors",
           "method": "GET",
@@ -3848,6 +3936,14 @@
           "mutating": false
         },
         {
+          "operation_id": "get_document_community_thread_api_v1_workspaces__workspace_id__documents__document_id__community_thread_get",
+          "action": "get_document_community_thread",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/community-thread",
+          "summary": "Get Document Community Thread",
+          "mutating": false
+        },
+        {
           "operation_id": "get_document_connections_api_v1_workspaces__workspace_id__knowledge_graph_graph_document__document_id__get",
           "action": "get_document_connections",
           "method": "GET",
@@ -3869,6 +3965,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/documents/tree",
           "summary": "Get Document Tree",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_docx_ai_settings_api_v1_workspaces__workspace_id__docx_ai_settings_get",
+          "action": "get_docx_ai_settings",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/docx-ai/settings",
+          "summary": "Get Docx Ai Settings",
           "mutating": false
         },
         {
@@ -3920,11 +4024,27 @@
           "mutating": false
         },
         {
+          "operation_id": "get_imported_attachment_api_v1_workspaces__workspace_id__documents_attachments__path__get",
+          "action": "get_imported_attachment",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/attachments/{path}",
+          "summary": "Get Imported Attachment",
+          "mutating": false
+        },
+        {
           "operation_id": "get_job_status_api_v1_workspaces__workspace_id__knowledge_graph_jobs__job_id__get",
           "action": "get_job_status",
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/knowledge-graph/jobs/{job_id}",
           "summary": "Get job status",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_lifecycle_api_v1_workspaces__workspace_id__documents__document_id__lifecycle_get",
+          "action": "get_lifecycle",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/lifecycle",
+          "summary": "Get Lifecycle",
           "mutating": false
         },
         {
@@ -3968,6 +4088,14 @@
           "mutating": true
         },
         {
+          "operation_id": "import_status_api_v1_workspaces__workspace_id__documents_import__job_id__get",
+          "action": "import_status",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/import/{job_id}",
+          "summary": "Import Status",
+          "mutating": false
+        },
+        {
           "operation_id": "list_document_comments_api_v1_workspaces__workspace_id__documents__document_id__comments_get",
           "action": "list_document_comments",
           "method": "GET",
@@ -3997,6 +4125,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/knowledge-graph/jobs",
           "summary": "List extraction jobs",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_imports_api_v1_workspaces__workspace_id__documents_import_get",
+          "action": "list_imports",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/import",
+          "summary": "List Imports",
           "mutating": false
         },
         {
@@ -4040,6 +4176,14 @@
           "mutating": false
         },
         {
+          "operation_id": "list_trash_api_v1_workspaces__workspace_id__documents_trash_get",
+          "action": "list_trash",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/trash",
+          "summary": "List Trash",
+          "mutating": false
+        },
+        {
           "operation_id": "list_workspace_proposed_edits_api_v1_workspaces__workspace_id__documents_proposed_edits_get",
           "action": "list_workspace_proposed_edits",
           "method": "GET",
@@ -4056,11 +4200,35 @@
           "mutating": true
         },
         {
+          "operation_id": "preview_docx_intake_api_v1_workspaces__workspace_id__docx_ai_documents__document_id__intake_preview_post",
+          "action": "preview_docx_intake",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/docx-ai/documents/{document_id}/intake/preview",
+          "summary": "Preview Docx Intake",
+          "mutating": true
+        },
+        {
+          "operation_id": "promote_drive_file_to_document_api_v1_workspaces__workspace_id__documents_from_drive_file__file_id__post",
+          "action": "promote_drive_file_to_document",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/from-drive-file/{file_id}",
+          "summary": "Promote Drive File To Document",
+          "mutating": true
+        },
+        {
           "operation_id": "propose_document_update_api_v1_workspaces__workspace_id__documents__document_id__propose_post",
           "action": "propose_document_update",
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/propose",
           "summary": "Propose Document Update",
+          "mutating": true
+        },
+        {
+          "operation_id": "publish_document_api_v1_workspaces__workspace_id__documents__document_id__publish_post",
+          "action": "publish_document",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/publish",
+          "summary": "Publish Document",
           "mutating": true
         },
         {
@@ -4096,6 +4264,14 @@
           "mutating": true
         },
         {
+          "operation_id": "request_docx_edit_api_v1_workspaces__workspace_id__docx_ai_documents__document_id__edit_post",
+          "action": "request_docx_edit",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/docx-ai/documents/{document_id}/edit",
+          "summary": "Request Docx Edit",
+          "mutating": true
+        },
+        {
           "operation_id": "resolve_document_comment_api_v1_workspaces__workspace_id__documents__document_id__comments__comment_id__resolve_post",
           "action": "resolve_document_comment",
           "method": "POST",
@@ -4104,11 +4280,43 @@
           "mutating": true
         },
         {
+          "operation_id": "restore_document_api_v1_workspaces__workspace_id__documents__document_id__restore_post",
+          "action": "restore_document",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/restore",
+          "summary": "Restore Document",
+          "mutating": true
+        },
+        {
           "operation_id": "restore_version_api_v1_workspaces__workspace_id__documents__document_id__restore__version_id__post",
           "action": "restore_version",
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/restore/{version_id}",
           "summary": "Restore Version",
+          "mutating": true
+        },
+        {
+          "operation_id": "retry_import_api_v1_workspaces__workspace_id__documents_import__job_id__retry_post",
+          "action": "retry_import",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/import/{job_id}/retry",
+          "summary": "Retry Import",
+          "mutating": true
+        },
+        {
+          "operation_id": "review_queue_api_v1_workspaces__workspace_id__documents_review_queue_get",
+          "action": "review_queue",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/review-queue",
+          "summary": "Review Queue",
+          "mutating": false
+        },
+        {
+          "operation_id": "save_docx_api_v1_workspaces__workspace_id__documents__document_id__docx_put",
+          "action": "save_docx",
+          "method": "PUT",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/docx",
+          "summary": "Save Docx",
           "mutating": true
         },
         {
@@ -4141,6 +4349,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/github-sync",
           "summary": "Setup Github Sync",
+          "mutating": true
+        },
+        {
+          "operation_id": "start_import_api_v1_workspaces__workspace_id__documents_import_post",
+          "action": "start_import",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/import",
+          "summary": "Start Import",
           "mutating": true
         },
         {
@@ -4184,6 +4400,14 @@
           "mutating": true
         },
         {
+          "operation_id": "unpublish_document_api_v1_workspaces__workspace_id__documents__document_id__publish_delete",
+          "action": "unpublish_document",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/publish",
+          "summary": "Unpublish Document",
+          "mutating": true
+        },
+        {
           "operation_id": "update_collaborator_api_v1_workspaces__workspace_id__documents__document_id__collaborators__developer_id__patch",
           "action": "update_collaborator",
           "method": "PATCH",
@@ -4216,6 +4440,22 @@
           "mutating": true
         },
         {
+          "operation_id": "update_docx_ai_settings_api_v1_workspaces__workspace_id__docx_ai_settings_patch",
+          "action": "update_docx_ai_settings",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/docx-ai/settings",
+          "summary": "Update Docx Ai Settings",
+          "mutating": true
+        },
+        {
+          "operation_id": "update_lifecycle_api_v1_workspaces__workspace_id__documents__document_id__lifecycle_patch",
+          "action": "update_lifecycle",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/{document_id}/lifecycle",
+          "summary": "Update Lifecycle",
+          "mutating": true
+        },
+        {
           "operation_id": "update_space_api_v1_workspaces__workspace_id__spaces__space_id__patch",
           "action": "update_space",
           "method": "PATCH",
@@ -4230,6 +4470,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/spaces/{space_id}/members/{member_id}",
           "summary": "Update Space Member",
           "mutating": true
+        },
+        {
+          "operation_id": "workspace_stats_api_v1_workspaces__workspace_id__documents_stats_workspace_get",
+          "action": "workspace_stats",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/documents/stats/workspace",
+          "summary": "Workspace Stats",
+          "mutating": false
         }
       ]
     },
@@ -4237,7 +4485,7 @@
       "capability": "mcp.drive",
       "app": "drive",
       "privileged": false,
-      "operation_count": 17,
+      "operation_count": 18,
       "operations": [
         {
           "operation_id": "create_annotation_api_v1_workspaces__workspace_id__drive_files__file_id__annotations_post",
@@ -4301,6 +4549,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/drive/files/{file_id}",
           "summary": "Get File",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_file_content_api_v1_workspaces__workspace_id__drive_files__file_id__content_get",
+          "action": "get_file_content",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/drive/files/{file_id}/content",
+          "summary": "Get File Content",
           "mutating": false
         },
         {
@@ -10413,7 +10669,7 @@
       "capability": "mcp.platform",
       "app": null,
       "privileged": false,
-      "operation_count": 141,
+      "operation_count": 146,
       "operations": [
         {
           "operation_id": "accept_invite_api_v1_invites__token__accept_post",
@@ -10501,6 +10757,14 @@
           "method": "POST",
           "path": "/api/v1/developers/me/claim-commits",
           "summary": "Claim My Commits",
+          "mutating": true
+        },
+        {
+          "operation_id": "clear_ai_model_api_v1_workspaces__workspace_id__ai_models__scope___key__delete",
+          "action": "clear_ai_model",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/ai-models/{scope}/{key}",
+          "summary": "Clear Ai Model",
           "mutating": true
         },
         {
@@ -10608,6 +10872,22 @@
           "mutating": true
         },
         {
+          "operation_id": "demo_login_api_v1_auth_demo_login_post",
+          "action": "demo_login",
+          "method": "POST",
+          "path": "/api/v1/auth/demo/login",
+          "summary": "Demo Login",
+          "mutating": true
+        },
+        {
+          "operation_id": "demo_login_status_api_v1_auth_demo_status_get",
+          "action": "demo_login_status",
+          "method": "GET",
+          "path": "/api/v1/auth/demo/status",
+          "summary": "Demo Login Status",
+          "mutating": false
+        },
+        {
           "operation_id": "device_login_api_v1_auth_device_login_get",
           "action": "device_login",
           "method": "GET",
@@ -10653,6 +10933,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/settings/ai-analysis",
           "summary": "Get Ai Analysis Settings",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_ai_models_api_v1_workspaces__workspace_id__ai_models_get",
+          "action": "get_ai_models",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/ai-models",
+          "summary": "Get Ai Models",
           "mutating": false
         },
         {
@@ -11360,6 +11648,14 @@
           "mutating": true
         },
         {
+          "operation_id": "set_ai_model_api_v1_workspaces__workspace_id__ai_models_put",
+          "action": "set_ai_model",
+          "method": "PUT",
+          "path": "/api/v1/workspaces/{workspace_id}/ai-models",
+          "summary": "Set Ai Model",
+          "mutating": true
+        },
+        {
           "operation_id": "set_member_overrides_api_v1_workspaces__workspace_id__app_access_members__developer_id__overrides_put",
           "action": "set_member_overrides",
           "method": "PUT",
@@ -11560,10 +11856,10 @@
           "mutating": true
         },
         {
-          "operation_id": "clone_report_api_v1_reports__report_id__clone_post",
+          "operation_id": "clone_report_api_v1_workspaces__workspace_id__reports__report_id__clone_post",
           "action": "clone_report",
           "method": "POST",
-          "path": "/api/v1/reports/{report_id}/clone",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}/clone",
           "summary": "Clone Report",
           "mutating": true
         },
@@ -11576,42 +11872,42 @@
           "mutating": true
         },
         {
-          "operation_id": "create_from_template_api_v1_reports_templates__template_id__create_post",
+          "operation_id": "create_from_template_api_v1_workspaces__workspace_id__reports_templates__template_id__create_post",
           "action": "create_from_template",
           "method": "POST",
-          "path": "/api/v1/reports/templates/{template_id}/create",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/templates/{template_id}/create",
           "summary": "Create From Template",
           "mutating": true
         },
         {
-          "operation_id": "create_report_api_v1_reports_post",
+          "operation_id": "create_report_api_v1_workspaces__workspace_id__reports_post",
           "action": "create_report",
           "method": "POST",
-          "path": "/api/v1/reports",
+          "path": "/api/v1/workspaces/{workspace_id}/reports",
           "summary": "Create Report",
           "mutating": true
         },
         {
-          "operation_id": "create_schedule_api_v1_reports__report_id__schedules_post",
+          "operation_id": "create_schedule_api_v1_workspaces__workspace_id__reports__report_id__schedules_post",
           "action": "create_schedule",
           "method": "POST",
-          "path": "/api/v1/reports/{report_id}/schedules",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}/schedules",
           "summary": "Create Schedule",
           "mutating": true
         },
         {
-          "operation_id": "delete_report_api_v1_reports__report_id__delete",
+          "operation_id": "delete_report_api_v1_workspaces__workspace_id__reports__report_id__delete",
           "action": "delete_report",
           "method": "DELETE",
-          "path": "/api/v1/reports/{report_id}",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}",
           "summary": "Delete Report",
           "mutating": true
         },
         {
-          "operation_id": "delete_schedule_api_v1_reports_schedules__schedule_id__delete",
+          "operation_id": "delete_schedule_api_v1_workspaces__workspace_id__reports_schedules__schedule_id__delete",
           "action": "delete_schedule",
           "method": "DELETE",
-          "path": "/api/v1/reports/schedules/{schedule_id}",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/schedules/{schedule_id}",
           "summary": "Delete Schedule",
           "mutating": true
         },
@@ -11664,18 +11960,18 @@
           "mutating": false
         },
         {
-          "operation_id": "get_report_api_v1_reports__report_id__get",
+          "operation_id": "get_report_api_v1_workspaces__workspace_id__reports__report_id__get",
           "action": "get_report",
           "method": "GET",
-          "path": "/api/v1/reports/{report_id}",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}",
           "summary": "Get Report",
           "mutating": false
         },
         {
-          "operation_id": "get_report_data_api_v1_reports__report_id__data_post",
+          "operation_id": "get_report_data_api_v1_workspaces__workspace_id__reports__report_id__data_post",
           "action": "get_report_data",
           "method": "POST",
-          "path": "/api/v1/reports/{report_id}/data",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}/data",
           "summary": "Get Report Data",
           "mutating": true
         },
@@ -11704,42 +12000,42 @@
           "mutating": false
         },
         {
-          "operation_id": "list_reports_api_v1_reports_get",
+          "operation_id": "list_reports_api_v1_workspaces__workspace_id__reports_get",
           "action": "list_reports",
           "method": "GET",
-          "path": "/api/v1/reports",
+          "path": "/api/v1/workspaces/{workspace_id}/reports",
           "summary": "List Reports",
           "mutating": false
         },
         {
-          "operation_id": "list_schedules_api_v1_reports_schedules_list_get",
+          "operation_id": "list_schedules_api_v1_workspaces__workspace_id__reports_schedules_list_get",
           "action": "list_schedules",
           "method": "GET",
-          "path": "/api/v1/reports/schedules/list",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/schedules/list",
           "summary": "List Schedules",
           "mutating": false
         },
         {
-          "operation_id": "list_templates_api_v1_reports_templates_list_get",
+          "operation_id": "list_templates_api_v1_workspaces__workspace_id__reports_templates_list_get",
           "action": "list_templates",
           "method": "GET",
-          "path": "/api/v1/reports/templates/list",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/templates/list",
           "summary": "List Templates",
           "mutating": false
         },
         {
-          "operation_id": "monthly_engineering_report_api_v1_reports_engineering_monthly_get",
+          "operation_id": "monthly_engineering_report_api_v1_workspaces__workspace_id__reports_engineering_monthly_get",
           "action": "monthly_engineering_report",
           "method": "GET",
-          "path": "/api/v1/reports/engineering/monthly",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/engineering/monthly",
           "summary": "Monthly Engineering Report",
           "mutating": false
         },
         {
-          "operation_id": "refresh_engineering_report_data_api_v1_reports_engineering_monthly_refresh_post",
+          "operation_id": "refresh_engineering_report_data_api_v1_workspaces__workspace_id__reports_engineering_monthly_refresh_post",
           "action": "refresh_engineering_report_data",
           "method": "POST",
-          "path": "/api/v1/reports/engineering/monthly/refresh",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/engineering/monthly/refresh",
           "summary": "Refresh Engineering Report Data",
           "mutating": true
         },
@@ -11768,18 +12064,18 @@
           "mutating": true
         },
         {
-          "operation_id": "update_report_api_v1_reports__report_id__put",
+          "operation_id": "update_report_api_v1_workspaces__workspace_id__reports__report_id__put",
           "action": "update_report",
           "method": "PUT",
-          "path": "/api/v1/reports/{report_id}",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/{report_id}",
           "summary": "Update Report",
           "mutating": true
         },
         {
-          "operation_id": "update_schedule_api_v1_reports_schedules__schedule_id__put",
+          "operation_id": "update_schedule_api_v1_workspaces__workspace_id__reports_schedules__schedule_id__put",
           "action": "update_schedule",
           "method": "PUT",
-          "path": "/api/v1/reports/schedules/{schedule_id}",
+          "path": "/api/v1/workspaces/{workspace_id}/reports/schedules/{schedule_id}",
           "summary": "Update Schedule",
           "mutating": true
         }
@@ -12133,7 +12429,7 @@
       "capability": "mcp.service_desk",
       "app": "service_desk",
       "privileged": false,
-      "operation_count": 62,
+      "operation_count": 75,
       "operations": [
         {
           "operation_id": "acknowledge_escalation_api_v1_workspaces__workspace_id__tickets__ticket_id__escalations__escalation_id__acknowledge_post",
@@ -12166,6 +12462,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/pending-with",
           "summary": "Change Pending With",
           "mutating": true
+        },
+        {
+          "operation_id": "community_publish_targets_api_v1_workspaces__workspace_id__service_desk_community_publish_targets_get",
+          "action": "community_publish_targets",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/community/publish-targets",
+          "summary": "Community Publish Targets",
+          "mutating": false
         },
         {
           "operation_id": "convert_to_task_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__convert_to_task_post",
@@ -12312,6 +12616,14 @@
           "mutating": true
         },
         {
+          "operation_id": "delete_ticket_upload_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__uploads__attachment_id__delete",
+          "action": "delete_ticket_upload",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/uploads/{attachment_id}",
+          "summary": "Delete Ticket Upload",
+          "mutating": true
+        },
+        {
           "operation_id": "delete_vendor_api_v1_workspaces__workspace_id__service_desk_vendors__vendor_id__delete",
           "action": "delete_vendor",
           "method": "DELETE",
@@ -12328,12 +12640,36 @@
           "mutating": false
         },
         {
+          "operation_id": "download_ticket_upload_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__uploads__attachment_id__get",
+          "action": "download_ticket_upload",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/uploads/{attachment_id}",
+          "summary": "Download Ticket Upload",
+          "mutating": false
+        },
+        {
           "operation_id": "email_stakeholder_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__email_post",
           "action": "email_stakeholder",
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/email",
           "summary": "Email Stakeholder",
           "mutating": true
+        },
+        {
+          "operation_id": "export_scorecard_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_export_get",
+          "action": "export_scorecard",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard/export",
+          "summary": "Export Scorecard",
+          "mutating": false
+        },
+        {
+          "operation_id": "export_tat_report_api_v1_workspaces__workspace_id__service_desk_reports_tat_export_get",
+          "action": "export_tat_report",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/tat/export",
+          "summary": "Export Tat Report",
+          "mutating": false
         },
         {
           "operation_id": "export_tickets_api_v1_workspaces__workspace_id__service_desk_tickets_export_csv_get",
@@ -12384,11 +12720,43 @@
           "mutating": false
         },
         {
+          "operation_id": "get_scorecard_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_get",
+          "action": "get_scorecard",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard",
+          "summary": "Get Scorecard",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_scorecard_config_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_config_get",
+          "action": "get_scorecard_config",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard/config",
+          "summary": "Get Scorecard Config",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_scorecard_vocabulary_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_vocabulary_get",
+          "action": "get_scorecard_vocabulary",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard/vocabulary",
+          "summary": "Get Scorecard Vocabulary",
+          "mutating": false
+        },
+        {
           "operation_id": "get_settings_api_v1_workspaces__workspace_id__service_desk_settings_get",
           "action": "get_settings",
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/settings",
           "summary": "Get Settings",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_tat_report_api_v1_workspaces__workspace_id__service_desk_reports_tat_get",
+          "action": "get_tat_report",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/tat",
+          "summary": "Get Tat Report",
           "mutating": false
         },
         {
@@ -12512,6 +12880,22 @@
           "mutating": false
         },
         {
+          "operation_id": "preview_scorecard_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_preview_post",
+          "action": "preview_scorecard",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard/preview",
+          "summary": "Preview Scorecard",
+          "mutating": true
+        },
+        {
+          "operation_id": "publish_ticket_to_community_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__publish_to_community_post",
+          "action": "publish_ticket_to_community",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/publish-to-community",
+          "summary": "Publish Ticket To Community",
+          "mutating": true
+        },
+        {
           "operation_id": "receive_alert_api_v1_webhooks_alerts__inbound_token__post",
           "action": "receive_alert",
           "method": "POST",
@@ -12592,6 +12976,14 @@
           "mutating": true
         },
         {
+          "operation_id": "update_scorecard_config_api_v1_workspaces__workspace_id__service_desk_reports_scorecard_config_put",
+          "action": "update_scorecard_config",
+          "method": "PUT",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/reports/scorecard/config",
+          "summary": "Update Scorecard Config",
+          "mutating": true
+        },
+        {
           "operation_id": "update_settings_api_v1_workspaces__workspace_id__service_desk_settings_patch",
           "action": "update_settings",
           "method": "PATCH",
@@ -12630,6 +13022,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/service-desk/vendors/{vendor_id}",
           "summary": "Update Vendor",
           "mutating": true
+        },
+        {
+          "operation_id": "upload_ticket_files_api_v1_workspaces__workspace_id__service_desk_tickets__ticket_id__uploads_post",
+          "action": "upload_ticket_files",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/service-desk/tickets/{ticket_id}/uploads",
+          "summary": "Upload Ticket Files",
+          "mutating": true
         }
       ]
     },
@@ -12637,7 +13037,7 @@
       "capability": "mcp.sprints",
       "app": "sprints",
       "privileged": false,
-      "operation_count": 238,
+      "operation_count": 240,
       "operations": [
         {
           "operation_id": "accept_story_api_v1_workspaces__workspace_id__stories__story_id__accept_post",
@@ -13222,6 +13622,14 @@
           "path": "/api/v1/workspaces/{workspace_id}/work-updates/{update_id}",
           "summary": "Delete Work Update",
           "mutating": true
+        },
+        {
+          "operation_id": "download_task_attachment_api_v1_task_attachments__attachment_id__get",
+          "action": "download_task_attachment",
+          "method": "GET",
+          "path": "/api/v1/task-attachments/{attachment_id}",
+          "summary": "Download Task Attachment",
+          "mutating": false
         },
         {
           "operation_id": "edit_work_update_api_v1_workspaces__workspace_id__work_updates__update_id__patch",
@@ -13941,6 +14349,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/work-updates/{entity_type}/{entity_id}",
           "summary": "List Work Updates",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_workspace_sprints_api_v1_workspaces__workspace_id__sprints_get",
+          "action": "list_workspace_sprints",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/sprints",
+          "summary": "List Workspace Sprints",
           "mutating": false
         },
         {
@@ -15500,7 +15916,7 @@
   ],
   "duplicate_operation_ids": {},
   "excluded": {
-    "public": 56,
+    "public": 65,
     "review_gate": 5,
     "system": 4
   },
