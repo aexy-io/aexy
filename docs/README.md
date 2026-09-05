@@ -80,7 +80,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [CRM](./crm.md) - Objects and records, lists, pipelines, automations, sequences
 - [CRM architecture](./crm-architecture.md) - Storage, the attribute system, the automation engine, webhooks
 - [GTM](./gtm.md) - Lead scoring, ABM, outreach sequences, intent, expansion playbooks
-- [Forms](./forms.md) - Public form builder, themes, conditional logic, ticket/CRM/deal routing
+- [Forms](./forms.md) - Templates, building a form, the public link, routing what it collects
+- [Forms architecture](./forms-architecture.md) - Model, public submission flow, the builder API, question bank
 - [Tables](./tables.md) - Airtable-style custom data tables with saved views
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 

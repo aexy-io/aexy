@@ -1565,9 +1565,24 @@
     "slug": "forms",
     "title": "Forms",
     "section": "Modules — Customers",
-    "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing",
+    "description": "Templates, building a form, the public link, routing what it collects",
     "headings": [
       "Forms",
+      "Starting from a template",
+      "Building it",
+      "The public page",
+      "Rules that show and hide fields",
+      "When part of it fails",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "forms-architecture",
+    "title": "Forms architecture",
+    "section": "Modules — Customers",
+    "description": "Model, public submission flow, the builder API, question bank",
+    "headings": [
+      "Forms — architecture",
       "Pieces",
       "Routers",
       "Form model (`models/forms.py`)",

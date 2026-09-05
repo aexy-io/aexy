@@ -364,7 +364,13 @@
           "title": "Forms",
           "slug": "forms",
           "path": "forms.md",
-          "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing"
+          "description": "Templates, building a form, the public link, routing what it collects"
+        },
+        {
+          "title": "Forms architecture",
+          "slug": "forms-architecture",
+          "path": "forms-architecture.md",
+          "description": "Model, public submission flow, the builder API, question bank"
         },
         {
           "title": "Tables",
@@ -800,8 +806,14 @@
     "forms": {
       "title": "Forms",
       "section": "Modules — Customers",
-      "description": "Public form builder, themes, conditional logic, ticket/CRM/deal routing",
+      "description": "Templates, building a form, the public link, routing what it collects",
       "path": "forms.md"
+    },
+    "forms-architecture": {
+      "title": "Forms architecture",
+      "section": "Modules — Customers",
+      "description": "Model, public submission flow, the builder API, question bank",
+      "path": "forms-architecture.md"
     },
     "tables": {
       "title": "Tables",
@@ -1418,14 +1430,24 @@
         "slug": "gtm"
       },
       "next": {
+        "title": "Forms architecture",
+        "slug": "forms-architecture"
+      }
+    },
+    "forms-architecture": {
+      "prev": {
+        "title": "Forms",
+        "slug": "forms"
+      },
+      "next": {
         "title": "Tables",
         "slug": "tables"
       }
     },
     "tables": {
       "prev": {
-        "title": "Forms",
-        "slug": "forms"
+        "title": "Forms architecture",
+        "slug": "forms-architecture"
       },
       "next": {
         "title": "Email Marketing",

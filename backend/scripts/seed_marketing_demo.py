@@ -38,6 +38,7 @@ from sqlalchemy import func, select  # noqa: E402
 from aexy.core.database import async_session_maker  # noqa: E402
 from aexy.models.crm import CRMAttribute, CRMAutomation, CRMObject, CRMRecord  # noqa: E402
 from aexy.models.developer import Developer  # noqa: E402
+from aexy.models.forms import Form  # noqa: E402
 from aexy.models.leave import (  # noqa: E402
     Holiday,
     LeavePolicy,
@@ -1326,6 +1327,56 @@ async def seed_leave(db, workspace: Workspace, dev: Developer) -> None:
         note("leave request", f"{slug} from {start}", found is None)
 
 
+# ------------------------------------------------------------------------ forms
+
+#: (template, name, live?) — one of each shape the module supports, so the
+#: builder and the public page have something real to show. The bug report is
+#: left inactive: a form being drafted is a state the list has to be able to
+#: show, and every form being live makes the active switch look decorative.
+DEMO_FORMS = [
+    ("lead_capture", "Talk to sales", True),
+    ("feedback", "How are we doing?", True),
+    ("bug_report", "Report a bug", False),
+]
+
+
+async def seed_forms(db, workspace: Workspace, dev: Developer) -> None:
+    """Public forms, built from the module's own templates.
+
+    Through `FormsService` rather than as inserts, because a form is a row plus
+    its ordered fields plus a public token, and the template definitions are the
+    thing worth photographing — a hand-built two-field form would show less than
+    the product ships with.
+    """
+    from aexy.services.forms_service import FormsService
+
+    forms = FormsService(db)
+
+    for template, name, live in DEMO_FORMS:
+        found = (
+            await db.execute(
+                select(Form).where(
+                    Form.workspace_id == workspace.id, Form.name == name
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            note("form", name, False)
+            continue
+
+        form = await forms.create_form_from_template(
+            workspace_id=workspace.id,
+            created_by_id=dev.id,
+            template_type=template,
+            name=name,
+        )
+        # `is_active`, not `is_published` — the column that decides whether the
+        # public link answers is the active flag, and assigning a name the model
+        # does not have is a silent no-op.
+        form.is_active = live
+        note("form", name, True)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1412,6 +1463,7 @@ async def main() -> int:
         await seed_organization(db, workspace, dev)
         await seed_tickets(db, workspace, dev)
         await seed_leave(db, workspace, dev)
+        await seed_forms(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)
