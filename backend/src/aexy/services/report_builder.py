@@ -319,12 +319,14 @@ class ReportBuilderService:
         creator_id: str,
         data: CustomReportCreate,
         db: AsyncSession,
+        workspace_id: str | None = None,
         organization_id: str | None = None,
     ) -> CustomReport:
-        """Create a new custom report."""
+        """Create a new custom report, owned by a workspace."""
         report = CustomReport(
             id=str(uuid4()),
             creator_id=creator_id,
+            workspace_id=workspace_id,
             organization_id=organization_id,
             name=data.name,
             description=data.description,
@@ -346,18 +348,32 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
-        """Get a report by ID, checking access permissions."""
+        """Get a report by ID, within a workspace, checking access.
+
+        The workspace filter is the outer one and every API path passes it.
+        Without it a *public* report was readable by anybody who had its id, in
+        any workspace, because `organization_id` — the field the old check would
+        have used — was never written by any caller.
+
+        It stays optional for one caller: the Temporal activity that delivers a
+        scheduled report already holds the id from the schedule row and is not
+        answering anybody's request, so there is no workspace to check it
+        against. Tightening this to a required argument stops scheduled
+        delivery, which is not the kind of thing that shows up in a test run.
+        """
         stmt = select(CustomReport).where(CustomReport.id == report_id)
+        if workspace_id:
+            stmt = stmt.where(CustomReport.workspace_id == workspace_id)
         result = await db.execute(stmt)
         report = result.scalar_one_or_none()
 
         if report is None:
             return None
 
-        # Check access: creator, public, or same organization
+        # Inside the workspace: the creator, or anything shared with it.
         if user_id and report.creator_id != user_id and not report.is_public:
-            # Could add organization check here if needed
             return None
 
         return report
@@ -369,6 +385,7 @@ class ReportBuilderService:
         organization_id: str | None = None,
         include_public: bool = True,
         include_templates: bool = False,
+        workspace_id: str | None = None,
     ) -> list[CustomReport]:
         """List reports with filters.
 
@@ -379,6 +396,13 @@ class ReportBuilderService:
         appear in the default listing.
         """
         conditions = []
+
+        # The tenant filter, applied before anything about who is asking. A
+        # report shared with `is_public` is shared with *its workspace*, which
+        # is what the old `organization_id` check was trying to express and
+        # could not, because nothing ever set that field.
+        if workspace_id:
+            conditions.append(CustomReport.workspace_id == workspace_id)
 
         if creator_id:
             if include_public and organization_id:
@@ -414,9 +438,10 @@ class ReportBuilderService:
         data: CustomReportUpdate,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
         """Update an existing report."""
-        report = await self.get_report(report_id, db)
+        report = await self.get_report(report_id, db, workspace_id=workspace_id)
         if not report:
             return None
 
@@ -453,9 +478,10 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> bool:
         """Delete a report. Returns True if successful."""
-        report = await self.get_report(report_id, db)
+        report = await self.get_report(report_id, db, workspace_id=workspace_id)
         if not report:
             return False
 
@@ -473,9 +499,10 @@ class ReportBuilderService:
         new_name: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
         """Clone an existing report."""
-        original = await self.get_report(report_id, db, user_id)
+        original = await self.get_report(report_id, db, user_id, workspace_id)
         if not original:
             return None
 
@@ -527,8 +554,9 @@ class ReportBuilderService:
         db: AsyncSession,
         name: str | None = None,
         organization_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
-        """Create a new report from a template."""
+        """Create a new report from a template, into a workspace."""
         template = next(
             (t for t in DEFAULT_TEMPLATES if t["id"] == template_id),
             None,
@@ -539,6 +567,7 @@ class ReportBuilderService:
         report = CustomReport(
             id=str(uuid4()),
             creator_id=creator_id,
+            workspace_id=workspace_id,
             organization_id=organization_id,
             name=name or template["name"],
             description=template["description"],
@@ -752,11 +781,12 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
         developer_ids: list[str] | None = None,
         date_range: DateRange | None = None,
     ) -> dict:
         """Fetch all widget data for a report."""
-        report = await self.get_report(report_id, db, user_id)
+        report = await self.get_report(report_id, db, user_id, workspace_id)
         if not report:
             return {"error": "Report not found or access denied"}
 
@@ -819,10 +849,11 @@ class ReportBuilderService:
         data: ScheduledReportCreate,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
         """Create a scheduled report."""
         # Verify report exists and user has access
-        report = await self.get_report(report_id, db, user_id)
+        report = await self.get_report(report_id, db, user_id, workspace_id)
         if not report:
             return None
 

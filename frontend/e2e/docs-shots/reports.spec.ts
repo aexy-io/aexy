@@ -15,6 +15,7 @@ import {
   authHeaders,
   backendOnlyReady,
   setupAiLiveAuth,
+  REAL_BACKEND_WORKSPACE_ID,
 } from "../fixtures/ai-env";
 import { SHOT_CONTEXT, createShooter, forceLightTheme, ready } from "./harness";
 
@@ -31,11 +32,14 @@ test.describe("reports screenshots", () => {
     const probe = await backendOnlyReady();
     test.skip(!probe.ok, `docs screenshots need a live stack — ${probe.reason}`);
 
-    // `/reports` is mounted at the API root, not under the workspace: the
-    // module scopes by the caller's workspace rather than by a path segment.
-    const list = await request.get(`${API_BASE}/reports`, {
-      headers: authHeaders(),
-    });
+    // Workspace-scoped as of 0.36. It used to be mounted at the API root and
+    // scoped by creator, which is what kept the module out of reach of the app
+    // toggle; the old path now 404s, and a spec still pointed at it would skip
+    // itself quietly rather than fail.
+    const list = await request.get(
+      `${API_BASE}/workspaces/${REAL_BACKEND_WORKSPACE_ID}/reports`,
+      { headers: authHeaders() },
+    );
     reports = list.ok() ? ((await list.json()) as unknown[]).length : 0;
   });
 

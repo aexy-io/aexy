@@ -1724,19 +1724,23 @@ export const reportsApi = {
     return response.data;
   },
 
-  listReports: async (includePublic = true, includeTemplates = false): Promise<CustomReport[]> => {
-    const response = await api.get("/reports", {
+  listReports: async (
+    workspaceId: string,
+    includePublic = true,
+    includeTemplates = false
+  ): Promise<CustomReport[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/reports`, {
       params: { include_public: includePublic, include_templates: includeTemplates },
     });
     return response.data;
   },
 
-  getReport: async (reportId: string): Promise<CustomReport> => {
-    const response = await api.get(`/reports/${reportId}`);
+  getReport: async (workspaceId: string, reportId: string): Promise<CustomReport> => {
+    const response = await api.get(`/workspaces/${workspaceId}/reports/${reportId}`);
     return response.data;
   },
 
-  createReport: async (data: {
+  createReport: async (workspaceId: string, data: {
     name: string;
     description?: string;
     widgets: WidgetConfig[];
@@ -1744,11 +1748,11 @@ export const reportsApi = {
     layout?: Record<string, unknown>;
     is_public?: boolean;
   }): Promise<CustomReport> => {
-    const response = await api.post("/reports", data);
+    const response = await api.post(`/workspaces/${workspaceId}/reports`, data);
     return response.data;
   },
 
-  updateReport: async (reportId: string, data: Partial<{
+  updateReport: async (workspaceId: string, reportId: string, data: Partial<{
     name: string;
     description: string;
     widgets: WidgetConfig[];
@@ -1756,23 +1760,31 @@ export const reportsApi = {
     layout: Record<string, unknown>;
     is_public: boolean;
   }>): Promise<CustomReport> => {
-    const response = await api.put(`/reports/${reportId}`, data);
+    const response = await api.put(`/workspaces/${workspaceId}/reports/${reportId}`, data);
     return response.data;
   },
 
-  deleteReport: async (reportId: string): Promise<void> => {
-    await api.delete(`/reports/${reportId}`);
+  deleteReport: async (workspaceId: string, reportId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/reports/${reportId}`);
   },
 
-  cloneReport: async (reportId: string, newName: string): Promise<CustomReport> => {
-    const response = await api.post(`/reports/${reportId}/clone`, null, {
+  cloneReport: async (
+    workspaceId: string,
+    reportId: string,
+    newName: string
+  ): Promise<CustomReport> => {
+    const response = await api.post(`/workspaces/${workspaceId}/reports/${reportId}/clone`, null, {
       params: { new_name: newName },
     });
     return response.data;
   },
 
-  getReportData: async (reportId: string, developerIds?: string[]): Promise<Record<string, unknown>> => {
-    const response = await api.post(`/reports/${reportId}/data`, {
+  getReportData: async (
+    workspaceId: string,
+    reportId: string,
+    developerIds?: string[]
+  ): Promise<Record<string, unknown>> => {
+    const response = await api.post(`/workspaces/${workspaceId}/reports/${reportId}/data`, {
       developer_ids: developerIds,
     });
     return response.data;
@@ -1785,8 +1797,12 @@ export const reportsApi = {
     return response.data;
   },
 
-  createFromTemplate: async (templateId: string, name?: string): Promise<CustomReport> => {
-    const response = await api.post(`/reports/templates/${templateId}/create`, null, {
+  createFromTemplate: async (
+    workspaceId: string,
+    templateId: string,
+    name?: string
+  ): Promise<CustomReport> => {
+    const response = await api.post(`/workspaces/${workspaceId}/reports/templates/${templateId}/create`, null, {
       params: name ? { name } : {},
     });
     return response.data;
@@ -1799,7 +1815,7 @@ export const reportsApi = {
     return response.data;
   },
 
-  createSchedule: async (reportId: string, data: {
+  createSchedule: async (workspaceId: string, reportId: string, data: {
     schedule: "daily" | "weekly" | "monthly";
     time_utc: string;
     recipients: string[];
@@ -1810,15 +1826,15 @@ export const reportsApi = {
   }): Promise<ScheduledReport> => {
     // The endpoint reads report_id from the path, but ScheduledReportCreate
     // also requires it in the body — include it to avoid a 422.
-    const response = await api.post(`/reports/${reportId}/schedules`, {
+    const response = await api.post(`/workspaces/${workspaceId}/reports/${reportId}/schedules`, {
       report_id: reportId,
       ...data,
     });
     return response.data;
   },
 
-  deleteSchedule: async (scheduleId: string): Promise<void> => {
-    await api.delete(`/reports/schedules/${scheduleId}`);
+  deleteSchedule: async (workspaceId: string, scheduleId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/reports/schedules/${scheduleId}`);
   },
 };
 

@@ -247,7 +247,17 @@ api_router.include_router(learning_integrations_router, tags=["learning-integrat
 api_router.include_router(hiring_router, tags=["hiring"])
 # Phase 4: Advanced Analytics
 api_router.include_router(analytics_router, tags=["analytics"])
-api_router.include_router(reports_router, tags=["reports"])
+# Reports are workspace-scoped as of 0.36: the router carries
+# `{workspace_id}`, every query filters on it, and the module can
+# therefore be switched off like any other.
+api_router.include_router(
+    reports_router,
+    tags=["reports"],
+    dependencies=[
+        Depends(require_app_access("reports")),
+        Depends(require_workspace_member()),
+    ],
+)
 api_router.include_router(predictions_router, tags=["predictions"])
 api_router.include_router(exports_router, tags=["exports"])
 # Phase 4: Ecosystem Integrations

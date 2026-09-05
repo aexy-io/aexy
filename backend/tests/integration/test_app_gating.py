@@ -64,6 +64,7 @@ GUARDED = [
     ("email_marketing", "email-infrastructure/providers"),
     ("compliance", "reminders/dashboard/stats"),
     ("forms", "visual-builder/blocks"),
+    ("reports", "reports"),
     # Not knowledge-graph: it is plan-gated as well as app-gated, and answers
     # 403 "Enterprise feature" on a bare workspace — so the enabled half of
     # this test cannot tell the two refusals apart. The router carries the docs
@@ -214,3 +215,59 @@ def test_the_unguarded_surface_is_declared_rather_than_discovered():
         "A new router needs either `require_app_access(<app>)` or a note here "
         "saying why it must answer for a workspace that switched the module off."
     )
+
+
+@pytest.mark.asyncio
+async def test_a_report_belongs_to_one_workspace(client, workspace, db_session):
+    """Reports were the module with no tenant at all.
+
+    They scoped by creator, and a report marked public was readable by anybody
+    holding its id — in any workspace — because the field that check would have
+    used (`organization_id`) was never written by a single caller. Now the
+    workspace is in the path and in every query.
+    """
+    owner = workspace["owner"]
+    other = Workspace(
+        id=str(uuid4()), name="Elsewhere", slug=f"elsewhere-{uuid4().hex[:6]}", owner_id=owner.id
+    )
+    db_session.add(other)
+    await db_session.flush()
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=other.id, developer_id=owner.id, role="owner", status="active"
+        )
+    )
+    await db_session.commit()
+
+    created = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports",
+        headers=_auth(owner.id),
+        json={
+            "name": "Quarterly",
+            "widgets": [
+                {
+                    "id": "w1",
+                    "type": "bar_chart",
+                    "title": "Commits",
+                    "metric": "commits",
+                }
+            ],
+            "is_public": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    report_id = created.json()["id"]
+
+    # The same person, the same report id, a workspace it does not belong to.
+    # `is_public` is set precisely because that was the flag that used to make
+    # this readable.
+    from_elsewhere = await client.get(
+        f"/api/v1/workspaces/{other.id}/reports/{report_id}", headers=_auth(owner.id)
+    )
+    assert from_elsewhere.status_code == 404, from_elsewhere.text
+
+    listed = await client.get(
+        f"/api/v1/workspaces/{other.id}/reports", headers=_auth(owner.id)
+    )
+    assert listed.status_code == 200
+    assert all(r["id"] != report_id for r in listed.json())

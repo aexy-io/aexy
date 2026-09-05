@@ -26,7 +26,7 @@ from aexy.temporal.task_queues import TaskQueue
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/reports")
+router = APIRouter(prefix="/workspaces/{workspace_id}/reports")
 
 
 # -------------------------------------------------------------------------
@@ -36,6 +36,7 @@ router = APIRouter(prefix="/reports")
 
 @router.get("", response_model=list[CustomReportResponse])
 async def list_reports(
+    workspace_id: str,
     include_public: bool = Query(True, description="Include public reports"),
     include_templates: bool = Query(False, description="Include template reports"),
     db: AsyncSession = Depends(get_db),
@@ -45,6 +46,7 @@ async def list_reports(
     service = ReportBuilderService()
     reports = await service.list_reports(
         db=db,
+        workspace_id=workspace_id,
         creator_id=current_user_id,
         include_public=include_public,
         include_templates=include_templates,
@@ -54,6 +56,7 @@ async def list_reports(
 
 @router.post("", response_model=CustomReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_report(
+    workspace_id: str,
     data: CustomReportCreate,
     db: AsyncSession = Depends(get_db),
     current_user_id: str = Depends(get_current_developer_id),
@@ -68,6 +71,7 @@ async def create_report(
     service = ReportBuilderService()
     report = await service.create_report(
         creator_id=current_user_id,
+        workspace_id=workspace_id,
         data=data,
         db=db,
     )
@@ -76,13 +80,14 @@ async def create_report(
 
 @router.get("/{report_id}", response_model=CustomReportResponse)
 async def get_report(
+    workspace_id: str,
     report_id: str,
     db: AsyncSession = Depends(get_db),
     current_user_id: str = Depends(get_current_developer_id),
 ) -> CustomReportResponse:
     """Get a report by ID."""
     service = ReportBuilderService()
-    report = await service.get_report(report_id, db, current_user_id)
+    report = await service.get_report(report_id, db, current_user_id, workspace_id)
 
     if not report:
         raise HTTPException(
@@ -95,6 +100,7 @@ async def get_report(
 
 @router.put("/{report_id}", response_model=CustomReportResponse)
 async def update_report(
+    workspace_id: str,
     report_id: str,
     data: CustomReportUpdate,
     db: AsyncSession = Depends(get_db),
@@ -107,6 +113,7 @@ async def update_report(
         data=data,
         db=db,
         user_id=current_user_id,
+        workspace_id=workspace_id,
     )
 
     if not report:
@@ -120,6 +127,7 @@ async def update_report(
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_report(
+    workspace_id: str,
     report_id: str,
     db: AsyncSession = Depends(get_db),
     current_user_id: str = Depends(get_current_developer_id),
@@ -130,6 +138,7 @@ async def delete_report(
         report_id=report_id,
         db=db,
         user_id=current_user_id,
+        workspace_id=workspace_id,
     )
 
     if not success:
@@ -141,6 +150,7 @@ async def delete_report(
 
 @router.post("/{report_id}/clone", response_model=CustomReportResponse)
 async def clone_report(
+    workspace_id: str,
     report_id: str,
     new_name: str = Query(..., description="Name for the cloned report"),
     db: AsyncSession = Depends(get_db),
@@ -153,6 +163,7 @@ async def clone_report(
         new_name=new_name,
         db=db,
         user_id=current_user_id,
+        workspace_id=workspace_id,
     )
 
     if not report:
@@ -171,6 +182,7 @@ async def clone_report(
 
 @router.post("/{report_id}/data")
 async def get_report_data(
+    workspace_id: str,
     report_id: str,
     developer_ids: list[str] | None = None,
     date_range: DateRange | None = None,
@@ -186,6 +198,7 @@ async def get_report_data(
         report_id=report_id,
         db=db,
         user_id=current_user_id,
+        workspace_id=workspace_id,
         developer_ids=developer_ids,
         date_range=date_range,
     )
@@ -206,6 +219,7 @@ async def get_report_data(
 
 @router.get("/templates/list", response_model=list[ReportTemplateResponse])
 async def list_templates(
+    workspace_id: str,
     category: str | None = Query(None, description="Filter by category"),
     _: str = Depends(get_current_developer_id),
 ) -> list[ReportTemplateResponse]:
@@ -216,6 +230,7 @@ async def list_templates(
 
 @router.post("/templates/{template_id}/create", response_model=CustomReportResponse)
 async def create_from_template(
+    workspace_id: str,
     template_id: str,
     name: str | None = Query(None, description="Custom name for the report"),
     db: AsyncSession = Depends(get_db),
@@ -226,6 +241,7 @@ async def create_from_template(
     report = await service.create_from_template(
         template_id=template_id,
         creator_id=current_user_id,
+        workspace_id=workspace_id,
         db=db,
         name=name,
     )
@@ -246,6 +262,7 @@ async def create_from_template(
 
 @router.get("/schedules/list", response_model=list[ScheduledReportResponse])
 async def list_schedules(
+    workspace_id: str,
     report_id: str | None = Query(None, description="Filter by report ID"),
     active_only: bool = Query(True, description="Only show active schedules"),
     db: AsyncSession = Depends(get_db),
@@ -263,6 +280,7 @@ async def list_schedules(
 
 @router.post("/{report_id}/schedules", response_model=ScheduledReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_schedule(
+    workspace_id: str,
     report_id: str,
     data: ScheduledReportCreate,
     db: AsyncSession = Depends(get_db),
@@ -281,6 +299,7 @@ async def create_schedule(
         data=data,
         db=db,
         user_id=current_user_id,
+        workspace_id=workspace_id,
     )
 
     if not schedule:
@@ -294,6 +313,7 @@ async def create_schedule(
 
 @router.put("/schedules/{schedule_id}", response_model=ScheduledReportResponse)
 async def update_schedule(
+    workspace_id: str,
     schedule_id: str,
     data: ScheduledReportUpdate,
     db: AsyncSession = Depends(get_db),
@@ -318,6 +338,7 @@ async def update_schedule(
 
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_schedule(
+    workspace_id: str,
     schedule_id: str,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(get_current_developer_id),
@@ -340,7 +361,7 @@ async def delete_schedule(
 
 @router.get("/engineering/monthly")
 async def monthly_engineering_report(
-    workspace_id: str = Query(..., description="Workspace to report on"),
+    workspace_id: str,
     month: str = Query(..., description="Month as YYYY-MM", pattern=r"^\d{4}-\d{2}$"),
     timezone_name: str = Query(
         "UTC",
@@ -394,7 +415,7 @@ async def monthly_engineering_report(
 
 @router.post("/engineering/monthly/refresh")
 async def refresh_engineering_report_data(
-    workspace_id: str = Query(..., description="Workspace whose repositories to sync"),
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     developer_id: str = Depends(get_current_developer_id),
 ) -> dict[str, Any]:
