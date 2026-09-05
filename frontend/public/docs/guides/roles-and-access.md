@@ -13,9 +13,17 @@ being mistaken for the other:
 | *What may this person do?* | Their **workspace role** — owner, admin, member, viewer |
 | *What may this person open?* | Their **app access** — resolved from several layers below |
 
-An admin with no access to the Service Desk app cannot open the Service Desk. A
-member with access to everything can open everything and change very little.
+An admin with no access to the Service Desk does not see it in their sidebar. A
+member with access to everything sees everything and can change very little.
 Both are working as designed.
+
+**App access shapes navigation; it is not a security boundary.** Switching an
+app off removes it from the sidebar and from the pickers, and that is what it
+is for — a workspace that turns on all forty modules is unusable. It does not
+stop somebody who knows the URL, and the API behind the module answers either
+way. What actually protects data is workspace membership, the workspace role,
+and each module's own permission checks. Do not switch an app off in order to
+keep somebody out of it.
 
 ## Workspace roles
 
@@ -80,6 +88,8 @@ not a particular board, that is where to look.
 - **"I'm an admin, why can't I see it?"** The app is switched off for the
   workspace, or their department's profile does not include it. Being an admin
   is not an override.
+- **Switching an app off to keep somebody out of it.** It hides the module; it
+  does not deny access to the data behind it. Use the module's own permissions.
 - **Fixing it with a per-person override.** It works, and it is invisible six
   months later. Fix the department profile unless the person really is an
   exception.
