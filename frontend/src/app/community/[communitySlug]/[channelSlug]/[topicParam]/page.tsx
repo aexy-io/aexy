@@ -9,6 +9,8 @@ import {
   parsePage,
   siteBaseUrl,
 } from "@/lib/community-api";
+import { excerptFromMarkdown, plainTextFromMarkdown } from "@/lib/markdownText";
+import { MarkdownContent } from "@/components/community/MarkdownContent";
 import { Pagination } from "@/components/community/Pagination";
 import { TopicThread } from "./TopicThread";
 
@@ -33,7 +35,10 @@ export async function generateMetadata({
   if (!community || !topic) return { title: "Topic not found" };
 
   const title = topic.name;
-  const first = topic.messages[0]?.content?.slice(0, 180);
+  // Posts are markdown, so the opening one is flattened before it becomes a
+  // description — otherwise the snippet Google shows is the source, hashes and
+  // bullets included.
+  const first = excerptFromMarkdown(topic.messages[0]?.content ?? "", 180);
   const description = first || `Discussion in #${topic.channel_name}.`;
   const base = `${siteBaseUrl()}/community/${communitySlug}/${channelSlug}/${topicParam}`;
   // A near-empty topic isn't worth indexing.
@@ -96,13 +101,13 @@ export default async function TopicPage({ params, searchParams }: Props) {
           url,
           answerCount: topic.total - 1,
           ...(question && {
-            text: question.content,
+            text: plainTextFromMarkdown(question.content),
             datePublished: question.created_at,
             author: { "@type": "Person", name: question.author },
           }),
           acceptedAnswer: {
             "@type": "Answer",
-            text: answer.content,
+            text: plainTextFromMarkdown(answer.content),
             datePublished: answer.created_at,
             url: `${url}#${answer.id}`,
             author: { "@type": "Person", name: answer.author },
@@ -110,7 +115,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
           ...(others.length > 0 && {
             suggestedAnswer: others.map((m) => ({
               "@type": "Answer",
-              text: m.content,
+              text: plainTextFromMarkdown(m.content),
               datePublished: m.created_at,
               author: { "@type": "Person", name: m.author },
             })),
@@ -125,7 +130,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
         ...(question && {
           datePublished: question.created_at,
           author: { "@type": "Person", name: question.author },
-          text: question.content,
+          text: plainTextFromMarkdown(question.content),
         }),
         interactionStatistic: {
           "@type": "InteractionCounter",
@@ -134,11 +139,19 @@ export default async function TopicPage({ params, searchParams }: Props) {
         },
         comment: topic.messages.slice(1).map((m) => ({
           "@type": "Comment",
-          text: m.content,
+          text: plainTextFromMarkdown(m.content),
           datePublished: m.created_at,
           author: { "@type": "Person", name: m.author },
         })),
       };
+
+  // Markdown is parsed here, on the server, and the thread receives elements.
+  // TopicThread has to be a client component to be interactive, but that is no
+  // reason to send a markdown parser to every anonymous reader of a page whose
+  // posts never change after render.
+  const bodies = Object.fromEntries(
+    topic.messages.map((m) => [m.id, <MarkdownContent key={m.id} content={m.content} />]),
+  );
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -199,6 +212,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
         channelSlug={channelSlug}
         topicParam={topicParam}
         messages={topic.messages}
+        bodies={bodies}
         acceptedMessageId={topic.accepted_message_id}
         allowParticipation={topic.allow_participation}
         isFirstPage={page === 0}
