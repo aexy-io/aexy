@@ -1,130 +1,85 @@
-# Leave Management
+# Leave
 
-A self-contained module for time-off: types, policies, requests, balances, holidays.
+Time off: what kinds exist, how much of each somebody gets, who approves it,
+and which days do not count because the office was shut anyway.
 
-## Router
+For how it is built — endpoints, models, the carry-forward job — see
+[Leave architecture](./leave-architecture.md).
 
-`api/leave.py` — prefix `/workspaces/{workspace_id}/leave`.
+## Setting it up
 
-```
-# Types
-GET    /types?include_inactive=...
-POST   /types
-PUT    /types/{type_id}
-DELETE /types/{type_id}
+![Leave types, with whether each is paid and whether it needs approval](./images/leave/settings.png)
 
-# Policies
-GET    /policies
-POST   /policies
-PUT    /policies/{policy_id}
-DELETE /policies/{policy_id}
+Three things to configure, in this order, under **Settings** on the Leave page:
 
-# Requests
-POST   /requests
-GET    /requests?status=...&developer_id=...&date_range
-GET    /requests/{request_id}
-POST   /requests/{request_id}/approve
-POST   /requests/{request_id}/reject
-POST   /requests/{request_id}/cancel       requester cancels
-POST   /requests/{request_id}/withdraw     pending → withdrawn
+**Leave types.** What somebody can ask for — annual, sick, unpaid, whatever
+your organisation actually has. Each one decides whether it is paid, whether it
+needs approving, whether half days are allowed, and how much notice is
+required.
 
-# Balance
-GET    /balance/{developer_id}             yearly per-type breakdown
-GET    /balance                            all workspace balances
+**Policies.** How much of a type somebody gets in a year, and whether the
+unused part carries into the next one. A policy can be aimed at particular
+roles or teams; somebody matched by more than one gets the **most permissive**
+quota, so overlapping policies are worth being deliberate about.
 
-# Holidays
-GET    /holidays?year=...
-POST   /holidays
-PATCH  /holidays/{holiday_id}
-DELETE /holidays/{holiday_id}
-```
+**Holidays.** The days the whole organisation is off. These matter beyond this
+module: a five-day request spanning two holidays counts as three days against
+the balance, and — because the Service Desk's turnaround clock reads the same
+calendar — a desk ticket does not age on a public holiday either.
 
-## Models (`models/leave.py`)
+Mark a holiday **optional** when it is a day people may take rather than one
+the organisation closes. Optional days do not stop either clock.
 
-**`LeaveType`** — vacation, sick, parental, comp-off, etc.
+## Balances
 
-| Field | Note |
-|---|---|
-| `workspace_id`, `name`, `slug` | Identity |
-| `description`, `color`, `icon` | Display |
-| `is_paid` | |
-| `requires_approval` | If false, requests auto-approve |
-| `min_notice_days` | Minimum days between request submission and start |
-| `allows_half_day` | |
-| `is_active`, `sort_order` | |
+A balance is a row, per person, per type, per year — not something a policy
+implies. If the page says there are no balances yet, the year has not been
+initialised, which is a setup step rather than a bug.
 
-**`LeavePolicy`** — quota rules for a type, scoped to roles or teams.
+Booking against a balance happens on **approval**, not on request, so a pending
+request does not quietly reserve days somebody may not get.
 
-| Field | Note |
-|---|---|
-| `leave_type_id` | Bind |
-| `annual_quota` (float) | Days per year |
-| `accrual_type` | `UPFRONT` (full quota on Jan 1) / `MONTHLY` / `QUARTERLY` |
-| `carry_forward_enabled`, `max_carry_forward_days` | End-of-year handling |
-| `applicable_roles`, `applicable_team_ids` (JSONB) | Who this policy applies to — null = everyone |
+## Asking for time off
 
-**`LeaveRequest`**:
+![My leave: balances and the requests behind them](./images/leave/my-leaves.png)
 
-| Field | Note |
-|---|---|
-| `developer_id`, `leave_type_id` | |
-| `start_date`, `end_date` | |
-| `is_half_day`, `half_day_period` | `first_half` / `second_half` |
-| `reason` | |
-| `status` | `PENDING` / `APPROVED` / `REJECTED` / `CANCELLED` / `WITHDRAWN` |
-| `approved_by_id`, `approved_at` | If approved |
-| `rejected_by_id`, `rejected_at`, `rejection_reason` | If rejected |
-| `days_requested` | Computed at submission, accounting for half-days and holidays |
+Pick a type, pick dates, say why if it helps. Half days are allowed where the
+type permits them, and two half days on the same day of *different* types both
+succeed — each takes half from its own balance.
 
-**`LeaveBalance`** — denormalized for the dashboard.
+A request that needs no approval is approved as it is made. Everything else
+waits.
 
-| Field | Note |
-|---|---|
-| `developer_id`, `year`, `leave_type_id` | Key |
-| `quota` | From policy |
-| `used` | Sum of approved days |
-| `carried_forward` | From prior year (if `carry_forward_enabled`) |
-| `available` | Computed: `quota + carried_forward - used` |
+The requester has two ways out, and they are not the same thing:
 
-**`Holiday`** — workspace-wide non-working days.
+* **Withdraw** — a pending request, never approved. Nothing was ever taken from
+  the balance.
+* **Cancel** — an approved request being given back. The days return to the
+  balance.
 
-| Field | Note |
-|---|---|
-| `workspace_id`, `date`, `name` | |
-| `is_optional` | Optional/floating holidays |
-| `created_by_id` | |
+## Approving
 
-## Workflow
+![The approvals queue](./images/leave/approvals.png)
 
-```
-Developer submits LeaveRequest        →  status = PENDING
-   ↓
-   If LeaveType.requires_approval=false:
-      auto-approve
-   else:
-      Manager reviews:
-         POST /requests/{id}/approve  →  status = APPROVED, LeaveBalance updated
-         POST /requests/{id}/reject   →  status = REJECTED
-   ↓
-   Developer can:
-      POST /requests/{id}/cancel      →  status = CANCELLED (any state, manager can disallow per policy)
-      POST /requests/{id}/withdraw    →  status = WITHDRAWN (PENDING only)
-```
+Requests waiting on you, with who asked, for what, and for how long. Approving
+writes the days against the balance; rejecting does not.
 
-`days_requested` is computed at request time using `Holiday` rows in the date range — a 5-business-day request that overlaps two holidays counts as 3 days against the balance.
+Approved leave is not only a record: it blocks the dates on the team calendar,
+so the days show up when somebody schedules a meeting or looks at who is around
+next week.
 
-## Calendar integration
+## Common mistakes
 
-Approved requests block dates on the workspace calendar and surface to the team via `/team-calendar` (see `api/team_calendar.py`). Booking conflicts respect approved leave when scheduling meetings.
-
-## Frontend
-
-`/frontend/src/app/(app)/leave/` — leave calendar, request form, balance tracker, approval inbox, policy manager.
-
-## Common pitfalls
-
-- **Quota mismatches under multiple policies.** A developer matching multiple `LeavePolicy` rows (e.g. role-based + team-based) gets the **most permissive** quota. Be deliberate about overlapping policies.
-- **Half-days don't compose across types.** Two half-day requests on the same day of different types succeed (each takes 0.5 from its own balance). If you don't want this, validate on submit.
-- **`CANCELLED` vs `WITHDRAWN`.** A `WITHDRAWN` request was pending and never approved — no balance impact. A `CANCELLED` request was approved and is being given back — the balance is credited.
-- **Holiday changes don't retroactively re-compute `days_requested`** on already-submitted requests. If you add a holiday mid-cycle, existing requests still show their original day count.
-- **Carry-forward happens at year boundary.** It's a daily Temporal activity that runs on Jan 1; if the worker is down, balances don't carry. Re-run the activity manually if a year rollover is missed.
+- **Expecting a policy to create balances.** It sets the quota; the balances
+  for a year are rows that have to exist.
+- **Overlapping policies.** Role-based *and* team-based can both match, and the
+  larger quota wins. That is the rule, but it is rarely what somebody intended.
+- **Adding a holiday mid-cycle and expecting old requests to change.** Day
+  counts are computed when the request is made. Existing requests keep the
+  number they were approved with.
+- **Marking a real closure as optional.** An optional holiday does not reduce
+  anybody's day count and does not pause the service desk clock.
+- **Confusing cancelled with withdrawn** when reconciling balances. One returns
+  days; the other never took any.
+- **A missed year rollover.** Carry-forward runs once at the year boundary. If
+  it was missed, balances do not carry until it is run.

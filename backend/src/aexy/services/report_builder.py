@@ -319,13 +319,18 @@ class ReportBuilderService:
         creator_id: str,
         data: CustomReportCreate,
         db: AsyncSession,
-        organization_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> CustomReport:
-        """Create a new custom report."""
+        """Create a new custom report, owned by a workspace.
+
+        The tenant is the workspace. There was an `organization_id` column
+        here once, naming a **GitHub** organization rather than a tenant;
+        nothing on this path ever wrote it and it has since been dropped.
+        """
         report = CustomReport(
             id=str(uuid4()),
             creator_id=creator_id,
-            organization_id=organization_id,
+            workspace_id=workspace_id,
             name=data.name,
             description=data.description,
             widgets=[w.model_dump() for w in data.widgets],
@@ -346,18 +351,32 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
-        """Get a report by ID, checking access permissions."""
+        """Get a report by ID, within a workspace, checking access.
+
+        The workspace filter is the outer one and every API path passes it.
+        Without it a *public* report was readable by anybody who had its id, in
+        any workspace, because `organization_id` — the field the old check would
+        have used — was never written by any caller.
+
+        It stays optional for one caller: the Temporal activity that delivers a
+        scheduled report already holds the id from the schedule row and is not
+        answering anybody's request, so there is no workspace to check it
+        against. Tightening this to a required argument stops scheduled
+        delivery, which is not the kind of thing that shows up in a test run.
+        """
         stmt = select(CustomReport).where(CustomReport.id == report_id)
+        if workspace_id:
+            stmt = stmt.where(CustomReport.workspace_id == workspace_id)
         result = await db.execute(stmt)
         report = result.scalar_one_or_none()
 
         if report is None:
             return None
 
-        # Check access: creator, public, or same organization
+        # Inside the workspace: the creator, or anything shared with it.
         if user_id and report.creator_id != user_id and not report.is_public:
-            # Could add organization check here if needed
             return None
 
         return report
@@ -366,36 +385,39 @@ class ReportBuilderService:
         self,
         db: AsyncSession,
         creator_id: str | None = None,
-        organization_id: str | None = None,
         include_public: bool = True,
         include_templates: bool = False,
+        workspace_id: str | None = None,
     ) -> list[CustomReport]:
-        """List reports with filters.
+        """List reports a caller may see, within a workspace.
 
-        WS-049: `is_public=True` reports were previously surfaced in *every*
-        caller's listing across tenants. Cross-tenant public sharing now
-        requires an explicit `organization_id` filter that matches the
-        report's owning org; without it only the caller's own reports
-        appear in the default listing.
+        The tenant is `workspace_id`. It used to be `organization_id`, which is
+        a **GitHub** organization — the wrong axis, since two workspaces can
+        share one and a workspace with no GitHub connection has none at all.
+        That is why WS-049's fix, which made cross-tenant sharing "require an
+        explicit organization filter", asked for something no caller on this
+        path could supply: the branch was unreachable, so a colleague's shared
+        report never appeared in the listing while `get_report` returned it
+        quite happily by id.
         """
         conditions = []
 
+        # The tenant filter, applied before anything about who is asking.
+        if workspace_id:
+            conditions.append(CustomReport.workspace_id == workspace_id)
+
         if creator_id:
-            if include_public and organization_id:
-                # Public reports are visible only within the same org.
+            if include_public and workspace_id:
+                # Yours, plus anything shared with this workspace — the filter
+                # above already confines the second half to it.
                 conditions.append(
                     (CustomReport.creator_id == creator_id)
-                    | (
-                        (CustomReport.is_public == True)
-                        & (CustomReport.organization_id == organization_id)
-                    )
+                    | CustomReport.is_public.is_(True)
                 )
             else:
-                # Default: own reports only. include_public without
-                # organization_id no longer leaks across tenants.
+                # No workspace named: own reports only, which is what a caller
+                # that names no tenant is entitled to.
                 conditions.append(CustomReport.creator_id == creator_id)
-        elif organization_id:
-            conditions.append(CustomReport.organization_id == organization_id)
 
         if not include_templates:
             conditions.append(CustomReport.is_template == False)
@@ -414,9 +436,10 @@ class ReportBuilderService:
         data: CustomReportUpdate,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
         """Update an existing report."""
-        report = await self.get_report(report_id, db)
+        report = await self.get_report(report_id, db, workspace_id=workspace_id)
         if not report:
             return None
 
@@ -453,9 +476,10 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> bool:
         """Delete a report. Returns True if successful."""
-        report = await self.get_report(report_id, db)
+        report = await self.get_report(report_id, db, workspace_id=workspace_id)
         if not report:
             return False
 
@@ -473,16 +497,21 @@ class ReportBuilderService:
         new_name: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
         """Clone an existing report."""
-        original = await self.get_report(report_id, db, user_id)
+        original = await self.get_report(report_id, db, user_id, workspace_id)
         if not original:
             return None
 
         cloned = CustomReport(
             id=str(uuid4()),
             creator_id=user_id,
-            organization_id=original.organization_id,
+            # The clone lands in the workspace it was cloned from. Omitting
+            # this wrote a report with no workspace at all: absent from the
+            # listing, 404 by id, and reachable by nobody — a copy that
+            # vanished the moment it was made.
+            workspace_id=original.workspace_id,
             name=new_name,
             description=f"Cloned from: {original.name}",
             widgets=original.widgets.copy(),
@@ -526,9 +555,9 @@ class ReportBuilderService:
         creator_id: str,
         db: AsyncSession,
         name: str | None = None,
-        organization_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> CustomReport | None:
-        """Create a new report from a template."""
+        """Create a new report from a template, into a workspace."""
         template = next(
             (t for t in DEFAULT_TEMPLATES if t["id"] == template_id),
             None,
@@ -539,7 +568,7 @@ class ReportBuilderService:
         report = CustomReport(
             id=str(uuid4()),
             creator_id=creator_id,
-            organization_id=organization_id,
+            workspace_id=workspace_id,
             name=name or template["name"],
             description=template["description"],
             widgets=template["widgets"],
@@ -752,11 +781,12 @@ class ReportBuilderService:
         report_id: str,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
         developer_ids: list[str] | None = None,
         date_range: DateRange | None = None,
     ) -> dict:
         """Fetch all widget data for a report."""
-        report = await self.get_report(report_id, db, user_id)
+        report = await self.get_report(report_id, db, user_id, workspace_id)
         if not report:
             return {"error": "Report not found or access denied"}
 
@@ -819,10 +849,11 @@ class ReportBuilderService:
         data: ScheduledReportCreate,
         db: AsyncSession,
         user_id: str,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
         """Create a scheduled report."""
         # Verify report exists and user has access
-        report = await self.get_report(report_id, db, user_id)
+        report = await self.get_report(report_id, db, user_id, workspace_id)
         if not report:
             return None
 
@@ -856,9 +887,23 @@ class ReportBuilderService:
         self,
         schedule_id: str,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
-        """Get a schedule by ID."""
+        """Get a schedule by ID, within a workspace.
+
+        `update_schedule` and `delete_schedule` both resolve through here, so
+        the workspace they pass is what stops somebody editing another
+        workspace's delivery — changing its recipients to their own address, or
+        deleting it — with nothing but an id.
+
+        Optional for the delivery activity, which resolves a schedule it is
+        already running and has no request to attribute to a workspace.
+        """
         stmt = select(ScheduledReport).where(ScheduledReport.id == schedule_id)
+        if workspace_id:
+            stmt = stmt.join(
+                CustomReport, CustomReport.id == ScheduledReport.report_id
+            ).where(CustomReport.workspace_id == workspace_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -867,8 +912,15 @@ class ReportBuilderService:
         db: AsyncSession,
         report_id: str | None = None,
         active_only: bool = True,
+        workspace_id: str | None = None,
     ) -> list[ScheduledReport]:
-        """List scheduled reports."""
+        """List scheduled reports, within a workspace.
+
+        A schedule carries its recipients, so an unscoped listing hands every
+        workspace's delivery lists to anybody authenticated. It has no tenant
+        column of its own — it borrows its report's, which is why this joins
+        rather than filters.
+        """
         conditions = []
         if report_id:
             conditions.append(ScheduledReport.report_id == report_id)
@@ -876,6 +928,10 @@ class ReportBuilderService:
             conditions.append(ScheduledReport.is_active == True)
 
         stmt = select(ScheduledReport)
+        if workspace_id:
+            stmt = stmt.join(
+                CustomReport, CustomReport.id == ScheduledReport.report_id
+            ).where(CustomReport.workspace_id == workspace_id)
         if conditions:
             stmt = stmt.where(and_(*conditions))
         stmt = stmt.order_by(ScheduledReport.next_run_at)
@@ -888,9 +944,10 @@ class ReportBuilderService:
         schedule_id: str,
         data: ScheduledReportUpdate,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
         """Update a scheduled report."""
-        schedule = await self.get_schedule(schedule_id, db)
+        schedule = await self.get_schedule(schedule_id, db, workspace_id)
         if not schedule:
             return None
 
@@ -925,9 +982,10 @@ class ReportBuilderService:
         self,
         schedule_id: str,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> bool:
         """Delete a scheduled report."""
-        schedule = await self.get_schedule(schedule_id, db)
+        schedule = await self.get_schedule(schedule_id, db, workspace_id)
         if not schedule:
             return False
 

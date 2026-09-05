@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { reportsApi, CustomReport, WidgetConfig } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 const WIDGET_TYPES = ["line_chart", "bar_chart", "heatmap", "kpi", "table", "network"];
 const METRICS = [
@@ -27,6 +28,8 @@ export default function ReportEditorPage() {
   const reportId = params.id as string;
 
   const [report, setReport] = useState<CustomReport | null>(null);
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id ?? null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
@@ -38,7 +41,7 @@ export default function ReportEditorPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await reportsApi.getReport(reportId);
+      const r = await reportsApi.getReport(workspaceId!, reportId);
       setReport(r);
       setName(r.name);
       setDescription(r.description || "");
@@ -50,7 +53,7 @@ export default function ReportEditorPage() {
     } finally {
       setLoading(false);
     }
-  }, [reportId]);
+  }, [reportId, workspaceId]);
 
   useEffect(() => {
     if (isAuthenticated) load();
@@ -86,7 +89,7 @@ export default function ReportEditorPage() {
     }
     setSaving(true);
     try {
-      const updated = await reportsApi.updateReport(reportId, {
+      const updated = await reportsApi.updateReport(workspaceId!, reportId, {
         name: name.trim(),
         description,
         is_public: isPublic,

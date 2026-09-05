@@ -11,6 +11,7 @@ These tests verify:
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from jose import jwt
 
@@ -30,6 +31,38 @@ def _auth(developer_id: str) -> dict:
     }
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
     return {"Authorization": f"Bearer {token}"}
+
+
+
+@pytest_asyncio.fixture
+async def exports_workspace(db_session, sample_developer):
+    """A workspace the sample developer owns.
+
+    Reports moved under `/workspaces/{id}/reports` when the module became
+    workspace-scoped. This file creates one to export, so it moved too.
+    """
+    import uuid as _uuid
+
+    from aexy.models.workspace import Workspace, WorkspaceMember
+
+    ws = Workspace(
+        id=str(_uuid.uuid4()),
+        name="Exports WS",
+        slug=f"exports-{_uuid.uuid4().hex[:6]}",
+        owner_id=sample_developer.id,
+    )
+    db_session.add(ws)
+    await db_session.flush()
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=ws.id,
+            developer_id=sample_developer.id,
+            role="owner",
+            status="active",
+        )
+    )
+    await db_session.commit()
+    return ws
 
 
 class TestExportsAPI:
@@ -82,12 +115,12 @@ class TestExportsAPI:
 
     @pytest.mark.asyncio
     async def test_create_export_pdf(
-        self, client: AsyncClient, sample_developer, sample_report_config
+        self, client: AsyncClient, sample_developer, sample_report_config, exports_workspace
     ):
         """Test POST /exports endpoint for PDF export."""
         # First create a report to export
         report_response = await client.post(
-            "/api/v1/reports",
+            f"/api/v1/workspaces/{exports_workspace.id}/reports",
             headers=_auth(sample_developer.id),
             json={
                 "name": sample_report_config["name"],

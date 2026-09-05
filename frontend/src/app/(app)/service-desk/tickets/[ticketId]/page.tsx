@@ -674,7 +674,10 @@ export default function ServiceDeskTicketDetailPage() {
 
           {/* TAT — the three tiles that used to sit mid-page, where the numbers
               a desk is measured on scrolled past unread. */}
-          <Card className="space-y-3 p-4">
+          {/* Photographed by `e2e/docs-shots/service-desk.spec.ts`: the two
+              clocks side by side are the whole point of the module, and the
+              docs need them without the rest of the rail. */}
+          <Card className="space-y-3 p-4" data-testid="sd-turnaround">
             <div className="text-sm font-semibold">{t("detail.turnaround")}</div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -703,7 +706,7 @@ export default function ServiceDeskTicketDetailPage() {
           {/* Stage and hand-off. Two cards before this, each mostly empty — they
               are the same decision ("this is no longer mine") taken two ways. */}
           {canEdit && (
-            <Card className="space-y-4 p-4">
+            <Card className="space-y-4 p-4" data-testid="sd-handoff">
               <div className="text-sm font-semibold">{t("detail.actions")}</div>
 
               <div className="space-y-2">
@@ -1112,7 +1115,10 @@ export default function ServiceDeskTicketDetailPage() {
           )}
 
           {/* Timeline */}
-          <Card className="p-4">
+          {/* Photographed on its own by `e2e/docs-shots/service-desk.spec.ts`
+              — the handoff ledger is the thing the docs need to show, and a
+              full-page shot reduced to article width makes it unreadable. */}
+          <Card className="p-4" data-testid="sd-timeline">
             <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-4 w-4" /> {t("detail.timeline")}</div>
             <ol className="space-y-3">
               {ticket.segments.map((s) => {

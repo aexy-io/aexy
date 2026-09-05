@@ -25,7 +25,7 @@ from aexy.api.documents import _comment_to_response
 from aexy.models.developer import Developer
 from aexy.models.documentation import Document, DocumentComment
 from aexy.services.document_comment_service import DocumentCommentService
-from tests.conftest import seed_workspace
+from tests.conftest import seed_member, seed_workspace
 
 pytestmark = pytest.mark.asyncio
 
@@ -98,6 +98,9 @@ async def _document(db, workspace_id, owner_id) -> Document:
 async def _setup(db):
     workspace_id = await seed_workspace(db)
     owner_id = await _developer(db, "Owner")
+    # Workspace membership is the floor under every document permission since
+    # `DocumentAccess` landed: without a row here the owner reads nothing.
+    await seed_member(db, workspace_id, owner_id)
     document = await _document(db, workspace_id, owner_id)
     return workspace_id, owner_id, document
 

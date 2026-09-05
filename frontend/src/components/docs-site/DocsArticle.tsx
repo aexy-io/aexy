@@ -7,6 +7,13 @@ import Link from "next/link";
 
 interface DocsArticleProps {
   content: string;
+  /**
+   * The page's own slug, e.g. `guides/deployment`. Needed to resolve relative
+   * image paths: an image written beside the prose as
+   * `./images/x.png` in `docs/guides/deployment.md` lives at
+   * `/docs/guides/images/x.png` once served.
+   */
+  slug?: string;
 }
 
 function rewriteInternalLink(href: string): string {
@@ -22,7 +29,27 @@ function rewriteInternalLink(href: string): string {
   return `/handbook/${stripped}`;
 }
 
-export function DocsArticle({ content }: DocsArticleProps) {
+/**
+ * Where an image referenced from a doc actually lives.
+ *
+ * Markdown images are written relative to the source file, so the same link
+ * has to work in an editor and on the site. The pages are served from
+ * `/handbook/<slug>` but their assets from `/docs/<path>`, so a raw relative
+ * `src` resolves against the wrong prefix and every image on the page is
+ * broken — silently, because a missing image renders as nothing much.
+ */
+function rewriteImageSrc(src: string, slug?: string): string {
+  if (!src) return src;
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  if (src.startsWith("data:")) return src;
+  if (src.startsWith("/")) return src;
+
+  const cleaned = src.replace(/^\.\//, "");
+  const dir = (slug || "").split("/").slice(0, -1).join("/");
+  return dir ? `/docs/${dir}/${cleaned}` : `/docs/${cleaned}`;
+}
+
+export function DocsArticle({ content, slug }: DocsArticleProps) {
   return (
     <article className="docs-article max-w-none">
       <ReactMarkdown
@@ -153,11 +180,20 @@ export function DocsArticle({ content }: DocsArticleProps) {
             </pre>
           ),
           img: ({ src, alt }) => (
-            // Using plain img tag since markdown images may point to any external host
+            // A plain <img>: markdown images may point at any external host, and
+            // next/image would need every one allowlisted.
+            //
+            // The src is rewritten because a doc writes its images relative to
+            // the source file — the same link has to work in an editor and on
+            // the site — while pages serve from /handbook/<slug> and their
+            // assets from /docs/<path>. Passing it through unchanged, which is
+            // what this did, resolved every relative image against the wrong
+            // prefix and broke all of them at once.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={src || ""}
+              src={rewriteImageSrc(typeof src === "string" ? src : "", slug)}
               alt={alt || ""}
+              loading="lazy"
               className="my-6 rounded-[2px] border border-ledger-ink/12 max-w-full"
             />
           ),

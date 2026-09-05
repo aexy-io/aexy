@@ -1,16 +1,19 @@
 """Document management service for Notion-like documentation."""
 
 import hashlib
+import json
 import logging
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, case, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from aexy.services.activity_logger import log_activity
+from aexy.services.document_access import AccessLevel, DocumentAccess
 from aexy.services.docx_service import extract_structured
 from aexy.services.storage_service import get_storage_service
 from aexy.services.document_templates_catalog import (
@@ -21,20 +24,15 @@ from aexy.services.document_templates_catalog import (
 )
 from aexy.models.documentation import (
     CONTENT_FORMAT_DOCX,
-    CollaborationSession,
+    DOCUMENT_SEARCH_VECTOR,
     Document,
     DocumentCodeLink,
     DocumentCollaborator,
     DocumentFavorite,
-    DocumentGenerationPrompt,
-    DocumentPermission,
-    DocumentStatus,
     DocumentSyncMode,
-    DocumentSyncQueue,
     DocumentTemplate,
     DocumentVersion,
     DocumentVisibility,
-    TemplateCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,9 +42,103 @@ logger = logging.getLogger(__name__)
 # not appear to change every time it is listed.
 SYSTEM_TEMPLATE_TIMESTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
+# A tree deeper than this is either pathological or the residue of a legacy
+# parent cycle. Bounded so assembly stays linear and the JSON response finite.
+_MAX_TREE_DEPTH = 50
+
 DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+
+
+@dataclass
+class SearchHit:
+    """A search result and why it ranked where it did.
+
+    The snippet is part of the result rather than something the caller derives,
+    because on PostgreSQL it comes from `ts_headline` — the same tsquery that
+    did the matching — and no client-side approximation of that is worth
+    maintaining alongside it.
+    """
+
+    document: Document
+    score: float
+    snippet: str | None
+
+
+def _excerpt(text: str | None, query: str, width: int = 160) -> str | None:
+    """A plain-text window around the first match, for the SQLite path."""
+    if not text:
+        return None
+    idx = text.lower().find(query.lower())
+    if idx < 0:
+        return text[:width].strip() or None
+    start = max(0, idx - width // 3)
+    end = min(len(text), idx + len(query) + width // 2)
+    fragment = text[start:end].strip()
+    return f"{'…' if start else ''}{fragment}{'…' if end < len(text) else ''}"
+
+
+async def _schedule_reindex(document_id: str, dedupe_key: str) -> None:
+    """Queue this document for re-embedding, off the request path.
+
+    Best-effort by design. Embedding is a paid call per chunk and the
+    collaborative editor flushes a document every few seconds while somebody is
+    typing in it — a save that waited on a model would be unusable, and a save
+    that *failed* because Temporal was unreachable would be worse than a search
+    index that lags by a minute.
+
+    The workflow id carries the content sha, so re-saving identical content
+    does not re-embed it.
+    """
+    try:
+        from aexy.temporal.dispatch import dispatch
+        from aexy.temporal.task_queues import TaskQueue
+
+        await dispatch(
+            "index_document_embeddings",
+            {"document_id": document_id, "force": False},
+            task_queue=TaskQueue.ANALYSIS,
+            workflow_id=f"doc-embed-{document_id}-{dedupe_key}",
+        )
+    except Exception:
+        logger.debug("could not queue embedding for document %s", document_id)
+
+
+#: Ceiling on a TipTap body, measured as its serialised JSON.
+#:
+#: Word documents have had `MAX_DOCX_BYTES` since they were added; TipTap
+#: bodies had nothing, and they are the format that costs the most to leave
+#: unbounded — every content change snapshots the *whole* body into
+#: `document_versions`, and every change re-chunks it for embeddings. A runaway
+#: import or a pathological generation therefore multiplies across three tables.
+#:
+#: 8 MB of JSON is a document far larger than anything a person writes; the
+#: cases that reach it are machine-produced.
+MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
+
+
+class DocumentTooLargeError(ValueError):
+    """The document body exceeds `MAX_DOCUMENT_BYTES`."""
+
+    def __init__(self, size: int) -> None:
+        self.size = size
+        super().__init__(
+            f"Document body is {size // (1024 * 1024)} MB; the limit is "
+            f"{MAX_DOCUMENT_BYTES // (1024 * 1024)} MB"
+        )
+
+
+def _reject_if_oversized(content: dict | None) -> None:
+    if not content:
+        return
+    size = len(json.dumps(content, separators=(",", ":")).encode("utf-8"))
+    if size > MAX_DOCUMENT_BYTES:
+        raise DocumentTooLargeError(size)
+
+
+class DocumentCycleError(ValueError):
+    """A move would have made a document its own ancestor."""
 
 
 class DocxStorageError(RuntimeError):
@@ -138,6 +230,13 @@ class DocumentService:
             space_id=space_id,
             title=title,
             content=content or {"type": "doc", "content": []},
+            # Extracted here as well as on update. It was set only on update,
+            # so a document created *with* a body — every AI generation, every
+            # imported page, every API client that sends content on create —
+            # was unsearchable by that body until somebody happened to edit it.
+            # `search_vector` is generated from this column, so an empty one
+            # means the page is indexed by its title alone.
+            content_text=self._extract_text(content) if content else None,
             icon=icon,
             cover_image=cover_image,
             visibility=visibility,
@@ -176,8 +275,22 @@ class DocumentService:
         self,
         document_id: str,
         workspace_id: str | None = None,
+        *,
+        include_deleted: bool = False,
     ) -> Document | None:
-        """Get a document by ID with all relationships."""
+        """Get a document by ID with all relationships.
+
+        A trashed document is not found unless asked for explicitly. Every
+        caller that wants one — restore, purge, the trash listing — says so;
+        everything else would otherwise keep serving a document somebody
+        deleted, which is the failure mode a trash is supposed to prevent in
+        the other direction.
+
+        This is *not* an authorization check. `DocumentAccess.resolve` is, and
+        every endpoint calls it. Keeping the two separate is deliberate: a
+        service method that silently returns None for a permission problem
+        makes 404s that should be 403s and hides bugs in the access layer.
+        """
         stmt = (
             select(Document)
             .where(Document.id == document_id)
@@ -191,6 +304,8 @@ class DocumentService:
 
         if workspace_id:
             stmt = stmt.where(Document.workspace_id == workspace_id)
+        if not include_deleted:
+            stmt = stmt.where(Document.deleted_at.is_(None))
 
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -211,6 +326,8 @@ class DocumentService:
         document = await self.get_document(document_id)
         if not document:
             return None
+
+        _reject_if_oversized(content)
 
         # A Word document's body is a file, and `content` is `{}` by design.
         # Writing TipTap content into it would leave a document whose two
@@ -240,6 +357,11 @@ class DocumentService:
 
         document.last_edited_by_id = updated_by_id
         document.updated_at = datetime.now(timezone.utc)
+
+        # Visibility decides who may read the document, so a cached decision
+        # from earlier in this request is now wrong.
+        if visibility is not None:
+            DocumentAccess.invalidate(self.db, document_id)
 
         # Create version if content changed
         if content_changed and create_version:
@@ -274,32 +396,246 @@ class DocumentService:
 
         await self.db.commit()
         await self.db.refresh(document)
+
+        if content_changed:
+            from aexy.services.proposed_edits_service import current_document_sha
+
+            await _schedule_reindex(
+                str(document.id), current_document_sha(document) or "unknown"
+            )
+
         return document
 
     async def delete_document(
         self,
         document_id: str,
         workspace_id: str,
+        deleted_by_id: str | None = None,
     ) -> bool:
-        """Delete a document and all its children."""
+        """Move a document and its subtree to the trash.
+
+        Was `db.delete(document)`, which cascaded to the children and took
+        their versions, comments, code links, collaborators and docx storage
+        keys with them, permanently, at member level. Nothing about that was
+        recoverable and nothing about it was logged beyond the parent's title.
+
+        Now it stamps `deleted_at` across the subtree. `purge_expired` removes
+        rows for real once the workspace's retention window has passed, which
+        is also the answer to an erasure request.
+        """
         document = await self.get_document(document_id, workspace_id)
         if not document:
             return False
 
-        # Log before hard delete since entity won't exist after
+        subtree = await self._subtree_ids(str(document.id))
+        now = datetime.now(timezone.utc)
+
+        await self.db.execute(
+            update(Document)
+            .where(Document.id.in_(subtree))
+            .where(Document.deleted_at.is_(None))
+            .values(deleted_at=now, deleted_by_id=deleted_by_id)
+        )
+
+        for doomed_id in subtree:
+            DocumentAccess.invalidate(self.db, doomed_id)
+
         await log_activity(
             self.db,
             workspace_id=str(document.workspace_id),
             entity_type="document",
             entity_id=str(document.id),
             activity_type="deleted",
-            title=f"Deleted document '{document.title}'",
+            actor_id=deleted_by_id,
+            title=f"Moved '{document.title}' to trash",
+            changes={"subtree_size": {"new": len(subtree)}},
         )
 
-        # Delete recursively (cascade will handle children)
-        await self.db.delete(document)
         await self.db.commit()
         return True
+
+    async def restore_document(
+        self,
+        document_id: str,
+        workspace_id: str,
+        restored_by_id: str | None = None,
+    ) -> Document | None:
+        """Bring a trashed document and its subtree back.
+
+        If the parent it was under is itself still in the trash, the document
+        comes back at the root rather than into a parent nobody can see. The
+        alternative — restoring it into an invisible parent — produces a
+        document that exists, is not deleted, and appears nowhere.
+        """
+        document = await self.get_document(
+            document_id, workspace_id, include_deleted=True
+        )
+        if not document or document.deleted_at is None:
+            return None
+
+        if document.parent_id:
+            parent_alive = (
+                await self.db.execute(
+                    select(Document.id)
+                    .where(Document.id == document.parent_id)
+                    .where(Document.deleted_at.is_(None))
+                )
+            ).scalar_one_or_none()
+            if parent_alive is None:
+                document.parent_id = None
+                document.position = await self._get_next_position(workspace_id, None)
+
+        subtree = await self._subtree_ids(str(document.id), include_deleted=True)
+        await self.db.execute(
+            update(Document)
+            .where(Document.id.in_(subtree))
+            .values(deleted_at=None, deleted_by_id=None)
+        )
+
+        for restored_id in subtree:
+            DocumentAccess.invalidate(self.db, restored_id)
+
+        await log_activity(
+            self.db,
+            workspace_id=str(document.workspace_id),
+            entity_type="document",
+            entity_id=str(document.id),
+            activity_type="restored",
+            actor_id=restored_by_id,
+            title=f"Restored '{document.title}' from trash",
+        )
+
+        await self.db.commit()
+        await self.db.refresh(document)
+        return document
+
+    async def list_trash(
+        self,
+        workspace_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        access_clause: Any | None = None,
+    ) -> list[Document]:
+        """Trashed documents, newest deletion first.
+
+        Only the roots of each deleted subtree: a page whose parent was
+        deleted in the same action is not a separate thing to restore, and
+        listing all of them turns "deleted one section" into fifty rows.
+        """
+        parent = aliased(Document)
+        stmt = (
+            select(Document)
+            .where(Document.workspace_id == workspace_id)
+            .where(Document.deleted_at.is_not(None))
+            .where(
+                or_(
+                    Document.parent_id.is_(None),
+                    ~select(parent.id)
+                    .where(parent.id == Document.parent_id)
+                    .where(parent.deleted_at.is_not(None))
+                    .exists(),
+                )
+            )
+            .order_by(Document.deleted_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if access_clause is not None:
+            stmt = stmt.where(access_clause)
+        return list((await self.db.execute(stmt)).scalars().all())
+
+    async def purge_expired(
+        self,
+        workspace_id: str,
+        retention_days: int,
+    ) -> int:
+        """Permanently remove documents trashed longer ago than the window.
+
+        This is the only remaining hard delete, and it is deliberately not
+        reachable from a request — it runs on a schedule, so "delete" in the
+        UI can never mean "gone" while somebody is still looking at the
+        confirmation dialog.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        doomed = list(
+            (
+                await self.db.execute(
+                    select(Document.id)
+                    .where(Document.workspace_id == workspace_id)
+                    .where(Document.deleted_at.is_not(None))
+                    .where(Document.deleted_at < cutoff)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not doomed:
+            return 0
+
+        storage_keys = list(
+            (
+                await self.db.execute(
+                    select(Document.docx_storage_key)
+                    .where(Document.id.in_(doomed))
+                    .where(Document.docx_storage_key.is_not(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        await self.db.execute(delete(Document).where(Document.id.in_(doomed)))
+        await self.db.commit()
+
+        for key in storage_keys:
+            try:
+                get_storage_service().delete_file(key)
+            except Exception:  # pragma: no cover - best effort
+                logger.warning("purge: could not remove docx object %s", key)
+
+        logger.info(
+            "purged %d document(s) from workspace %s past %d-day retention",
+            len(doomed),
+            workspace_id,
+            retention_days,
+        )
+        return len(doomed)
+
+    async def _subtree_ids(
+        self,
+        root_id: str,
+        *,
+        include_deleted: bool = False,
+        max_depth: int = 200,
+    ) -> list[str]:
+        """Every descendant of `root_id`, plus itself.
+
+        Breadth-first with a visited set rather than a recursive CTE, because
+        the same code runs against SQLite in the test suite. The visited set is
+        not defensive style — `move_document` shipped without a descendant
+        check, so a cycle is two ordinary moves away and this traversal would
+        otherwise never terminate on one.
+        """
+        seen: set[str] = {root_id}
+        frontier = [root_id]
+        depth = 0
+
+        while frontier and depth < max_depth:
+            stmt = select(Document.id).where(Document.parent_id.in_(frontier))
+            if not include_deleted:
+                stmt = stmt.where(Document.deleted_at.is_(None))
+            rows = list((await self.db.execute(stmt)).scalars().all())
+            frontier = [str(r) for r in rows if str(r) not in seen]
+            seen.update(frontier)
+            depth += 1
+
+        if depth >= max_depth:
+            logger.warning(
+                "document subtree walk from %s hit the depth cap; "
+                "the tree is either pathological or cyclic",
+                root_id,
+            )
+        return list(seen)
 
     async def duplicate_document(
         self,
@@ -392,95 +728,126 @@ class DocumentService:
         include_templates: bool = False,
         visibility: str | None = None,
         space_id: str | None = None,
-        _stale_ids: set[str] | None = None,
+        access_clause: Any | None = None,
     ) -> list[dict[str, Any]]:
         """Get hierarchical document tree for sidebar.
 
-        `_stale_ids` is computed once at the top of the recursion and threaded
-        down. The tree recurses per level, so asking per document whether it
-        has fallen behind its code would be a query per node — on the one
-        surface that renders on every page of the module.
+        Two things changed here and they are connected.
+
+        **It no longer leaks.** The old version restricted private documents to
+        their creator only when the caller passed an explicit
+        `visibility="private"` filter — which the sidebar never did. Every
+        default call returned every document at that level regardless of
+        visibility, space membership or author. `access_clause` comes from
+        `DocumentAccess.visible_clause` and is a `WHERE` predicate, so the
+        filtering happens in SQL and cannot be forgotten by a caller that
+        builds its own query on top.
+
+        **It is one query, not one per node.** The old version recursed per
+        level, on the surface that renders on every page of the module. This
+        loads the workspace's documents once and assembles the tree in memory;
+        `has_children` and the staleness badge come out of the same pass.
         """
-        if _stale_ids is None:
-            _stale_ids = await self._documents_behind_their_code(workspace_id)
-        stmt = (
-            select(Document)
-            .where(
-                and_(
-                    Document.workspace_id == workspace_id,
-                    Document.parent_id == parent_id,
-                )
-            )
-            .order_by(Document.position)
-        )
+        stale_ids = await self._documents_behind_their_code(workspace_id)
+
+        stmt = select(Document).where(Document.workspace_id == workspace_id)
+        stmt = stmt.where(Document.deleted_at.is_(None))
+
+        if access_clause is not None:
+            stmt = stmt.where(access_clause)
 
         if not include_templates:
             stmt = stmt.where(Document.is_template == False)  # noqa: E712
 
-        # Filter by space if specified
         if space_id:
             if space_id == "none":
-                # Special value to get docs without a space
-                stmt = stmt.where(Document.space_id == None)  # noqa: E711
+                stmt = stmt.where(Document.space_id.is_(None))
             else:
                 stmt = stmt.where(Document.space_id == space_id)
 
-        # Filter by visibility if specified
         if visibility:
             stmt = stmt.where(Document.visibility == visibility)
-            # For private docs, only show docs created by the user
-            if visibility == DocumentVisibility.PRIVATE.value and developer_id:
-                stmt = stmt.where(Document.created_by_id == developer_id)
 
-        result = await self.db.execute(stmt)
-        documents = result.scalars().all()
+        stmt = stmt.order_by(Document.position, Document.created_at)
 
-        # Get user's favorites to mark them
+        documents = list((await self.db.execute(stmt)).scalars().all())
+
         favorite_ids: set[str] = set()
         if developer_id:
-            fav_stmt = select(DocumentFavorite.document_id).where(
-                DocumentFavorite.developer_id == developer_id
+            fav_rows = await self.db.execute(
+                select(DocumentFavorite.document_id).where(
+                    DocumentFavorite.developer_id == developer_id
+                )
             )
-            fav_result = await self.db.execute(fav_stmt)
-            favorite_ids = {row[0] for row in fav_result.fetchall()}
+            favorite_ids = {row[0] for row in fav_rows.fetchall()}
 
-        tree = []
+        return self._assemble_tree(
+            documents,
+            root_parent_id=parent_id,
+            favorite_ids=favorite_ids,
+            stale_ids=stale_ids,
+        )
+
+    def _assemble_tree(
+        self,
+        documents: list[Document],
+        *,
+        root_parent_id: str | None,
+        favorite_ids: set[str],
+        stale_ids: set[str],
+    ) -> list[dict[str, Any]]:
+        """Build the nested shape from a flat, already-filtered row set.
+
+        A document whose parent was filtered out — because it is private, or
+        in a space the caller does not belong to — is re-parented to the level
+        being rendered rather than dropped. Dropping it would mean a page you
+        have been explicitly shared on disappears from your sidebar because of
+        where its author happened to file it.
+        """
+        by_id = {str(d.id): d for d in documents}
+        children: dict[str | None, list[Document]] = {}
+
         for doc in documents:
-            children = await self.get_document_tree(
-                workspace_id,
-                developer_id,
-                doc.id,
-                include_templates,
-                visibility,
-                space_id,
-                _stale_ids=_stale_ids,
-            )
-            tree.append(
-                {
-                    "id": doc.id,
-                    "title": doc.title,
-                    "icon": doc.icon,
-                    "parent_id": doc.parent_id,
-                    "space_id": doc.space_id,
-                    "space_name": doc.space.name if doc.space else None,
-                    "position": doc.position,
-                    "visibility": doc.visibility,
-                    "created_by_id": doc.created_by_id,
-                    "is_favorited": doc.id in favorite_ids,
-                    # Visible while browsing, not only after opening the page.
-                    # A document whose sync is muted is deliberately excluded:
-                    # somebody said they did not want it updated, and a badge
-                    # they cannot clear is the kind that teaches people to
-                    # ignore badges.
-                    "is_behind_code": doc.id in _stale_ids,
-                    "has_children": len(children) > 0,
-                    "children": children,
-                    "created_at": doc.created_at.isoformat(),
-                    "updated_at": doc.updated_at.isoformat(),
-                }
-            )
+            parent = str(doc.parent_id) if doc.parent_id else None
+            if parent is not None and parent not in by_id:
+                parent = root_parent_id
+            children.setdefault(parent, []).append(doc)
 
-        return tree
+        def node(doc: Document, depth: int) -> dict[str, Any]:
+            doc_id = str(doc.id)
+            # `by_id` is a set of distinct rows so a cycle cannot repeat within
+            # one branch, but a legacy cycle can still make a branch deep; the
+            # bound keeps assembly linear and the response finite.
+            kids = (
+                [node(c, depth + 1) for c in children.get(doc_id, [])]
+                if depth < _MAX_TREE_DEPTH
+                else []
+            )
+            return {
+                "id": doc.id,
+                "title": doc.title,
+                "icon": doc.icon,
+                "parent_id": doc.parent_id,
+                "space_id": doc.space_id,
+                "space_name": doc.space.name if doc.space else None,
+                "position": doc.position,
+                "visibility": doc.visibility,
+                "created_by_id": doc.created_by_id,
+                "is_favorited": doc_id in favorite_ids,
+                # Visible while browsing, not only after opening the page.
+                # A document whose sync is muted is deliberately excluded:
+                # somebody said they did not want it updated, and a badge
+                # they cannot clear is the kind that teaches people to
+                # ignore badges.
+                "is_behind_code": doc_id in stale_ids,
+                "has_children": len(kids) > 0,
+                "children": kids,
+                "created_at": doc.created_at.isoformat(),
+                "updated_at": doc.updated_at.isoformat(),
+            }
+
+        roots = children.get(root_parent_id, [])
+        return [node(d, 0) for d in roots]
 
     async def _documents_behind_their_code(self, workspace_id: str) -> set[str]:
         """Documents in this workspace whose linked code has moved on.
@@ -507,10 +874,34 @@ class DocumentService:
         new_parent_id: str | None,
         position: int,
     ) -> Document | None:
-        """Move a document to a new parent and/or position."""
+        """Move a document to a new parent and/or position.
+
+        Raises `DocumentCycleError` if the target is the document itself or one
+        of its descendants. There was no such check, so two ordinary moves
+        produced a parent cycle — after which `get_ancestors`, an unbounded
+        `while` over `parent_id`, spun forever and pinned the worker. The
+        breadcrumb runs on every document page, so the hang landed on everyone
+        immediately, not just on whoever made the move.
+        """
         document = await self.get_document(document_id, workspace_id)
         if not document:
             return None
+
+        if new_parent_id:
+            if str(new_parent_id) == str(document_id):
+                raise DocumentCycleError("A document cannot be its own parent")
+
+            parent = await self.get_document(new_parent_id, workspace_id)
+            if parent is None:
+                raise DocumentCycleError(
+                    "The destination does not exist in this workspace"
+                )
+
+            descendants = await self._subtree_ids(str(document_id))
+            if str(new_parent_id) in descendants:
+                raise DocumentCycleError(
+                    "A document cannot be moved inside one of its own pages"
+                )
 
         old_parent_id = document.parent_id
         old_position = document.position
@@ -521,6 +912,10 @@ class DocumentService:
 
         # Update positions of siblings in new parent
         await self._reorder_siblings(workspace_id, new_parent_id, position, 1)
+
+        # A move can change which space the document is filed under, and the
+        # space is one of the things access is resolved from.
+        DocumentAccess.invalidate(self.db, document_id)
 
         # Move document
         document.parent_id = new_parent_id
@@ -589,6 +984,92 @@ class DocumentService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def prune_versions(
+        self,
+        document_id: str,
+        *,
+        keep_autosaves_for_hours: int = 24,
+        keep_daily_for_days: int = 30,
+    ) -> int:
+        """Collapse autosave noise, keep everything a person would look for.
+
+        `_create_version` writes a **full JSONB snapshot** of the body on every
+        content change including autosaves, with no dedup and no ceiling. A
+        document edited actively for a day produced hundreds of complete copies
+        of itself, and `Document.versions` was `lazy="selectin"` — so loading
+        the document loaded every one of them.
+
+        The rules, in the order they are applied:
+
+        * a manual save is never pruned. Somebody pressed save.
+        * a pinned or labelled version is never pruned, nor is the newest.
+        * autosaves inside the recent window are kept in full — that window is
+          where "undo what I just did" lives.
+        * older than that, one autosave survives per day for `keep_daily_for_days`;
+          beyond it, one per week.
+
+        Returns how many rows were removed.
+        """
+        rows = list(
+            (
+                await self.db.execute(
+                    select(DocumentVersion)
+                    .where(DocumentVersion.document_id == document_id)
+                    .order_by(DocumentVersion.version_number.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if len(rows) <= 1:
+            return 0
+
+        now = datetime.now(timezone.utc)
+        recent_cutoff = now - timedelta(hours=keep_autosaves_for_hours)
+        daily_cutoff = now - timedelta(days=keep_daily_for_days)
+
+        newest_id = str(rows[0].id)
+        seen_buckets: set[tuple[int, int, int, str]] = set()
+        doomed: list[str] = []
+
+        for version in rows:
+            if str(version.id) == newest_id:
+                continue
+            if not version.is_auto_save or version.is_pinned or version.label:
+                continue
+
+            created = version.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+
+            if created >= recent_cutoff:
+                continue
+
+            if created >= daily_cutoff:
+                bucket = (created.year, created.month, created.day, "d")
+            else:
+                iso = created.isocalendar()
+                bucket = (iso[0], iso[1], 0, "w")
+
+            # Rows arrive newest-first, so the first version in a bucket is the
+            # last state that bucket reached — which is the one worth keeping.
+            if bucket in seen_buckets:
+                doomed.append(str(version.id))
+            else:
+                seen_buckets.add(bucket)
+
+        if not doomed:
+            return 0
+
+        await self.db.execute(
+            delete(DocumentVersion).where(DocumentVersion.id.in_(doomed))
+        )
+        await self.db.commit()
+        logger.info(
+            "pruned %d autosave version(s) from document %s", len(doomed), document_id
+        )
+        return len(doomed)
+
     async def restore_version(
         self,
         document_id: str,
@@ -617,6 +1098,11 @@ class DocumentService:
 
         if not version:
             return None
+
+        # A version somebody restored from is a version somebody cares about,
+        # so the retention sweep must never collapse it — otherwise "go back to
+        # how it was on Tuesday" works once and then the Tuesday state is gone.
+        version.is_pinned = True
 
         # Update document with version content
         document = await self.update_document(
@@ -919,30 +1405,185 @@ class DocumentService:
         query: str,
         limit: int = 20,
         offset: int = 0,
-    ) -> list[Document]:
-        """Full-text search in document titles and content."""
-        # Simple LIKE search for now (can be upgraded to full-text search)
-        search_pattern = f"%{query}%"
+        access_clause: Any | None = None,
+        semantic: Any | None = None,
+    ) -> list[SearchHit]:
+        """Search titles and bodies, ranked, filtered to what the caller may read.
+
+        Two defects, one method.
+
+        The first was that this filtered on `workspace_id` alone — no
+        visibility, no space, no collaborator, no `developer_id` parameter at
+        all — and was reachable by any workspace viewer. That made every
+        private document in the workspace discoverable *by its contents*, which
+        is worse than the by-id read it was built on. `access_clause` is now
+        required by every caller and applied inside the query, so `LIMIT` and
+        `OFFSET` count the rows the caller can actually see.
+
+        The second was `ILIKE '%q%'`: a leading wildcard over `content_text`,
+        which is a sequential scan of every document body in the workspace,
+        ordered by `updated_at` rather than by relevance. On PostgreSQL this
+        now uses the `search_vector` column and its GIN index, ranks with
+        `ts_rank_cd`, and returns a `ts_headline` snippet. SQLite — the test
+        suite — keeps the `LIKE` path, which is why the two are branches of one
+        method rather than two methods somebody could call the wrong one of.
+        """
+        base = select(Document).where(
+            Document.workspace_id == workspace_id,
+            Document.deleted_at.is_(None),
+            Document.is_template == False,  # noqa: E712
+        )
+        if access_clause is not None:
+            base = base.where(access_clause)
+
+        if self.db.bind is not None and self.db.bind.dialect.name == "postgresql":
+            hits = await self._search_postgres(base, query, limit, offset)
+        else:
+            hits = await self._search_fallback(base, query, limit, offset)
+
+        if semantic is not None:
+            hits = await self._blend_semantic(
+                hits,
+                semantic=semantic,
+                workspace_id=workspace_id,
+                query=query,
+                access_clause=access_clause,
+                limit=limit,
+                offset=offset,
+            )
+        return hits
+
+    async def _blend_semantic(
+        self,
+        keyword_hits: list["SearchHit"],
+        *,
+        semantic: Any,
+        workspace_id: str,
+        query: str,
+        access_clause: Any | None,
+        limit: int,
+        offset: int,
+    ) -> list["SearchHit"]:
+        """Merge keyword and vector results into one ranking.
+
+        Reciprocal rank fusion rather than a weighted sum of the two scores:
+        `ts_rank_cd` and cosine similarity are not on the same scale and their
+        ranges shift with the corpus, so any fixed weighting is tuned to
+        whatever documents happened to exist when it was chosen. RRF only reads
+        positions, which is what makes it survive the corpus changing.
+
+        A document that only the vector side found still needs its row, and
+        that fetch re-applies the access predicate — the semantic search
+        already filtered, and doing it twice costs one indexed lookup and
+        removes a way for the two paths to disagree.
+        """
+        K = 60  # RRF damping; the conventional value.
+
+        scored: dict[str, float] = {}
+        by_id: dict[str, SearchHit] = {}
+
+        for rank, hit in enumerate(keyword_hits):
+            key = str(hit.document.id)
+            scored[key] = scored.get(key, 0.0) + 1.0 / (K + rank + 1)
+            by_id[key] = hit
+
+        semantic_hits = await semantic.search(
+            workspace_id,
+            query,
+            access_clause=access_clause,
+            limit=limit + offset,
+        )
+        missing = [h.document_id for h in semantic_hits if h.document_id not in by_id]
+        if missing:
+            stmt = select(Document).where(Document.id.in_(missing))
+            if access_clause is not None:
+                stmt = stmt.where(access_clause)
+            for document in (await self.db.execute(stmt)).scalars().all():
+                by_id[str(document.id)] = SearchHit(
+                    document=document, score=0.0, snippet=None
+                )
+
+        for rank, hit in enumerate(semantic_hits):
+            if hit.document_id not in by_id:
+                continue  # filtered out by the access predicate on re-fetch
+            scored[hit.document_id] = scored.get(hit.document_id, 0.0) + 1.0 / (
+                K + rank + 1
+            )
+            existing = by_id[hit.document_id]
+            if not existing.snippet and hit.chunk_text:
+                existing.snippet = hit.chunk_text[:280]
+
+        ranked = sorted(scored.items(), key=lambda kv: kv[1], reverse=True)
+        out: list[SearchHit] = []
+        for document_id, score in ranked[offset : offset + limit]:
+            hit = by_id[document_id]
+            hit.score = score
+            out.append(hit)
+        return out
+
+    async def _search_postgres(
+        self,
+        base,
+        query: str,
+        limit: int,
+        offset: int,
+    ) -> list["SearchHit"]:
+        tsquery = func.websearch_to_tsquery("english", query)
+        rank = func.ts_rank_cd(DOCUMENT_SEARCH_VECTOR, tsquery)
+        snippet = func.ts_headline(
+            "english",
+            func.coalesce(Document.content_text, ""),
+            tsquery,
+            "StartSel=<mark>,StopSel=</mark>,MaxFragments=2,MaxWords=24,MinWords=8",
+        )
 
         stmt = (
-            select(Document)
-            .where(
-                and_(
-                    Document.workspace_id == workspace_id,
-                    Document.is_template == False,  # noqa: E712
-                    or_(
-                        Document.title.ilike(search_pattern),
-                        Document.content_text.ilike(search_pattern),
-                    ),
-                )
-            )
-            .order_by(Document.updated_at.desc())
+            base.add_columns(rank.label("rank"), snippet.label("snippet"))
+            .where(DOCUMENT_SEARCH_VECTOR.op("@@")(tsquery))
+            .order_by(rank.desc(), Document.updated_at.desc())
             .limit(limit)
             .offset(offset)
         )
+        rows = (await self.db.execute(stmt)).all()
+        return [
+            SearchHit(document=row[0], score=float(row[1] or 0.0), snippet=row[2])
+            for row in rows
+        ]
 
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+    async def _search_fallback(
+        self,
+        base,
+        query: str,
+        limit: int,
+        offset: int,
+    ) -> list["SearchHit"]:
+        pattern = f"%{query}%"
+        stmt = (
+            base.where(
+                or_(
+                    Document.title.ilike(pattern),
+                    Document.content_text.ilike(pattern),
+                )
+            )
+            # A title match is what the searcher almost always meant; without
+            # this the fallback ordered purely by recency and buried the exact
+            # page whose name was typed.
+            .order_by(
+                case((Document.title.ilike(pattern), 0), else_=1),
+                Document.updated_at.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        documents = list((await self.db.execute(stmt)).scalars().all())
+        return [
+            SearchHit(
+                document=doc,
+                score=1.0 if query.lower() in (doc.title or "").lower() else 0.5,
+                snippet=_excerpt(doc.content_text, query),
+            )
+            for doc in documents
+        ]
 
     # ==================== Templates ====================
 
@@ -1388,6 +2029,12 @@ class DocumentService:
         except Exception:
             pass  # Non-critical
 
+        # A share changes who may read this document, and `DocumentAccess`
+        # memoises its answers for the life of the session. Without this the
+        # rest of the request — and the response it builds — would still be
+        # working from the answer it computed before its own write.
+        DocumentAccess.invalidate(self.db, document_id)
+
         return collaborator
 
     async def update_collaborator_permission(
@@ -1410,6 +2057,7 @@ class DocumentService:
 
         result = await self.db.execute(stmt)
         await self.db.commit()
+        DocumentAccess.invalidate(self.db, document_id)
         return result.rowcount > 0
 
     async def remove_collaborator(
@@ -1441,6 +2089,7 @@ class DocumentService:
                 )
 
         await self.db.commit()
+        DocumentAccess.invalidate(self.db, document_id)
         return result.rowcount > 0
 
     async def check_permission(
@@ -1449,41 +2098,21 @@ class DocumentService:
         developer_id: str,
         required_permission: str,
     ) -> bool:
-        """Check if a developer has the required permission on a document."""
-        document = await self.get_document(document_id)
-        if not document:
-            return False
+        """Deprecated. Use `DocumentAccess` instead.
 
-        # Creator has admin access
-        if document.created_by_id == developer_id:
-            return True
+        This was the module's only correct permission check and it was called
+        from three collaborator-management endpoints, never from a read or a
+        write. It also predates document spaces, so it answers "no" for a space
+        admin acting in their own space and for a workspace admin acting on a
+        document whose author has left.
 
-        # Check explicit permissions
-        stmt = select(DocumentCollaborator).where(
-            and_(
-                DocumentCollaborator.document_id == document_id,
-                DocumentCollaborator.developer_id == developer_id,
-            )
-        )
-
-        result = await self.db.execute(stmt)
-        collaborator = result.scalar_one_or_none()
-
-        if not collaborator:
-            return False
-
-        # Permission hierarchy: admin > edit > comment > view
-        permission_levels = {
-            DocumentPermission.VIEW.value: 1,
-            DocumentPermission.COMMENT.value: 2,
-            DocumentPermission.EDIT.value: 3,
-            DocumentPermission.ADMIN.value: 4,
-        }
-
-        user_level = permission_levels.get(collaborator.permission, 0)
-        required_level = permission_levels.get(required_permission, 0)
-
-        return user_level >= required_level
+        Kept as a thin delegation rather than deleted so that any caller
+        outside this repository gets the *right* answer instead of the old one,
+        and so the fix cannot be undone by re-adding a call to it.
+        """
+        access = DocumentAccess(self.db)
+        level = await access.resolve(document_id, developer_id)
+        return level >= AccessLevel.from_permission(required_permission)
 
     # ==================== Favorites ====================
 
@@ -1523,19 +2152,29 @@ class DocumentService:
         self,
         workspace_id: str,
         developer_id: str,
+        access_clause: Any | None = None,
     ) -> list[dict[str, Any]]:
-        """Get user's favorited documents as a flat list."""
+        """Get user's favorited documents as a flat list.
+
+        Access-filtered like every other listing. A favourite outlives the
+        share that created it: somebody stars a page, their collaborator row is
+        later removed, and without this the page stays in their sidebar and
+        opens.
+        """
         stmt = (
             select(Document)
             .join(DocumentFavorite, Document.id == DocumentFavorite.document_id)
             .where(
                 and_(
                     Document.workspace_id == workspace_id,
+                    Document.deleted_at.is_(None),
                     DocumentFavorite.developer_id == developer_id,
                 )
             )
             .order_by(DocumentFavorite.created_at.desc())
         )
+        if access_clause is not None:
+            stmt = stmt.where(access_clause)
 
         result = await self.db.execute(stmt)
         documents = result.scalars().all()
@@ -1564,11 +2203,21 @@ class DocumentService:
         self,
         document_id: str,
     ) -> list[dict[str, Any]]:
-        """Get ancestors of a document for breadcrumb navigation."""
-        ancestors = []
+        """Get ancestors of a document for breadcrumb navigation.
+
+        `move_document` now refuses to create a parent cycle, but rows that
+        predate that guard still exist in deployed databases and this walk is
+        what they hang. The visited set turns one of them into a truncated
+        breadcrumb — wrong, visibly so, and survivable — instead of a pinned
+        worker on every page load.
+        """
+        ancestors: list[dict[str, Any]] = []
+        seen: set[str] = set()
         current_id = document_id
 
-        while current_id:
+        while current_id and current_id not in seen:
+            seen.add(current_id)
+
             stmt = select(Document).where(Document.id == current_id)
             result = await self.db.execute(stmt)
             doc = result.scalar_one_or_none()
@@ -1588,6 +2237,12 @@ class DocumentService:
                 )
 
             current_id = doc.parent_id
+
+        if current_id and current_id in seen:
+            logger.warning(
+                "document %s sits in a parent cycle; breadcrumb truncated",
+                document_id,
+            )
 
         return ancestors
 

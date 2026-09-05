@@ -143,6 +143,13 @@ def get_all_activities() -> list:
         schedule_incremental_extraction,
         update_document_relationships,
     )
+    from aexy.temporal.activities.document_search import (
+        index_document_embeddings,
+        prune_document_versions,
+        run_document_import,
+        purge_document_trash,
+        reindex_workspace_documents,
+    )
     from aexy.temporal.activities.file_metadata import (
         annotate_drive_video,            # deprecated shim
         backfill_workspace_file_metadata,
@@ -412,6 +419,12 @@ def get_all_activities() -> list:
         update_document_relationships,
         cleanup_orphaned_entities,
         schedule_incremental_extraction,
+        # Knowledge-base maintenance: embeddings, version retention, trash purge
+        index_document_embeddings,
+        prune_document_versions,
+        purge_document_trash,
+        reindex_workspace_documents,
+        run_document_import,
         # File AI metadata pipeline (polymorphic) + deprecated drive-only shims
         extract_file_ai_metadata,
         backfill_workspace_file_metadata,

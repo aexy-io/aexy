@@ -94,11 +94,19 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     "task_configuration": "sprints",
     "task_templates": "sprints",
     "task_links": "sprints",
+    # Files hanging off a sprint task, addressed by attachment id.
+    "task_attachments": "sprints",
     "dependencies": "sprints",
     "saved_views": "sprints",
     "work_updates": "sprints",
     "entity_activities": "sprints",
     "public_projects": "public",
+    # `/kb/*` — the published-article portal. Unauthenticated by design and
+    # reading `published_documents` rather than `documents`, so running it on
+    # a developer's token would misrepresent who is asking without reaching
+    # anything that token could not already read. Excluded, like the other
+    # public surfaces.
+    "knowledge_base_portal": "public",
     # -- Service desk & ops --------------------------------------------------
     "tickets": "tickets",
     "ticket_forms": "tickets",
@@ -144,6 +152,16 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     "knowledge_graph": "docs",
     "collaboration": "docs",
     "file_search": "docs",
+    # Audit events, the review queue, workspace stats and archive export: the
+    # governance side of the same pages, reached by the same people.
+    "document_governance": "docs",
+    # Uploading a Notion or Confluence archive, and the attachments it brings
+    # with it. Creating pages in bulk is a documents grant, not a wider one.
+    "document_import": "docs",
+    # AI editing of a Word document that lives in the knowledge base. The
+    # subject is the document; `agents` governs who may *be* an agent, not
+    # which documents one may edit.
+    "word_ai_editing": "docs",
     "drive": "drive",
     # -- People --------------------------------------------------------------
     "organization": "organization",
@@ -221,6 +239,11 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     "roles": "platform",
     "invites": "platform",
     "app_access": "platform",
+    # Which models a workspace uses and what it spends on them. Reads are
+    # visible to members, writes are admin — the same shape as roles and
+    # app access, and not an `agents` grant: it configures the provider,
+    # it does not run anything.
+    "ai_model_configuration": "platform",
     "api_tokens": "platform",
     "auth": "platform",
     "notifications": "platform",

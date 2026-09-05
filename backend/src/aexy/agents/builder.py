@@ -145,8 +145,17 @@ class CustomAgent(BaseAgent):
 
             # Document tools are workspace-scoped; creating one also needs an
             # author, since a document with no creator cannot be attributed.
+            #
+            # Reading and searching need the user too, and did not have it. An
+            # agent acts *for* somebody and must see exactly what they see — a
+            # search that ignores the person behind it turns "summarise our
+            # docs" into a way to read the private ones.
             if tool_name in ["ReadDocumentTool", "SearchDocumentsTool"]:
-                return tool_class(workspace_id=self.workspace_id, db=self.db)
+                return tool_class(
+                    workspace_id=self.workspace_id,
+                    user_id=self.user_id or "",
+                    db=self.db,
+                )
 
             if tool_name in ["CreateDocumentTool", "ProposeDocxEditTool"]:
                 return tool_class(

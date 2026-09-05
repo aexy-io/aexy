@@ -192,7 +192,12 @@ async def get_document_connections(
 ):
     """Get connections for a specific document."""
     service = KnowledgeGraphService(db)
-    connections = await service.get_document_connections(workspace_id, document_id)
+    # `developer_id` was already resolved here and unused. The graph is built
+    # from document content, so an unfiltered answer names the private pages an
+    # entity was extracted from.
+    connections = await service.get_document_connections(
+        workspace_id, document_id, viewer_id=developer_id
+    )
 
     return DocumentConnectionsResponse(**connections)
 
@@ -286,7 +291,9 @@ async def get_entity(
 ):
     """Get entity details with documents."""
     service = KnowledgeGraphService(db)
-    entity = await service.get_entity_by_id(workspace_id, entity_id)
+    entity = await service.get_entity_by_id(
+        workspace_id, entity_id, viewer_id=developer_id
+    )
 
     if not entity:
         raise HTTPException(

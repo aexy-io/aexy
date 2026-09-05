@@ -68,6 +68,24 @@ fs.rmSync(DOCS_OUT, { recursive: true, force: true });
 fs.mkdirSync(DOCS_OUT, { recursive: true });
 
 const allFiles = [];
+let assetCount = 0;
+
+/**
+ * Images a document references.
+ *
+ * They are copied verbatim, preserving structure, so a relative link written
+ * beside the prose — `![…](./images/knowledge-base/editor.png)` — still
+ * resolves once the page is served from /handbook. Until this existed the
+ * generator copied `.md` only, so adding a screenshot to a doc produced a
+ * broken image on the public site and no error anywhere.
+ *
+ * Not filtered by EXCLUDED/INTERNAL: those rules are about *pages*, and an
+ * image is only ever reachable through the page that references it. An orphan
+ * is dead weight rather than a leak, and `test_docs_images_are_referenced`
+ * catches it.
+ */
+const ASSET_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
+
 function walk(dir, relBase = "") {
   for (const name of fs.readdirSync(dir)) {
     const abs = path.join(dir, name);
@@ -75,12 +93,22 @@ function walk(dir, relBase = "") {
     const stat = fs.statSync(abs);
     if (stat.isDirectory()) {
       walk(abs, rel);
-    } else if (name.endsWith(".md")) {
+      continue;
+    }
+
+    const extension = path.extname(name).toLowerCase();
+
+    if (name.endsWith(".md")) {
       if (EXCLUDED.has(rel) || isInternal(rel)) continue;
       allFiles.push(rel);
       const outPath = path.join(DOCS_OUT, rel);
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.copyFileSync(abs, outPath);
+    } else if (ASSET_EXTENSIONS.has(extension)) {
+      const outPath = path.join(DOCS_OUT, rel);
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.copyFileSync(abs, outPath);
+      assetCount += 1;
     }
   }
 }
@@ -229,5 +257,6 @@ fs.writeFileSync(
 );
 
 console.log(
-  `  Generated docs site: ${allFiles.length} pages, ${sections.length} sections → public/docs/`,
+  `  Generated docs site: ${allFiles.length} pages, ${sections.length} sections, ` +
+    `${assetCount} images → public/docs/`,
 );

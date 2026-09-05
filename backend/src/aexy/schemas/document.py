@@ -52,6 +52,24 @@ class DocumentUpdate(BaseModel):
     cover_image: str | None = Field(default=None, max_length=500)
     visibility: DocumentVisibility | None = None
     is_auto_save: bool = False
+    # The sha the editor believes it is editing. Optional so existing clients
+    # keep working unchanged; when present, a mismatch is a 409 carrying the
+    # current content rather than a silent overwrite of somebody else's save.
+    base_sha: str | None = Field(default=None, max_length=64)
+
+
+class DocumentTrashItem(BaseModel):
+    """A document sitting in the trash, and what it would take back with it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    icon: str | None = None
+    space_id: str | None = None
+    deleted_at: datetime
+    deleted_by_id: str | None = None
+    descendant_count: int = 0
 
 
 class DocumentResponse(BaseModel):
@@ -115,6 +133,27 @@ class DocumentListResponse(BaseModel):
     generation_status: DocumentStatus = "draft"
     created_at: datetime
     updated_at: datetime
+
+    # Search-only, and absent everywhere else. Browsing a folder produces no
+    # ranking and nothing to excerpt, so these stay `None` there rather than
+    # the route returning a different shape depending on whether `search` was
+    # passed — one endpoint, one response model, two of its fields populated
+    # only when there is something to put in them.
+    #
+    # `snippet` is why the row matched: on PostgreSQL it is `ts_headline` over
+    # the same tsquery that did the ranking, so the excerpt and the match
+    # cannot disagree. It wraps the matched terms in `<mark>…</mark>`.
+    #
+    # Treat the rest of it as untrusted. `ts_headline` strips *well-formed*
+    # tags it recognises, but a malformed one survives verbatim — a body
+    # containing `<img src=x onerror=alert(1)` with no closing bracket comes
+    # back in the snippet unchanged, and browsers parse unclosed tags happily.
+    # The semantic half of search skips `ts_headline` altogether and returns
+    # raw chunk text. So render by parsing the markers out (see
+    # `highlightSnippet` on the frontend), never by injecting the string as
+    # HTML.
+    snippet: str | None = None
+    score: float | None = None
 
 
 class DocumentTreeItem(BaseModel):

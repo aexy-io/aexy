@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEditor, EditorContent, BubbleMenu } from "@tiptap/react";
 import { Spinner } from "@/components/ui/spinner";
 import StarterKit from "@tiptap/starter-kit";
@@ -72,57 +72,52 @@ export function CollaborativeEditor({
   const [localTitle, setLocalTitle] = useState(title);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const initialContentSetRef = useRef(false);
 
-  // Initialize Yjs document
+  const userColor = useMemo(() => getUserColor(userId), [userId]);
+
+  // The same bearer token the REST client sends. Read on mount rather than at
+  // module scope because this component server-renders, where there is no
+  // `localStorage`. The socket used to be handed `${userId}:${userName}:${email}`
+  // instead — self-asserted, unsigned, and believed.
+  const [authToken, setAuthToken] = useState<string | null>(null);
   useEffect(() => {
-    if (!collaborationEnabled) return;
+    setAuthToken(localStorage.getItem("token"));
+  }, []);
 
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
-
-    return () => {
-      ydoc.destroy();
-      ydocRef.current = null;
-    };
-  }, [collaborationEnabled, documentId]);
-
-  // Collaboration hook
+  // The Yjs document comes from the server, through the provider. This
+  // component used to create its own empty `Y.Doc` and then seed it by calling
+  // `setContent()` with the REST body — which meant two people opening one
+  // page each inserted the whole document into their own history, and the
+  // merge duplicated it. There is deliberately no seeding here now: whatever
+  // arrives on sync *is* the document.
   const {
+    ydoc,
+    provider,
+    synced,
     isConnected,
-    users,
     connectionStatus,
-    sendUpdate,
-    updateAwareness,
+    error: collaborationError,
+    canWrite,
+    reviewedSpace,
+    users,
     reconnect,
   } = useCollaboration({
     documentId,
-    userId,
+    token: authToken,
     userName,
-    userEmail,
+    userColor,
     enabled: collaborationEnabled,
-    onUpdate: (data) => {
-      // Apply updates from other users
-      if (ydocRef.current && data) {
-        try {
-          Y.applyUpdate(ydocRef.current, new Uint8Array(data as ArrayLike<number>));
-        } catch (error) {
-          console.error("Failed to apply Yjs update:", error);
-        }
-      }
-    },
-    onSync: (data) => {
-      // Apply sync data
-      if (ydocRef.current && data) {
-        try {
-          Y.applyUpdate(ydocRef.current, new Uint8Array(data as ArrayLike<number>));
-        } catch (error) {
-          console.error("Failed to apply Yjs sync:", error);
-        }
-      }
-    },
   });
+
+  // Read-only is whichever is stricter: what the caller asked for, and what
+  // the server admitted us as. A viewer whose keystrokes were accepted locally
+  // and refused on the socket would watch their own work disappear.
+  const effectiveReadOnly = readOnly || !canWrite;
+
+  // A space that reviews changes has no shared room, so the editor falls back
+  // to the single-writer path: content comes from REST and a save is a normal
+  // PATCH, which the server turns into a proposal.
+  const collaborative = collaborationEnabled && !reviewedSpace;
 
   // Update local title when prop changes
   useEffect(() => {
@@ -144,9 +139,6 @@ export function CollaborativeEditor({
       }, autoSaveDelay),
     [onSave, autoSaveDelay]
   );
-
-  // Get user color
-  const userColor = getUserColor(userId);
 
   // Build extensions based on collaboration mode
   const getExtensions = useCallback(() => {
@@ -202,97 +194,70 @@ export function CollaborativeEditor({
       SlashCommands,
     ];
 
-    // Add collaboration extensions if enabled and ydoc is ready
-    if (collaborationEnabled && ydocRef.current) {
+    if (collaborative && ydoc && provider) {
       baseExtensions.push(
-        Collaboration.configure({
-          document: ydocRef.current,
-        }) as unknown as typeof StarterKit,
+        Collaboration.configure({ document: ydoc }) as unknown as typeof StarterKit,
+        // The real provider. This used to be a stub whose `setLocalStateField`
+        // had an empty body and whose `on`/`off` did nothing, so remote carets
+        // were never sent and never received — the feature rendered its own UI
+        // and shared nothing.
         CollaborationCursor.configure({
-          provider: {
-            awareness: {
-              setLocalStateField: (field: string, value: unknown) => {
-                if (field === "user") {
-                  // Track cursor position for awareness
-                }
-              },
-              on: () => {},
-              off: () => {},
-            },
-          } as unknown as { awareness: { setLocalStateField: (field: string, value: unknown) => void; on: () => void; off: () => void } },
-          user: {
-            name: userName,
-            color: userColor,
-          },
+          provider,
+          user: { name: userName, color: userColor },
         }) as unknown as typeof StarterKit
       );
     }
 
     return baseExtensions;
-  }, [collaborationEnabled, userName, userColor]);
+  }, [collaborative, ydoc, provider, userName, userColor]);
 
-  const editor = useEditor({
-    extensions: getExtensions(),
-    content: collaborationEnabled ? undefined : content, // Let Yjs handle content in collab mode
-    editable: !readOnly,
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-invert prose-slate max-w-none focus:outline-none min-h-[500px] px-4 py-2",
+  // In collaborative mode the editor is created only once the provider exists,
+  // and its content comes from Yjs. `getExtensions` depends on `ydoc`, so the
+  // key here forces a rebuild when the provider is replaced (a reconnect)
+  // rather than leaving the editor bound to a destroyed document.
+  const editor = useEditor(
+    {
+      extensions: getExtensions(),
+      // Never both. Passing `content` alongside the Collaboration extension is
+      // what TipTap warns about and what duplicated documents here: the
+      // initial content is applied on top of the synced state.
+      content: collaborative ? undefined : content,
+      editable: !effectiveReadOnly,
+      editorProps: {
+        attributes: {
+          class:
+            "prose prose-invert prose-slate max-w-none focus:outline-none min-h-[500px] px-4 py-2",
+        },
+      },
+      onUpdate: ({ editor }) => {
+        // No manual broadcast. The provider sends the incremental Yjs update
+        // for each transaction; the previous code re-encoded the *entire*
+        // document state on every keystroke and sent that instead.
+        //
+        // No content autosave either, in collaborative mode: the server owns
+        // the document and flushes it. Autosaving here would race the flush
+        // and reintroduce last-write-wins on top of the CRDT.
+        if (!collaborative && autoSave && !effectiveReadOnly) {
+          debouncedSave({ content: editor.getJSON() as Record<string, unknown> });
+        }
+      },
+      onCreate: () => {
+        if (!collaborative && content) {
+          // Non-collaborative mode still seeds from REST; there is no shared
+          // document to conflict with.
+          setIsInitialized(true);
+          return;
+        }
+        setIsInitialized(true);
       },
     },
-    onUpdate: ({ editor }) => {
-      // Update awareness with cursor position
-      const { from, to } = editor.state.selection;
-      updateAwareness({ anchor: from, head: to }, null);
+    [collaborative, ydoc, provider, effectiveReadOnly]
+  );
 
-      // Broadcast update to collaborators
-      if (collaborationEnabled && ydocRef.current) {
-        const update = Y.encodeStateAsUpdate(ydocRef.current);
-        sendUpdate(Array.from(update));
-      }
-
-      // Auto-save content
-      if (autoSave && !readOnly) {
-        debouncedSave({ content: editor.getJSON() as Record<string, unknown> });
-      }
-    },
-    onSelectionUpdate: ({ editor }) => {
-      // Update awareness with selection
-      const { from, to } = editor.state.selection;
-      if (from !== to) {
-        updateAwareness(null, { anchor: from, head: to });
-      } else {
-        updateAwareness({ anchor: from, head: to }, null);
-      }
-    },
-    onCreate: ({ editor }) => {
-      // Set initial content for non-collaborative mode or when first loading
-      if (!collaborationEnabled && content && !initialContentSetRef.current) {
-        editor.commands.setContent(content);
-        initialContentSetRef.current = true;
-      }
-      setIsInitialized(true);
-    },
-  });
-
-  // Set initial content when connected in collaboration mode
+  // Keep `editable` in step when the server downgrades us mid-session.
   useEffect(() => {
-    if (
-      collaborationEnabled &&
-      isConnected &&
-      editor &&
-      !initialContentSetRef.current &&
-      content
-    ) {
-      // Only set initial content if document is empty
-      const currentContent = editor.getJSON();
-      if (!currentContent.content || currentContent.content.length === 0) {
-        editor.commands.setContent(content);
-      }
-      initialContentSetRef.current = true;
-    }
-  }, [collaborationEnabled, isConnected, editor, content]);
+    editor?.setEditable(!effectiveReadOnly);
+  }, [editor, effectiveReadOnly]);
 
   // Handle title change
   const handleTitleChange = useCallback(
@@ -346,7 +311,7 @@ export function CollaborativeEditor({
                 onChange={handleTitleChange}
                 onBlur={handleTitleBlur}
                 placeholder="Untitled"
-                disabled={readOnly}
+                disabled={effectiveReadOnly}
                 className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-none outline-none text-foreground placeholder-muted-foreground"
               />
 
@@ -378,7 +343,7 @@ export function CollaborativeEditor({
       )}
 
       {/* Editor Toolbar */}
-      {editor && !readOnly && (
+      {editor && !effectiveReadOnly && (
         <div className="flex items-center justify-between border-b border-border">
           <EditorToolbar editor={editor} onSave={handleManualSave} />
 
@@ -396,7 +361,7 @@ export function CollaborativeEditor({
       )}
 
       {/* Bubble Menu */}
-      {editor && !readOnly && (
+      {editor && !effectiveReadOnly && (
         <BubbleMenu
           editor={editor}
           tippyOptions={{ duration: 100 }}
@@ -442,9 +407,33 @@ export function CollaborativeEditor({
         </BubbleMenu>
       )}
 
+      {/* Why the socket refused, when it did. A read-only editor with no
+          explanation reads as a bug; "your session expired" is actionable. */}
+      {collaborationEnabled && collaborationError && (
+        <div
+          className={
+            reviewedSpace
+              ? "border-b border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-200"
+              : "border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200"
+          }
+        >
+          {collaborationError}
+        </div>
+      )}
+
       {/* Editor Content */}
       <div className="flex-1 overflow-auto">
-        <EditorContent editor={editor} className="h-full" />
+        {collaborationEnabled && !synced && !collaborationError && !reviewedSpace ? (
+          // Deliberately not the editor. An unsynced Y.Doc is empty, and
+          // rendering it shows the reader a blank page where their document
+          // should be — the state the old code then wrote back over the top.
+          <div className="flex h-full items-center justify-center gap-3 text-sm text-muted-foreground">
+            <Spinner className="h-4 w-4" />
+            Loading the latest version…
+          </div>
+        ) : (
+          <EditorContent editor={editor} className="h-full" />
+        )}
       </div>
 
       {/* Connection Status Bar (when disconnected) */}

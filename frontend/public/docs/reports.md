@@ -8,10 +8,29 @@ Routes: `/reports`, `/reports/[id]`, `/reports/monthly`, and `/exports` — whic
 is the `exports` module of this app living at a top-level path.
 `api/reports.py` (15 endpoints), `api/exports.py`.
 
+![The reports a workspace keeps](./images/reports/list.png)
+
+## Reports or Insights?
+
+Two modules answer questions about the same data and they are not
+interchangeable:
+
+* **[Insights](./analytics.md)** — pre-built engineering dashboards over a
+  fixed model. Fast, and it asks the questions for you.
+* **Reports** — you define the question: the source, the filters, the
+  grouping, the columns and the shape it comes out in.
+
+Start from a **template** rather than a blank definition. Five ship with the
+product — weekly team, monthly performance, developer profile, team health,
+executive summary — and forking one gives you a working report to change
+rather than an empty builder to fill.
+
 ## Mental model
 
 - **Report** — a saved definition: a source, filters, groupings, columns and a
-  visualisation. Stored, versioned by edit, and owned by a workspace.
+  visualisation. Owned by a **workspace**, and readable only inside it — a
+  report marked public is public to its workspace, not to the internet and not
+  to your other workspaces.
 - **Running** a report is a separate act from saving one. `POST
   /{report_id}/data` executes the definition and returns rows; the definition
   itself is immutable during the run.

@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -64,6 +65,19 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup on shutdown
+    #
+    # Collaborative documents live as CRDTs in this process's memory between
+    # debounced flushes. Without this, a deploy loses whatever was typed since
+    # the last flush in every document currently open.
+    from aexy.services.document_collaboration import flush_all as flush_collab_rooms
+
+    try:
+        await flush_collab_rooms()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "shutdown: could not flush open collaboration rooms"
+        )
+
     app_settings_subscriber.cancel()
     try:
         await app_settings_subscriber
