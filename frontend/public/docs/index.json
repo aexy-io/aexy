@@ -78,6 +78,18 @@
           "slug": "guides/working-hours-and-clocks",
           "path": "guides/working-hours-and-clocks.md",
           "description": "The shift, the one holiday calendar, and which clock is which"
+        },
+        {
+          "title": "Getting your data out",
+          "slug": "guides/exports",
+          "path": "guides/exports.md",
+          "description": "What each module exports, which format to choose, and the PDF caveat"
+        },
+        {
+          "title": "Notifications & digests",
+          "slug": "guides/notifications-and-digests",
+          "path": "guides/notifications-and-digests.md",
+          "description": "Per-person notifications, per-module digests, and how to stop each"
         }
       ]
     },
@@ -575,6 +587,18 @@
       "description": "The shift, the one holiday calendar, and which clock is which",
       "path": "guides/working-hours-and-clocks.md"
     },
+    "guides/exports": {
+      "title": "Getting your data out",
+      "section": "For administrators",
+      "description": "What each module exports, which format to choose, and the PDF caveat",
+      "path": "guides/exports.md"
+    },
+    "guides/notifications-and-digests": {
+      "title": "Notifications & digests",
+      "section": "For administrators",
+      "description": "Per-person notifications, per-module digests, and how to stop each",
+      "path": "guides/notifications-and-digests.md"
+    },
     "guides/getting-started": {
       "title": "Getting Started",
       "section": "Getting started & operations",
@@ -1046,14 +1070,34 @@
         "slug": "guides/importing-data"
       },
       "next": {
+        "title": "Getting your data out",
+        "slug": "guides/exports"
+      }
+    },
+    "guides/exports": {
+      "prev": {
+        "title": "Working hours, holidays & the clocks",
+        "slug": "guides/working-hours-and-clocks"
+      },
+      "next": {
+        "title": "Notifications & digests",
+        "slug": "guides/notifications-and-digests"
+      }
+    },
+    "guides/notifications-and-digests": {
+      "prev": {
+        "title": "Getting your data out",
+        "slug": "guides/exports"
+      },
+      "next": {
         "title": "Getting Started",
         "slug": "guides/getting-started"
       }
     },
     "guides/getting-started": {
       "prev": {
-        "title": "Working hours, holidays & the clocks",
-        "slug": "guides/working-hours-and-clocks"
+        "title": "Notifications & digests",
+        "slug": "guides/notifications-and-digests"
       },
       "next": {
         "title": "Deployment",

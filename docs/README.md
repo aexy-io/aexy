@@ -26,6 +26,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Email and inbox setup](./guides/email-setup.md) - Mail arriving and mail leaving, and which module reads which
 - [Importing your data](./guides/importing-data.md) - CRM, prospects, wikis and spreadsheets, and what no import does for you
 - [Working hours, holidays & the clocks](./guides/working-hours-and-clocks.md) - The shift, the one holiday calendar, and which clock is which
+- [Getting your data out](./guides/exports.md) - What each module exports, which format to choose, and the PDF caveat
+- [Notifications & digests](./guides/notifications-and-digests.md) - Per-person notifications, per-module digests, and how to stop each
 
 ### Getting started & operations
 - [Getting Started](./guides/getting-started.md) - Quick start guide

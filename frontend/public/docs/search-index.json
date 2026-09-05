@@ -266,6 +266,35 @@
     ]
   },
   {
+    "slug": "guides/exports",
+    "title": "Getting your data out",
+    "section": "For administrators",
+    "description": "What each module exports, which format to choose, and the PDF caveat",
+    "headings": [
+      "Getting your data out",
+      "What comes out, and in what shape",
+      "Choosing a format",
+      "The PDF caveat worth knowing",
+      "Scheduled exports",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "guides/notifications-and-digests",
+    "title": "Notifications & digests",
+    "section": "For administrators",
+    "description": "Per-person notifications, per-module digests, and how to stop each",
+    "headings": [
+      "Notifications and digests",
+      "The two different things",
+      "Notifications: the per-person settings",
+      "Digests: the per-module schedules",
+      "Reminders and escalations",
+      "When somebody says they get too much",
+      "Common mistakes"
+    ]
+  },
+  {
     "slug": "guides/getting-started",
     "title": "Getting Started",
     "section": "Getting started & operations",

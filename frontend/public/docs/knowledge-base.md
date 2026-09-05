@@ -237,17 +237,27 @@ exports as a zip with folders mirroring the page hierarchy.
 The export contains what you can read: a bulk export is a read of every page in
 it, and is filtered accordingly.
 
-> **PDF and non-Latin scripts.** A page written in Hindi or another script that
-> needs reshaping — Devanagari, Arabic, Thai and similar — exports to PDF with
-> its characters drawn individually and not reshaped, so vowel signs and
-> conjuncts can come out in the wrong order or unjoined. The export says so
-> when it happens. **Use Markdown or HTML for a faithful copy of those pages**;
-> those formats keep the text exactly as written.
+> **PDF and non-Latin scripts.** Hindi, Arabic, Hebrew, Thai and other scripts
+> that reshape or join their characters export correctly: the text is shaped
+> before it is drawn, so vowel signs sit where they belong, conjuncts stay
+> joined, and right-to-left runs come out right to left.
 >
-> Latin text is unaffected. Nothing needs configuring — the shipped Docker
-> image includes a font covering Latin and Devanagari. Running outside Docker,
-> an administrator points `AEXY_PDF_FONT_DIR` at a directory holding a font
-> that covers the script, or non-Latin pages export blank.
+> Two things can still go wrong, and the export says so on the page rather than
+> leaving you to notice:
+>
+> * **A glyph the font does not have** — the page names the script and the
+>   characters cannot be drawn.
+> * **Shaping unavailable** — a deployment without the text shaper falls back
+>   to drawing characters individually, which is the old behaviour and is
+>   wrong for those scripts.
+>
+> If either warning appears, **export as Markdown or HTML for a faithful
+> copy**; those formats keep the text exactly as written.
+>
+> Nothing needs configuring in the shipped Docker image: it carries a font
+> covering Latin and Devanagari, and the shaper is a dependency. Running
+> outside Docker, an administrator points `AEXY_PDF_FONT_DIR` at a directory
+> holding a font that covers the script, or non-Latin pages export blank.
 
 ---
 
