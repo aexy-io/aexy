@@ -69,7 +69,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [Organization architecture](./organization-architecture.md) - The tree, access resolution, positions, the directory read
 
 ### Modules — People
-- [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths
+- [Reviews, hiring & learning](./reviews-and-people.md) - Running a review cycle, goals, assessments, learning paths
+- [People architecture](./reviews-and-people-architecture.md) - Models, workflow states, AI usage, external content sources
 - [Compliance](./compliance.md) - Mandatory training, certifications, reminders, escalation, audit
 - [Reminders (guide)](./guides/reminders.md) - The narrower how-to for recurring compliance reminders
 - [Leave](./leave.md) - Types, policies, balances, requesting and approving, the holiday calendar

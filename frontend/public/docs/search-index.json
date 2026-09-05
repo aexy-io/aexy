@@ -1315,9 +1315,25 @@
     "slug": "reviews-and-people",
     "title": "Reviews, hiring & learning",
     "section": "Modules — People",
-    "description": "Performance reviews, hiring & assessments, learning paths",
+    "description": "Running a review cycle, goals, assessments, learning paths",
     "headings": [
-      "People: Reviews, Hiring & Learning",
+      "Reviews, hiring & learning",
+      "Performance reviews",
+      "Who reviews whom",
+      "Two things to tell people honestly",
+      "Goals",
+      "Hiring",
+      "Learning",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "reviews-and-people-architecture",
+    "title": "People architecture",
+    "section": "Modules — People",
+    "description": "Models, workflow states, AI usage, external content sources",
+    "headings": [
+      "People: reviews, hiring & learning — architecture",
       "Performance Reviews",
       "Router",
       "Models (`models/review.py`)",

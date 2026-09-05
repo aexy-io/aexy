@@ -305,7 +305,13 @@
           "title": "Reviews, hiring & learning",
           "slug": "reviews-and-people",
           "path": "reviews-and-people.md",
-          "description": "Performance reviews, hiring & assessments, learning paths"
+          "description": "Running a review cycle, goals, assessments, learning paths"
+        },
+        {
+          "title": "People architecture",
+          "slug": "reviews-and-people-architecture",
+          "path": "reviews-and-people-architecture.md",
+          "description": "Models, workflow states, AI usage, external content sources"
         },
         {
           "title": "Compliance",
@@ -740,8 +746,14 @@
     "reviews-and-people": {
       "title": "Reviews, hiring & learning",
       "section": "Modules — People",
-      "description": "Performance reviews, hiring & assessments, learning paths",
+      "description": "Running a review cycle, goals, assessments, learning paths",
       "path": "reviews-and-people.md"
+    },
+    "reviews-and-people-architecture": {
+      "title": "People architecture",
+      "section": "Modules — People",
+      "description": "Models, workflow states, AI usage, external content sources",
+      "path": "reviews-and-people-architecture.md"
     },
     "compliance": {
       "title": "Compliance",
@@ -1316,14 +1328,24 @@
         "slug": "organization-architecture"
       },
       "next": {
+        "title": "People architecture",
+        "slug": "reviews-and-people-architecture"
+      }
+    },
+    "reviews-and-people-architecture": {
+      "prev": {
+        "title": "Reviews, hiring & learning",
+        "slug": "reviews-and-people"
+      },
+      "next": {
         "title": "Compliance",
         "slug": "compliance"
       }
     },
     "compliance": {
       "prev": {
-        "title": "Reviews, hiring & learning",
-        "slug": "reviews-and-people"
+        "title": "People architecture",
+        "slug": "reviews-and-people-architecture"
       },
       "next": {
         "title": "Reminders (guide)",
