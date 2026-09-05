@@ -61,6 +61,13 @@ GUARDED = [
     ("chat", "chat/channels"),
     ("gtm", "gtm/abm/lists"),
     ("booking", "booking/event-types"),
+    ("email_marketing", "email-infrastructure/providers"),
+    ("compliance", "reminders/dashboard/stats"),
+    ("forms", "visual-builder/blocks"),
+    # Not knowledge-graph: it is plan-gated as well as app-gated, and answers
+    # 403 "Enterprise feature" on a bare workspace — so the enabled half of
+    # this test cannot tell the two refusals apart. The router carries the docs
+    # guard; the ledger test below is what keeps it that way.
 ]
 
 
@@ -171,3 +178,39 @@ def test_the_chat_socket_is_not_behind_an_http_dependency():
         assert not any("guard" in n or "app_access" in n for n in names), (
             f"{route.path} carries an HTTP auth dependency: {names}"
         )
+
+
+def test_the_unguarded_surface_is_declared_rather_than_discovered():
+    """A ledger of workspace-scoped routes that no app guard covers.
+
+    Most of them should not be covered: workspace administration has to keep
+    working whatever modules are switched off — members, invites, roles,
+    billing, the app toggles themselves — and a person locked out of
+    `/app-access` cannot ask for access back.
+
+    The number is here so the *rest* stays visible. It went down as routers
+    were mounted behind their module's guard, and a new workspace-scoped router
+    added without one pushes it back up, which fails this test and asks the
+    author to decide rather than to drift.
+    """
+    from aexy.main import app
+
+    unguarded = 0
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if "{workspace_id}/" not in path:
+            continue
+        names = [
+            getattr(d.dependency, "__name__", "")
+            for d in getattr(route, "dependencies", [])
+        ]
+        if not any(n == "_guard" for n in names):
+            unguarded += 1
+
+    # Raise this only with a reason, and lower it whenever a router moves
+    # behind its module.
+    assert unguarded <= 282, (
+        f"{unguarded} workspace-scoped routes carry no app guard, up from 282. "
+        "A new router needs either `require_app_access(<app>)` or a note here "
+        "saying why it must answer for a workspace that switched the module off."
+    )

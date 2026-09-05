@@ -22,6 +22,15 @@ everybody — including admins and the owner, because "this workspace does not
 use this module" has to beat administrator reach. That is the one setting on
 this page that is a boundary rather than a preference.
 
+Two things it does not close, and should not. **Workspace administration keeps
+working** whatever is switched off — members, invitations, roles, billing and
+the app toggles themselves — because somebody locked out of the access page
+cannot ask for access back. And **a few modules are not workspace-scoped at
+all**: reports belong to the person who made them, and tracking and learning
+records to the person they are about, so a request to those names no workspace
+whose toggle could apply. Switching those off removes them from navigation and
+nothing more.
+
 **The other layers shape navigation more than they restrict reach.** Where
 nothing has been configured for somebody — their departments carry no profile
 and nobody has written them an override — the role bundle decides what appears

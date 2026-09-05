@@ -420,7 +420,9 @@ api_router.include_router(feedback_admin_router, tags=["feedback-admin"])
 # Email Marketing
 api_router.include_router(email_marketing_router, tags=["email-marketing"], dependencies=[Depends(require_app_access("email_marketing"))])
 # Email Infrastructure (Multi-domain sending, warming, routing)
-api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"])
+# Sending domains, providers, warming — the infrastructure the email
+# marketing module is built on, and unusable without it.
+api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"], dependencies=[Depends(require_app_access("email_marketing"))])
 api_router.include_router(email_webhooks_router, tags=["email-webhooks"])
 api_router.include_router(gmail_push_router)
 # Email Tracking (public endpoints for pixel/link tracking)
@@ -429,9 +431,11 @@ api_router.include_router(email_tracking_router, tags=["email-tracking"])
 api_router.include_router(preferences_public_router, tags=["preferences-public"])
 api_router.include_router(subscriptions_router, tags=["subscriptions"])
 # Visual Email Builder
-api_router.include_router(visual_builder_router, tags=["visual-builder"])
+# The form builder's schema/preview API: forms, seen from the editor side.
+api_router.include_router(visual_builder_router, tags=["visual-builder"], dependencies=[Depends(require_app_access("forms"))])
 # Knowledge Graph (Enterprise)
-api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
+# Built from documents and read by the docs surfaces.
+api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"], dependencies=[Depends(require_app_access("docs"))])
 # Calendar Booking
 # The workspace-scoped half only. `public_booking_router`, the RSVP routes
 # and the OAuth callback below are reached by people with no account and
@@ -455,7 +459,9 @@ api_router.include_router(intelligence_router, tags=["intelligence"])
 # Developer Insights
 api_router.include_router(developer_insights_router, tags=["developer-insights"], dependencies=[Depends(require_app_access("insights"))])
 # Recurring Reminders
-api_router.include_router(reminders_router, tags=["reminders"])
+# The recurring-obligation scheduler behind Compliance; `guides/reminders.md`
+# documents it as that module's narrower how-to.
+api_router.include_router(reminders_router, tags=["reminders"], dependencies=[Depends(require_app_access("compliance"))])
 # Questionnaire Import
 api_router.include_router(questionnaires_router, tags=["questionnaires"])
 # Compliance Document Center
