@@ -405,8 +405,18 @@ class ReportBuilderService:
             conditions.append(CustomReport.workspace_id == workspace_id)
 
         if creator_id:
-            if include_public and organization_id:
-                # Public reports are visible only within the same org.
+            if include_public and workspace_id:
+                # Yours, plus anything shared with this workspace. The tenant
+                # filter above already limits the second half to this
+                # workspace, which is what `organization_id` was reaching for
+                # and could not do — nothing ever set it, so this branch was
+                # unreachable and a colleague's shared report was invisible
+                # while `get_report` happily returned it by id.
+                conditions.append(
+                    (CustomReport.creator_id == creator_id)
+                    | CustomReport.is_public.is_(True)
+                )
+            elif include_public and organization_id:
                 conditions.append(
                     (CustomReport.creator_id == creator_id)
                     | (
@@ -415,8 +425,8 @@ class ReportBuilderService:
                     )
                 )
             else:
-                # Default: own reports only. include_public without
-                # organization_id no longer leaks across tenants.
+                # No workspace and no org: own reports only, which is what a
+                # caller that names no tenant is entitled to.
                 conditions.append(CustomReport.creator_id == creator_id)
         elif organization_id:
             conditions.append(CustomReport.organization_id == organization_id)
@@ -887,9 +897,23 @@ class ReportBuilderService:
         self,
         schedule_id: str,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
-        """Get a schedule by ID."""
+        """Get a schedule by ID, within a workspace.
+
+        `update_schedule` and `delete_schedule` both resolve through here, so
+        the workspace they pass is what stops somebody editing another
+        workspace's delivery — changing its recipients to their own address, or
+        deleting it — with nothing but an id.
+
+        Optional for the delivery activity, which resolves a schedule it is
+        already running and has no request to attribute to a workspace.
+        """
         stmt = select(ScheduledReport).where(ScheduledReport.id == schedule_id)
+        if workspace_id:
+            stmt = stmt.join(
+                CustomReport, CustomReport.id == ScheduledReport.report_id
+            ).where(CustomReport.workspace_id == workspace_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -898,8 +922,15 @@ class ReportBuilderService:
         db: AsyncSession,
         report_id: str | None = None,
         active_only: bool = True,
+        workspace_id: str | None = None,
     ) -> list[ScheduledReport]:
-        """List scheduled reports."""
+        """List scheduled reports, within a workspace.
+
+        A schedule carries its recipients, so an unscoped listing hands every
+        workspace's delivery lists to anybody authenticated. It has no tenant
+        column of its own — it borrows its report's, which is why this joins
+        rather than filters.
+        """
         conditions = []
         if report_id:
             conditions.append(ScheduledReport.report_id == report_id)
@@ -907,6 +938,10 @@ class ReportBuilderService:
             conditions.append(ScheduledReport.is_active == True)
 
         stmt = select(ScheduledReport)
+        if workspace_id:
+            stmt = stmt.join(
+                CustomReport, CustomReport.id == ScheduledReport.report_id
+            ).where(CustomReport.workspace_id == workspace_id)
         if conditions:
             stmt = stmt.where(and_(*conditions))
         stmt = stmt.order_by(ScheduledReport.next_run_at)
@@ -919,9 +954,10 @@ class ReportBuilderService:
         schedule_id: str,
         data: ScheduledReportUpdate,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> ScheduledReport | None:
         """Update a scheduled report."""
-        schedule = await self.get_schedule(schedule_id, db)
+        schedule = await self.get_schedule(schedule_id, db, workspace_id)
         if not schedule:
             return None
 
@@ -956,9 +992,10 @@ class ReportBuilderService:
         self,
         schedule_id: str,
         db: AsyncSession,
+        workspace_id: str | None = None,
     ) -> bool:
         """Delete a scheduled report."""
-        schedule = await self.get_schedule(schedule_id, db)
+        schedule = await self.get_schedule(schedule_id, db, workspace_id)
         if not schedule:
             return False
 

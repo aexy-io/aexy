@@ -271,3 +271,125 @@ async def test_a_report_belongs_to_one_workspace(client, workspace, db_session):
     )
     assert listed.status_code == 200
     assert all(r["id"] != report_id for r in listed.json())
+
+
+@pytest.mark.asyncio
+async def test_a_shared_report_is_shared_with_its_workspace(
+    client, workspace, db_session
+):
+    """`is_public` means public *to the workspace*, and the listing says so.
+
+    It used to mean nothing at all: the branch that surfaced a shared report
+    keyed on `organization_id`, which no caller ever wrote, so a colleague's
+    shared report was invisible in the list while `get_report` returned it
+    quite happily by id. Two answers to the same question.
+    """
+    owner, member = workspace["owner"], workspace["member"]
+
+    created = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports",
+        headers=_auth(owner.id),
+        json={
+            "name": "Shared with the team",
+            "widgets": [
+                {"id": "w1", "type": "bar_chart", "title": "Commits", "metric": "commits"}
+            ],
+            "is_public": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    report_id = created.json()["id"]
+
+    listed = await client.get(
+        f"/api/v1/workspaces/{workspace['id']}/reports", headers=_auth(member.id)
+    )
+    assert listed.status_code == 200
+    assert any(r["id"] == report_id for r in listed.json()), (
+        "a shared report did not appear in a colleague's listing"
+    )
+
+    # And the two paths agree: what the list shows, the detail returns.
+    detail = await client.get(
+        f"/api/v1/workspaces/{workspace['id']}/reports/{report_id}",
+        headers=_auth(member.id),
+    )
+    assert detail.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_schedules_do_not_leak_across_workspaces(client, workspace, db_session):
+    """A schedule carries its recipients, and had no tenant of its own.
+
+    Listing them was unfiltered — every workspace's delivery lists, to anybody
+    authenticated — and update/delete resolved a schedule by id with no
+    ownership check at all, so somebody could point another workspace's
+    scheduled report at their own address. A schedule borrows its report's
+    workspace; these paths now join through it.
+    """
+    owner = workspace["owner"]
+    other = Workspace(
+        id=str(uuid4()), name="Nextdoor", slug=f"nextdoor-{uuid4().hex[:6]}", owner_id=owner.id
+    )
+    db_session.add(other)
+    await db_session.flush()
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=other.id, developer_id=owner.id, role="owner", status="active"
+        )
+    )
+    await db_session.commit()
+
+    report = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports",
+        headers=_auth(owner.id),
+        json={
+            "name": "Weekly numbers",
+            "widgets": [
+                {"id": "w1", "type": "bar_chart", "title": "Commits", "metric": "commits"}
+            ],
+        },
+    )
+    assert report.status_code == 201, report.text
+    report_id = report.json()["id"]
+
+    made = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports/{report_id}/schedules",
+        headers=_auth(owner.id),
+        json={
+            # The body carries the report id as well as the path: the schema
+            # requires it, and the endpoint uses the path one.
+            "report_id": report_id,
+            "schedule": "weekly",
+            "time_utc": "09:00",
+            "day_of_week": 1,
+            "recipients": ["board@example.com"],
+            "delivery_method": "email",
+            "export_format": "pdf",
+        },
+    )
+    assert made.status_code == 201, made.text
+    schedule_id = made.json()["id"]
+
+    from_here = await client.get(
+        f"/api/v1/workspaces/{workspace['id']}/reports/schedules/list",
+        headers=_auth(owner.id),
+    )
+    assert from_here.status_code == 200
+    assert any(s["id"] == schedule_id for s in from_here.json())
+
+    # The same person, a workspace the schedule's report does not belong to.
+    from_elsewhere = await client.get(
+        f"/api/v1/workspaces/{other.id}/reports/schedules/list", headers=_auth(owner.id)
+    )
+    assert from_elsewhere.status_code == 200
+    assert all(s["id"] != schedule_id for s in from_elsewhere.json()), (
+        "another workspace's delivery list is readable, recipients included"
+    )
+
+    # And it cannot be redirected from there either.
+    hijack = await client.put(
+        f"/api/v1/workspaces/{other.id}/reports/schedules/{schedule_id}",
+        headers=_auth(owner.id),
+        json={"recipients": ["attacker@example.com"]},
+    )
+    assert hijack.status_code == 404, hijack.text

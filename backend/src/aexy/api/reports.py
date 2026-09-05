@@ -274,6 +274,7 @@ async def list_schedules(
         db=db,
         report_id=report_id,
         active_only=active_only,
+        workspace_id=workspace_id,
     )
     return [ScheduledReportResponse.model_validate(s) for s in schedules]
 
@@ -325,6 +326,7 @@ async def update_schedule(
         schedule_id=schedule_id,
         data=data,
         db=db,
+        workspace_id=workspace_id,
     )
 
     if not schedule:
@@ -345,7 +347,9 @@ async def delete_schedule(
 ) -> None:
     """Delete a scheduled report."""
     service = ReportBuilderService()
-    success = await service.delete_schedule(schedule_id, db)
+    success = await service.delete_schedule(schedule_id, db,
+        workspace_id=workspace_id,
+    )
 
     if not success:
         raise HTTPException(
