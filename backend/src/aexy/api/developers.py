@@ -36,6 +36,42 @@ security = HTTPBearer()
 AGENT_ACTOR = "agent"
 
 
+async def verify_token(token: str, db: AsyncSession) -> tuple[str, str | None] | None:
+    """Validate a bearer token and return `(developer_id, actor)`, or None.
+
+    Extracted so the WebSocket paths can reuse the *same* verification the HTTP
+    dependency performs. They could not before, because `Depends(security)`
+    needs an HTTP request — and what the collaboration socket did instead was
+    split its `token` query parameter on `:` and trust the pieces as a user id
+    and name. Any unauthenticated caller could become anybody.
+
+    Returns None rather than raising: a socket answers an invalid token with a
+    close frame and a code, not an HTTP status.
+    """
+    if not token:
+        return None
+
+    if token.startswith("aexy_"):
+        api_token = await ApiTokenService(db).validate(token)
+        if api_token is None:
+            return None
+        return api_token.developer_id, None
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
+    except JWTError:
+        return None
+
+    developer_id = payload.get("sub")
+    if developer_id is None:
+        return None
+    return developer_id, payload.get("actor")
+
+
 async def get_current_developer_id(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),

@@ -1,6 +1,11 @@
 # Uptime Monitoring Module
 
-Aexy's uptime monitoring module provides endpoint health checking for HTTP, TCP, and WebSocket services. Monitors run on configurable intervals and automatically create support tickets when services go down.
+**For whoever gets woken up.** Checks that an endpoint is answering — HTTP, TCP
+or WebSocket — on an interval you choose, and turns a failure into work rather
+than into a notification nobody owns: a monitor that goes down opens a ticket,
+and can page the on-call rotation for the team that owns it.
+
+The rest of this document is how it is built and configured.
 
 ## Features
 

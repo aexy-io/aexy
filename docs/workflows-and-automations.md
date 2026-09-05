@@ -2,6 +2,8 @@
 
 Aexy has **three overlapping but distinct** ways to "do something when X happens." This doc untangles them.
 
+![Automations, with their triggers, actions and run history](./images/workflows-and-automations/automations.png)
+
 ## The three concepts
 
 | Concept | Where | Granularity | Owner |

@@ -9,11 +9,12 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface Props {
   report: CustomReport;
+  workspaceId: string;
   onClose: () => void;
   onCreated: (schedule: ScheduledReport) => void;
 }
 
-export function ScheduleReportModal({ report, onClose, onCreated }: Props) {
+export function ScheduleReportModal({ report, workspaceId, onClose, onCreated }: Props) {
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [timeUtc, setTimeUtc] = useState("09:00");
   const [dayOfWeek, setDayOfWeek] = useState(1);
@@ -36,7 +37,7 @@ export function ScheduleReportModal({ report, onClose, onCreated }: Props) {
 
     setSubmitting(true);
     try {
-      const schedule = await reportsApi.createSchedule(report.id, {
+      const schedule = await reportsApi.createSchedule(workspaceId, report.id, {
         schedule: frequency,
         time_utc: timeUtc,
         recipients,

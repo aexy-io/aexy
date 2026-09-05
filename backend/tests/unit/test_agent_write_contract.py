@@ -36,6 +36,12 @@ def document(content=EXISTING):
         source_drive_file_id=None,
         workspace_id=WORKSPACE,
         parent_id=None,
+        space_id=None,
+        # Trash and lifecycle columns a real Document carries; the access layer
+        # reads `deleted_at` before anything else.
+        deleted_at=None,
+        deleted_by_id=None,
+        owner_id="dev-1",
         title="Session service",
         content=content,
         content_text=None,
@@ -82,6 +88,21 @@ def _wired(monkeypatch):
         return None
 
     monkeypatch.setattr(documents_api, "ensure_app_enabled", enabled)
+
+    # These tests are about the agent-proposal contract, not about access.
+    # `require_document` resolves through the database and the document here is
+    # a stand-in; the access rules have their own matrix in
+    # `test_document_access_matrix.py`.
+    async def entitled(workspace_id, document_id, _user, _db, minimum=None):
+        # Delegates to the mocked service so a test that overrides
+        # `get_document` — the empty-document case below — still decides what
+        # the endpoint sees.
+        return (
+            await service.get_document(document_id, workspace_id),
+            documents_api.AccessLevel.ADMIN,
+        )
+
+    monkeypatch.setattr(documents_api, "require_document", entitled)
 
     service = MagicMock()
     service.get_document = AsyncMock(return_value=document())

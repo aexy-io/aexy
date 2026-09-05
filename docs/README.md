@@ -20,6 +20,15 @@ We're on a mission to bring positive change by building world-class tools actual
 - [API Overview](./api/overview.md) - Base URL, live Swagger/ReDoc, pointers to the cross-cutting API docs
 - [Tracker ingest API](./api/tracker-ingest.md) - Aexy Tracker device enrollment + idempotent event ingest contract
 
+### For administrators
+- [Setting up a workspace](./guides/workspace-setup.md) - The first hour: people, apps, departments, modules
+- [Roles, permissions & app access](./guides/roles-and-access.md) - Why two colleagues see different things, and how to change it
+- [Email and inbox setup](./guides/email-setup.md) - Mail arriving and mail leaving, and which module reads which
+- [Importing your data](./guides/importing-data.md) - CRM, prospects, wikis and spreadsheets, and what no import does for you
+- [Working hours, holidays & the clocks](./guides/working-hours-and-clocks.md) - The shift, the one holiday calendar, and which clock is which
+- [Getting your data out](./guides/exports.md) - What each module exports, which format to choose, and the PDF caveat
+- [Notifications & digests](./guides/notifications-and-digests.md) - Per-person notifications, per-module digests, and how to stop each
+
 ### Getting started & operations
 - [Getting Started](./guides/getting-started.md) - Quick start guide
 - [Deployment](./guides/deployment.md) - Production deployment guide
@@ -46,34 +55,46 @@ We're on a mission to bring positive change by building world-class tools actual
 - [OpenObserve](./integrations/openobserve.md) - Log and trace shipping
 
 ### Modules — Work & planning
-- [Sprints & planning](./sprints.md) - Sprints, epics, stories, planning poker, retrospectives, releases
-- [Tickets & projects](./tickets-and-projects.md) - Tickets, sprint tasks, projects, templates, ticket forms
-- [Service Desk](./service-desk.md) - Email intake, pending-with handoffs, the breach clock, master data
-- [Booking](./booking.md) - Calendar scheduling, team bookings & RSVP
+- [Sprints & planning](./sprints.md) - The board, the backlog, running a cycle, estimating together
+- [Sprints & planning architecture](./sprints-architecture.md) - Models, lifecycle endpoints, poker sessions, external sync
+- [Tickets & projects](./tickets-and-projects.md) - Raising tickets, where the queue lives, forms, converting to work
+- [Tickets & projects architecture](./tickets-and-projects-architecture.md) - The four work-item models, statuses, sync, public projects
+- [Service Desk](./service-desk.md) - Running a desk: mailboxes, master data, handoffs, the clock, reports
+- [Service Desk architecture](./service-desk-architecture.md) - How it is built: intake pipeline, models, API, frontend
+- [Booking](./booking.md) - Meeting types, availability, team assignment, the public link
+- [Booking architecture & setup](./booking-architecture.md) - Google/Microsoft setup, endpoints, RSVP, schema
 - [Tracking](./tracking.md) - Standups, time entries, blockers, entity activity
 - [Aexy Tracker](./aexy-tracker.md) - macOS work tracker + AI auto-attribution (timesheet, journals, insights)
 
 ### Modules — Core
 - [Dashboard](./dashboard.md) - My Work, the widget grid, presets
-- [Organization](./organization.md) - Departments, teams, the org chart, access profiles
+- [Organization](./organization.md) - Departments, placing people, reporting lines, and what a department switches on
+- [Organization architecture](./organization-architecture.md) - The tree, access resolution, positions, the directory read
 
 ### Modules — People
-- [Reviews, hiring & learning](./reviews-and-people.md) - Performance reviews, hiring & assessments, learning paths
-- [Compliance](./compliance.md) - Mandatory training, certifications, reminders, escalation, audit
+- [Reviews, hiring & learning](./reviews-and-people.md) - Running a review cycle, goals, assessments, learning paths
+- [People architecture](./reviews-and-people-architecture.md) - Models, workflow states, AI usage, external content sources
+- [Compliance](./compliance.md) - Mandatory training, certifications, evidence, escalation
+- [Compliance architecture](./compliance-architecture.md) - Models, schedules, questionnaires, the audit log
 - [Reminders (guide)](./guides/reminders.md) - The narrower how-to for recurring compliance reminders
-- [Leave](./leave.md) - Time-off types, policies, approvals, balances
+- [Leave](./leave.md) - Types, policies, balances, requesting and approving, the holiday calendar
+- [Leave architecture](./leave-architecture.md) - Endpoints, models, the request workflow, carry-forward
 
 ### Modules — Customers
-- [CRM](./crm.md) - Companies, people, deals, custom objects, sequences, automations
+- [CRM](./crm.md) - Objects and records, lists, pipelines, automations, sequences
+- [CRM architecture](./crm-architecture.md) - Storage, the attribute system, the automation engine, webhooks
 - [GTM](./gtm.md) - Lead scoring, ABM, outreach sequences, intent, expansion playbooks
-- [Forms](./forms.md) - Public form builder, themes, conditional logic, ticket/CRM/deal routing
-- [Tables](./tables.md) - Airtable-style custom data tables with saved views
+- [Forms](./forms.md) - Templates, building a form, the public link, routing what it collects
+- [Forms architecture](./forms-architecture.md) - Model, public submission flow, the builder API, question bank
+- [Tables](./tables.md) - Custom tables, typed fields, saved views, who sees which rows
+- [Tables architecture](./tables-architecture.md) - Shared CRM storage, view types, access modes, the audit trail
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 
 ### Modules — AI & knowledge
 - [AI Agents](./ai-agents.md) - LangGraph-based agents with CRM/email tools
 - [Workflows & automations](./workflows-and-automations.md) - Automation triggers/actions + visual workflows + agent policies
-- [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Docs, file browser, AI metadata pipeline, MCP
+- [Knowledge base](./knowledge-base.md) - Spaces, pages, collaborative editing, review and freshness, search, publishing, import & export
+- [Documents, Drive & Knowledge Graph](./documents-and-drive.md) - Architecture behind the above, plus Drive, the AI metadata pipeline and MCP
 - [Drive](./drive.md) - Files, folders, smart views, quota
 
 ### Modules — Observability
@@ -88,7 +109,6 @@ We're on a mission to bring positive change by building world-class tools actual
 
 ### Testing
 - [Testing Strategy](./testing/testing-strategy.md) - Overall testing approach
-- [Testing Tracker](./testing/testing-tracker.md) - Test coverage and status
 
 ## Products
 
@@ -120,8 +140,6 @@ Aexy is a complete Engineering OS with 10 integrated products:
 
 | Resource | Description |
 |----------|-------------|
-| [Implementation Tracker](./tracker.md) | Project implementation status |
-| [Testing Tracker](./testing/testing-tracker.md) | Test coverage and validation |
 | [API Endpoints](./api/overview.md) | Complete API reference |
 | [Getting Started](./guides/getting-started.md) | Development setup |
 

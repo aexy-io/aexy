@@ -83,6 +83,10 @@ from aexy.api.notifications import router as notifications_router
 from aexy.api.oncall import router as oncall_router
 from aexy.api.google_calendar import router as google_calendar_router
 # Documentation
+from aexy.api.document_governance import router as document_governance_router
+from aexy.api.document_import import router as document_import_router
+from aexy.api.documents import guard_document_route
+from aexy.api.kb_portal import router as kb_portal_router
 from aexy.api.documents import router as documents_router
 from aexy.api.documents import template_router as templates_router
 from aexy.api.document_impact import router as document_impact_router
@@ -215,6 +219,7 @@ from aexy.api.ask import router as ask_router, share_router as ask_share_router
 from aexy.api.ai_feedback import router as ai_feedback_router
 # Team Chat
 from aexy.api.chat import router as chat_router
+from aexy.api.chat import ws_router as chat_ws_router
 
 api_router = APIRouter()
 
@@ -242,7 +247,17 @@ api_router.include_router(learning_integrations_router, tags=["learning-integrat
 api_router.include_router(hiring_router, tags=["hiring"])
 # Phase 4: Advanced Analytics
 api_router.include_router(analytics_router, tags=["analytics"])
-api_router.include_router(reports_router, tags=["reports"])
+# Reports are workspace-scoped as of 0.36: the router carries
+# `{workspace_id}`, every query filters on it, and the module can
+# therefore be switched off like any other.
+api_router.include_router(
+    reports_router,
+    tags=["reports"],
+    dependencies=[
+        Depends(require_app_access("reports")),
+        Depends(require_workspace_member()),
+    ],
+)
 api_router.include_router(predictions_router, tags=["predictions"])
 api_router.include_router(exports_router, tags=["exports"])
 # Phase 4: Ecosystem Integrations
@@ -303,7 +318,42 @@ api_router.include_router(notifications_router, tags=["notifications"])
 api_router.include_router(oncall_router, tags=["oncall"], dependencies=[Depends(require_app_access("oncall"))])
 api_router.include_router(google_calendar_router, tags=["google-calendar"])
 # Documentation
-api_router.include_router(documents_router, tags=["documents"], dependencies=[Depends(require_app_access("docs"))])
+# Governance shares the documents prefix, the docs app gate and the same
+# baseline document guard — a route added there cannot forget the access check
+# any more than one added to `documents.py` can.
+api_router.include_router(
+    document_governance_router,
+    tags=["document-governance"],
+    dependencies=[
+        Depends(require_app_access("docs")),
+        Depends(guard_document_route),
+    ],
+)
+
+# Import shares the documents prefix and the docs app gate. Not the document
+# guard: its routes carry no `{document_id}`, and it enforces space admin
+# itself because importing writes in bulk.
+api_router.include_router(
+    document_import_router,
+    tags=["document-import"],
+    dependencies=[Depends(require_app_access("docs"))],
+)
+
+# The public portal is deliberately outside both gates: it is unauthenticated
+# and reads only `published_documents`, never `documents`.
+api_router.include_router(kb_portal_router)
+
+api_router.include_router(
+    documents_router,
+    tags=["documents"],
+    dependencies=[
+        Depends(require_app_access("docs")),
+        # Baseline document-level read gate. Router-level rather than
+        # per-endpoint so a route added later fails closed. See
+        # `guard_document_route` for why that placement matters.
+        Depends(guard_document_route),
+    ],
+)
 # templates_router mixes system templates (no workspace) with workspace-owned
 # ones, so the docs toggle is enforced per-endpoint inside documents.py
 # (ensure_app_enabled) rather than as a blanket router dependency.
@@ -380,7 +430,9 @@ api_router.include_router(feedback_admin_router, tags=["feedback-admin"])
 # Email Marketing
 api_router.include_router(email_marketing_router, tags=["email-marketing"], dependencies=[Depends(require_app_access("email_marketing"))])
 # Email Infrastructure (Multi-domain sending, warming, routing)
-api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"])
+# Sending domains, providers, warming — the infrastructure the email
+# marketing module is built on, and unusable without it.
+api_router.include_router(email_infrastructure_router, tags=["email-infrastructure"], dependencies=[Depends(require_app_access("email_marketing"))])
 api_router.include_router(email_webhooks_router, tags=["email-webhooks"])
 api_router.include_router(gmail_push_router)
 # Email Tracking (public endpoints for pixel/link tracking)
@@ -389,11 +441,16 @@ api_router.include_router(email_tracking_router, tags=["email-tracking"])
 api_router.include_router(preferences_public_router, tags=["preferences-public"])
 api_router.include_router(subscriptions_router, tags=["subscriptions"])
 # Visual Email Builder
-api_router.include_router(visual_builder_router, tags=["visual-builder"])
+# The form builder's schema/preview API: forms, seen from the editor side.
+api_router.include_router(visual_builder_router, tags=["visual-builder"], dependencies=[Depends(require_app_access("forms"))])
 # Knowledge Graph (Enterprise)
-api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"])
+# Built from documents and read by the docs surfaces.
+api_router.include_router(knowledge_graph_router, tags=["knowledge-graph"], dependencies=[Depends(require_app_access("docs"))])
 # Calendar Booking
-api_router.include_router(booking_router, tags=["booking"])
+# The workspace-scoped half only. `public_booking_router`, the RSVP routes
+# and the OAuth callback below are reached by people with no account and
+# no workspace to check an app toggle against.
+api_router.include_router(booking_router, tags=["booking"], dependencies=[Depends(require_app_access("booking"))])
 api_router.include_router(public_booking_router, tags=["booking-public"])
 api_router.include_router(rsvp_booking_router, tags=["booking-rsvp"])
 api_router.include_router(calendar_callback_booking_router, tags=["booking-calendar-callback"])
@@ -412,7 +469,9 @@ api_router.include_router(intelligence_router, tags=["intelligence"])
 # Developer Insights
 api_router.include_router(developer_insights_router, tags=["developer-insights"], dependencies=[Depends(require_app_access("insights"))])
 # Recurring Reminders
-api_router.include_router(reminders_router, tags=["reminders"])
+# The recurring-obligation scheduler behind Compliance; `guides/reminders.md`
+# documents it as that module's narrower how-to.
+api_router.include_router(reminders_router, tags=["reminders"], dependencies=[Depends(require_app_access("compliance"))])
 # Questionnaire Import
 api_router.include_router(questionnaires_router, tags=["questionnaires"])
 # Compliance Document Center
@@ -425,10 +484,10 @@ api_router.include_router(file_search_router, tags=["file-search"])
 # Super-admin plan editor + AI backfill
 api_router.include_router(admin_plans_router, tags=["platform-admin-plans"])
 # Leave Management & Team Calendar
-api_router.include_router(leave_router, tags=["leave"])
+api_router.include_router(leave_router, tags=["leave"], dependencies=[Depends(require_app_access("leave"))])
 api_router.include_router(team_calendar_router, tags=["team-calendar"])
 # GTM (Go-To-Market)
-api_router.include_router(gtm_router, tags=["gtm"])
+api_router.include_router(gtm_router, tags=["gtm"], dependencies=[Depends(require_app_access("gtm"))])
 api_router.include_router(event_ingestion_router, tags=["event-ingestion"])
 api_router.include_router(tracker_ingest_router, tags=["tracker-ingest"])
 api_router.include_router(tracker_qa_router, tags=["tracker-qa"])
@@ -462,4 +521,8 @@ api_router.include_router(ask_share_router, tags=["ask"])
 # AI Feedback
 api_router.include_router(ai_feedback_router, tags=["ai-feedback"])
 # Team Chat
-api_router.include_router(chat_router, tags=["chat"])
+api_router.include_router(chat_router, tags=["chat"], dependencies=[Depends(require_app_access("chat"))])
+# Without the guard: see `chat.ws_router` — the dependency reads an
+# Authorization header the handshake cannot carry, and the socket does the
+# check itself.
+api_router.include_router(chat_ws_router, tags=["chat"])

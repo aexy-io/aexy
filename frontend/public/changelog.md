@@ -5,6 +5,173 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-09-05
+
+Switching a module off now switches it off, reports belong to a workspace
+instead of to nobody, and the MCP catalogue describes the application again.
+
+### Security: a disabled module answered anyway
+
+`require_app_access` checks both halves of app access — the workspace-wide
+toggle and the caller's own grant — but a router that never mounts it is not
+checked at all, and nine did not. **Leave, chat, GTM, booking, email
+infrastructure, reminders, the form builder, the knowledge graph and reports**
+all answered perfectly well for a workspace that had switched them off, which
+made "disabled" a sidebar preference rather than a decision.
+
+They are mounted now, and a workspace-level disable closes the module for
+everybody in it — administrators included. Administrator reach over a module an
+individual has hidden is deliberate; it stops at a module the workspace has
+turned off.
+
+Deliberately still open: the public booking page, RSVP links and the OAuth
+callback, all reached by people with no account and no workspace to check a
+toggle against, and the dashboard, which nobody can switch off. Five more
+modules mix workspace-scoped routes with account-scoped ones and need the
+former split out before a router-level guard can apply; the count of routes
+still unguarded is now asserted by a test, so it can fall but not quietly rise.
+
+The documentation is corrected in the same breath, because it overstated the
+hole in the other direction — it said app access "is not a security boundary"
+and the API "answers either way".
+
+### Security: reports belonged to nobody in particular
+
+Reports were the one module whose requests named no tenant. They scoped by
+creator, and the column that was supposed to carry the tenant had never been
+written by a single caller — so three things were true at once:
+
+- **A shared report was readable from any workspace.** Anybody holding its id
+  could read a report marked public, wherever they were, because the
+  cross-tenant check the code intended could never fire.
+- **Every workspace's scheduled reports were listed to anybody signed in**,
+  recipient addresses included — and a schedule could be pointed at another
+  address, or deleted, by anyone who knew its id. Nothing checked ownership.
+- **The module could not be switched off**, because a request that names no
+  workspace has no toggle to consult.
+
+Reports now carry a workspace, every query filters on it, and the module sits
+behind the same guard as the rest. `is_public` finally means something:
+*shared with this workspace*, which is what a colleague looking for it always
+assumed.
+
+**Breaking:** the report endpoints move from `/api/v1/reports/…` to
+`/api/v1/workspaces/{workspace_id}/reports/…`. Anything calling them directly —
+scripts, integrations, an MCP client holding an old catalogue — needs the new
+path. Reports saved before this upgrade have no workspace to attribute them to;
+they stay reachable by the person who created them rather than being guessed
+into a workspace they merely belong to.
+
+### Fixed: resuming a failed import looked like it did nothing
+
+A retry reuses the job id, so the dialog kept serving the cached *failed* job
+and stopped asking for progress. It sat on "Import failed", still offering
+Resume, while the run it had just started imported the rest of the archive.
+
+### Fixed: the MCP catalogue described an application that had moved on
+
+The generator had been refusing to run — on `main` too — because six tags
+carried no capability, so the catalogue could not be regenerated and drifted.
+It still advertised the old `/api/v1/reports/…` paths, and 25 document
+operations were missing from it entirely. Its tests passed throughout, because
+they checked the catalogue against itself rather than against the application.
+
+All six tags are capped, the catalogue is regenerated at 1,961 operations
+across 28 capabilities, and the public knowledge-base portal is excluded from
+it like the other unauthenticated surfaces.
+
+### Removed: `custom_reports.organization_id`
+
+An `Organization` here is a **GitHub** organization, synced from GitHub — two
+workspaces can share one, and a workspace with no GitHub connection has none.
+It could never answer "who may see this report". The workspace does. Production
+was checked before the column was dropped, and the migration re-checks and
+refuses rather than dropping if it finds a value.
+
+The `organization_id` columns on repositories, developer organizations, hiring,
+assessments and question banks are untouched — those use the concept as
+designed.
+
+## [0.35.0] - 2026-09-05
+
+Documentation you can trust, a screen for an import that had none, and Hindi
+PDFs that are correct rather than merely present.
+
+### Feature: the wiki import has a way in
+
+Bringing a Notion or Confluence export into the knowledge base was complete on
+the server — upload, background job, progress, resume, link rewriting — and had
+no way to start it. No button, no client method, nothing. **Documents → Import
+a wiki**, beside "Add space", is that way in: choose the archive, choose where
+it lands, and watch it.
+
+The dialog refuses an empty or oversized archive before it uploads anything,
+because a 500 MB upload refused after it finishes has already cost you ten
+minutes. It polls only while the job is running. It treats *imported, with
+pages skipped* as what it is — a finished import, not a failure — and lists the
+pages that would not convert with the reason. A stopped import resumes where it
+stopped rather than starting again, so a retry never gives you a second copy of
+everything.
+
+### Feature: Hindi, Arabic and Hebrew PDFs come out right
+
+A PDF of a page written in Devanagari used to be drawn one character at a time:
+`नीति` came out with its leading vowel sign stranded after the consonant it
+belongs in front of, conjuncts broken open, and Arabic unjoined and in the
+wrong direction. The text is now shaped before it is drawn — vowel signs sit
+where they belong, conjuncts stay joined, right-to-left runs run right to left.
+
+The warning that used to appear on every such export is gone, because it is no
+longer true. Two narrower ones remain and are worth reading when they show up:
+a character the font cannot draw, and a deployment without the text shaper.
+Either one means Markdown or HTML is the faithful copy.
+
+### Feature: community posts render as markdown
+
+Posts are written as markdown and were shown as plain text, so a release note
+published to a channel arrived with its `##` and `-` on display. They render
+properly now, with a single newline treated as a line break — which is how
+people write in a chat box.
+
+The other half is quieter: a post quoted into a search-result snippet, an
+OpenGraph description or an RSS item is prose with no renderer behind it, and
+was arriving as `## Added - Changelog script…`. Those surfaces now strip the
+markup instead.
+
+### Documentation: nineteen guides, fifty-nine screenshots, taken from the app
+
+The published documentation was thirty-six architecture references — "Routers ·
+Models · Frontend · Common pitfalls" — sitting under headings that promise a
+product manual, and four screenshots in the entire tree. Each module a reader
+is likely to arrive at now has a **guide** written for somebody standing in
+front of the app, with the architecture reference kept beside it, and a new
+**For administrators** section covering workspace setup, roles and access,
+email, imports, the working-hours clock, exports, and notifications.
+
+Every screenshot is produced by a spec that drives the real application against
+a seeded demo workspace, so a UI change is one command away from correct
+documentation rather than a slow drift into fiction.
+
+Writing them found things reading the code had not: `/tickets` had not been the
+ticket list for a while and the docs still sent readers there; the Service
+Desk's seeded tickets were counted by the generic ticketing module as its own;
+leave balances are rows a policy does not create; and app access shapes
+navigation without being a security boundary, which the guide now says plainly
+rather than implying the opposite.
+
+## [0.34.0] - 2026-09-04
+
+### Fix: anyone in a workspace could read every document in it
+
+The knowledge base had three access-control concepts — document visibility,
+space membership and collaborator grades — stored, returned in API responses,
+and enforced on no read path. A private document was readable by any workspace
+viewer holding its id, and search filtered on the workspace alone, which made
+that id findable by content.
+
+`DocumentAccess` is now the single answer, in two shapes: one document, or a
+SQL predicate that list, tree, search and export all share.
+
 ## [0.33.0] - 2026-09-04
 
 The Service Desk can now say where a ticket's time went, and how its owners are

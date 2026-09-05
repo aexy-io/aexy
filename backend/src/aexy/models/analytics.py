@@ -29,12 +29,19 @@ class CustomReport(Base):
         ForeignKey("developers.id", ondelete="CASCADE"),
         index=True,
     )
-    organization_id: Mapped[str | None] = mapped_column(
+    #: The tenant. Every read filters on it, so a report cannot be listed,
+    #: opened, run, cloned or scheduled from another workspace.
+    #:
+    #: Nullable in the column and required by the API: rows that predate the
+    #: scoping have no workspace to attribute them to, and deleting somebody's
+    #: saved reports to add a constraint is not a trade worth making. They are
+    #: reachable only by their creator, which is what they were before.
+    workspace_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
-
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 

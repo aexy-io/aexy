@@ -37,6 +37,7 @@
     },
     "reply": {
       "label": "जवाब जोड़ें",
+      "markdownHint": "Markdown समर्थित",
       "placeholder": "आप जो जानते हैं वह साझा करें…",
       "submit": "जवाब पोस्ट करें",
       "posting": "पोस्ट कर रहे हैं…",
@@ -104,7 +105,8 @@
     "auth": {
       "signIn": "साइन इन करें",
       "signInToJoin": "शामिल होने के लिए साइन इन करें",
-      "openApp": "ऐप खोलें"
+      "openApp": "ऐप खोलें",
+      "signOut": "साइन आउट"
     },
     "internal": {
       "title": "आंतरिक थ्रेड",

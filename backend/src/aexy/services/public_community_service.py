@@ -58,6 +58,61 @@ def render_public_content(content: str) -> str:
     return _MENTION_RE.sub(lambda m: f"@{m.group(1)}", content or "")
 
 
+# Markdown markup, for the excerpt paths only. A post is *rendered* as markdown
+# in the thread (frontend `components/community/MarkdownContent`), but a search
+# snippet and an RSS <description> are prose fields with no renderer behind
+# them, so a release note quoted into one arrives as "## Added - Changelog
+# script…" unless the syntax is taken back out first.
+#
+# A string pass rather than a parser, and the same rules as the frontend's
+# `lib/markdownText.ts`: it produces a 200-character excerpt, so the cost of an
+# edge case is a stray asterisk. Markup goes, text stays — including the inside
+# of code blocks, often the part of a release note worth matching on.
+_EXCERPT_STEPS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^[ \t]*\[[^\]]*\]:.*$", re.M), ""),  # link definitions
+    (re.compile(r"^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*$", re.M), ""),
+    (re.compile(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$", re.M), ""),  # thematic breaks
+    (re.compile(r"^[ \t]*(?:```|~~~).*$", re.M), ""),  # code fences, not their contents
+    (re.compile(r"^[ \t]*(?:>[ \t]?)*(?:(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?|#{1,6}[ \t]+)?", re.M), ""),
+    (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),  # images → alt
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),  # inline links → text
+    # Only a bracket pair *followed by* a reference. A bare `[text]` keeps its
+    # brackets: far more of it is `Optional[str]` and `items[0]` than is a
+    # shortcut reference link, and unwrapping those gave `Optionalstr`/`items0`.
+    (re.compile(r"\[([^\]]*)\]\[[^\]]*\]"), r"\1"),  # reference links → text
+    (re.compile(r"<((?:https?|mailto):[^>\s]+)>"), r"\1"),  # autolinks → bare URL
+    (re.compile(r"(~~|`+)"), ""),  # strikethrough / inline code
+    # Emphasis only where a delimiter can actually open or close it: a `*` or
+    # `_` flanked by alphanumerics is literal in CommonMark. Stripping those
+    # anyway turned `run_migrations.py` into `runmigrations.py` and — worse,
+    # being a different number rather than lost formatting — `4*5=20` into
+    # `45=20`.
+    (re.compile(r"(?<![*_A-Za-z0-9])[*_]{1,3}(?![*_])|(?<![*_])[*_]{1,3}(?![*_A-Za-z0-9])"), ""),
+    (re.compile(r"[ \t]*\|[ \t]*"), " "),  # table cell separators
+    (re.compile(r"\s+"), " "),
+)
+
+
+def excerpt_text(content: str, limit: int = _SNIPPET_CHARS) -> str:
+    """Flatten a post to a one-line plain-text excerpt of at most ``limit`` chars.
+
+    Cut at a word boundary: truncating mid-word is visible in a search result
+    and reads as a broken page. A single very long token is still cut, since
+    honouring the boundary there would throw the excerpt away.
+    """
+    text = render_public_content(content or "")
+    for pattern, replacement in _EXCERPT_STEPS:
+        text = pattern.sub(replacement, text)
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+
+    cut = text[:limit]
+    last_space = cut.rfind(" ")
+    body = cut[:last_space] if last_space > limit * 0.6 else cut
+    return body.rstrip() + "…"
+
+
 def member_handle(workspace_id: str, developer_id: str) -> str:
     """Opaque, stable public handle for a member of one community.
 
@@ -563,10 +618,7 @@ class PublicCommunityService:
             for topic_id, content in rows:
                 if topic_id in found:
                     continue
-                text = render_public_content(content or "").strip()
-                found[topic_id] = (
-                    text[:_SNIPPET_CHARS] + "…" if len(text) > _SNIPPET_CHARS else text
-                )
+                found[topic_id] = excerpt_text(content)
             return found
 
         out = await excerpts(matching_only=True)
@@ -762,10 +814,7 @@ class PublicCommunityService:
         ).all()
         for topic_id, content in message_rows:
             if topic_id not in first:
-                text = render_public_content(content or "").strip()
-                first[topic_id] = (
-                    text[:_SNIPPET_CHARS] + "…" if len(text) > _SNIPPET_CHARS else text
-                )
+                first[topic_id] = excerpt_text(content)
 
         return [
             {

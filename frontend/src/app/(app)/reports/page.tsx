@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -35,6 +36,11 @@ type ScheduledReportRow = ScheduledReport & { reportName: string };
 
 export default function ReportsPage() {
   const { isAuthenticated } = useAuth();
+  // Reports belong to a workspace, so every call names one; without it the
+  // page would be asking "which reports?" and getting whichever answer the
+  // API felt like giving.
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id ?? null;
   const [reports, setReports] = useState<CustomReport[]>([]);
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [schedules, setSchedules] = useState<ScheduledReport[]>([]);
@@ -48,10 +54,11 @@ export default function ReportsPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!workspaceId) return;
     setLoading(true);
     try {
       const [reportsData, templatesData, schedulesData] = await Promise.all([
-        reportsApi.listReports().catch(() => []),
+        reportsApi.listReports(workspaceId!).catch(() => []),
         reportsApi.listTemplates().catch(() => []),
         reportsApi.listSchedules().catch(() => []),
       ]);
@@ -64,7 +71,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -75,7 +82,7 @@ export default function ReportsPage() {
   const handleCreateFromTemplate = async (templateId: string) => {
     setCreatingFromTemplate(templateId);
     try {
-      const newReport = await reportsApi.createFromTemplate(templateId);
+      const newReport = await reportsApi.createFromTemplate(workspaceId!, templateId);
       setReports((prev) => [newReport, ...prev]);
       setShowTemplateModal(false);
       toast.success(`Created "${newReport.name}"`);
@@ -90,7 +97,7 @@ export default function ReportsPage() {
   const handleDeleteReport = async (reportId: string) => {
     setDeleting(reportId);
     try {
-      await reportsApi.deleteReport(reportId);
+      await reportsApi.deleteReport(workspaceId!, reportId);
       setReports((prev) => prev.filter((r) => r.id !== reportId));
       toast.success("Report deleted");
     } catch (error) {
@@ -104,7 +111,7 @@ export default function ReportsPage() {
   const handleCloneReport = async (reportId: string, name: string) => {
     setCloning(reportId);
     try {
-      const cloned = await reportsApi.cloneReport(reportId, `Copy of ${name}`);
+      const cloned = await reportsApi.cloneReport(workspaceId!, reportId, `Copy of ${name}`);
       setReports((prev) => [cloned, ...prev]);
       toast.success(`Cloned to "${cloned.name}"`);
     } catch (error) {
@@ -516,7 +523,7 @@ export default function ReportsPage() {
               {selectedReport.description && (
                 <p className="text-muted-foreground mb-6">{selectedReport.description}</p>
               )}
-              <ReportDataView report={selectedReport} />
+              <ReportDataView report={selectedReport} workspaceId={workspaceId!} />
             </div>
           </div>
         </div>
@@ -526,6 +533,7 @@ export default function ReportsPage() {
       {schedulingReport && (
         <ScheduleReportModal
           report={schedulingReport}
+          workspaceId={workspaceId!}
           onClose={() => setSchedulingReport(null)}
           onCreated={handleScheduleCreated}
         />

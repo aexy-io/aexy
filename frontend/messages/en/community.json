@@ -37,6 +37,7 @@
     },
     "reply": {
       "label": "Add a reply",
+      "markdownHint": "Markdown supported",
       "placeholder": "Share what you know…",
       "submit": "Post reply",
       "posting": "Posting…",
@@ -104,7 +105,8 @@
     "auth": {
       "signIn": "Sign in",
       "signInToJoin": "Sign in to join",
-      "openApp": "Open app"
+      "openApp": "Open app",
+      "signOut": "Sign out"
     },
     "internal": {
       "title": "Internal threads",

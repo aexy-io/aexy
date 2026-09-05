@@ -32,11 +32,25 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from fastapi import HTTPException  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
 
 from aexy.core.database import async_session_maker  # noqa: E402
 from aexy.models.crm import CRMAttribute, CRMAutomation, CRMObject, CRMRecord  # noqa: E402
+from aexy.models.booking import EventType  # noqa: E402
+from aexy.models.compliance import (  # noqa: E402
+    Certification,
+    MandatoryTraining,
+    TrainingAssignment,
+)
 from aexy.models.developer import Developer  # noqa: E402
+from aexy.models.forms import Form  # noqa: E402
+from aexy.models.leave import (  # noqa: E402
+    Holiday,
+    LeavePolicy,
+    LeaveRequest,
+    LeaveType,
+)
 from aexy.models.documentation import Document  # noqa: E402
 from aexy.models.project import Project, ProjectMember, ProjectTeam  # noqa: E402
 from aexy.models.review import IndividualReview, ReviewCycle  # noqa: E402
@@ -47,7 +61,8 @@ from aexy.models.sprint import (  # noqa: E402
     WorkspaceTaskStatus,
 )
 from aexy.models.team import Team, TeamMember  # noqa: E402
-from aexy.models.workspace import Workspace  # noqa: E402
+from aexy.models.ticketing import Ticket, TicketForm  # noqa: E402
+from aexy.models.workspace import Workspace, WorkspaceMember  # noqa: E402
 
 PREFERRED_DEVELOPER_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -868,11 +883,783 @@ async def seed_docs(db, workspace_id: str, dev: Developer) -> None:
 
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------- organization
+
+#: Colleagues, so the org chart and the directory have somebody in them. The
+#: workspace otherwise holds whoever signed in plus the two owners the Service
+#: Desk seed adds, and a three-person chart demonstrates nothing about
+#: departments, reporting lines or multi-department membership.
+ORG_PEOPLE = [
+    ("priya.raman@northwind.example", "Priya Raman"),
+    ("marcus.bell@northwind.example", "Marcus Bell"),
+    ("aiko.tanaka@northwind.example", "Aiko Tanaka"),
+    ("elena.duarte@northwind.example", "Elena Duarte"),
+]
+
+
+async def seed_organization(db, workspace: Workspace, dev: Developer) -> None:
+    """A small but complete org: departments with functions, heads, seats and
+    reporting lines.
+
+    Written through `OrganizationService` rather than as INSERTs, because
+    `path`, `depth` and the uniqueness of a function key are computed there —
+    a hand-built row looks right in the table and breaks the org chart.
+
+    Departments carry **function keys** on purpose. The Service Desk decides
+    who may see a ticket from the department that owns its pending-with bucket,
+    so a demo workspace with no functions shows "No department" on every row of
+    the queue board and every screenshot of it says the desk is misconfigured.
+    """
+    from aexy.schemas.organization import (
+        DepartmentCreate,
+        MembershipCreate,
+        PositionCreate,
+    )
+    from aexy.services.organization_service import OrganizationService
+
+    org = OrganizationService(db)
+    people: dict[str, Developer] = {}
+
+    for email, name in ORG_PEOPLE:
+        person = (
+            await db.execute(select(Developer).where(Developer.email == email))
+        ).scalar_one_or_none()
+        if person is None:
+            person = Developer(id=str(uuid4()), email=email, name=name)
+            db.add(person)
+            await db.flush()
+        people[name] = person
+
+        member = (
+            await db.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == workspace.id,
+                    WorkspaceMember.developer_id == person.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if member is None:
+            db.add(
+                WorkspaceMember(
+                    workspace_id=workspace.id,
+                    developer_id=person.id,
+                    role="member",
+                    status="active",
+                )
+            )
+        note("person", name, member is None)
+
+    await db.flush()
+
+    # Whoever the Service Desk seed put here, if it ran first; otherwise the
+    # owner stands in, so this seeder does not depend on the order.
+    def whoever(email: str) -> str:
+        return by_email.get(email, dev).id
+
+    by_email = {
+        d.email: d
+        for d in (
+            await db.execute(
+                select(Developer).join(
+                    WorkspaceMember, WorkspaceMember.developer_id == Developer.id
+                ).where(WorkspaceMember.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+
+    existing = {d.name: d for d in await org.list_departments(workspace.id)}
+
+    async def department(name: str, **kwargs) -> str:
+        if name in existing:
+            return existing[name].id
+        made = await org.create_department(
+            workspace.id, DepartmentCreate(name=name, **kwargs)
+        )
+        existing[name] = made
+        note("department", name, True)
+        return made.id
+
+    ops = await department(
+        "Operations",
+        function_key="operations",
+        description="Runs the service desk and everything downstream of it.",
+        head_id=whoever("dana@northwind.example"),
+        cost_center="OPS-100",
+        headcount_planned=6,
+        location="Mumbai",
+        timezone="Asia/Kolkata",
+    )
+    claims = await department(
+        "Claims",
+        parent_id=ops,
+        description="Claims intake and settlement follow-up.",
+        head_id=people["Priya Raman"].id,
+        cost_center="OPS-110",
+        headcount_planned=3,
+        location="Mumbai",
+    )
+    sales = await department(
+        "Sales",
+        function_key="sales",
+        head_id=whoever("rowan@northwind.example"),
+        cost_center="SAL-200",
+        headcount_planned=4,
+        location="London",
+    )
+    finance = await department(
+        "Finance",
+        function_key="finance",
+        head_id=people["Marcus Bell"].id,
+        cost_center="FIN-300",
+        headcount_planned=2,
+    )
+    hr = await department(
+        "People",
+        function_key="hr",
+        head_id=people["Elena Duarte"].id,
+        cost_center="PPL-400",
+        headcount_planned=2,
+    )
+
+    # (department, person, role, primary?) — Priya appears twice on purpose:
+    # somebody splitting their time across two departments is a thing the model
+    # supports and a thing nothing else in the demo data shows.
+    memberships = [
+        (ops, whoever("dana@northwind.example"), "head", True),
+        (ops, people["Priya Raman"].id, "manager", False),
+        (ops, people["Marcus Bell"].id, "member", False),
+        (claims, people["Priya Raman"].id, "head", True),
+        (sales, whoever("rowan@northwind.example"), "head", True),
+        (sales, people["Aiko Tanaka"].id, "member", True),
+        (finance, people["Marcus Bell"].id, "head", True),
+        (hr, people["Elena Duarte"].id, "head", True),
+        (hr, dev.id, "member", False),
+    ]
+    for dept_id, developer_id, role, primary in memberships:
+        try:
+            await org.add_member(
+                workspace.id,
+                dept_id,
+                MembershipCreate(
+                    developer_id=developer_id,
+                    role_in_department=role,
+                    is_primary=primary,
+                ),
+            )
+        except HTTPException as exc:
+            # 409 is "already a member", which is what a second run looks like.
+            if exc.status_code != 409:
+                raise
+
+    # Open seats, so headcount planned against filled means something.
+    for dept_id, title in ((claims, "Claims Analyst"), (sales, "Account Executive")):
+        detail = await org.get_department(workspace.id, dept_id)
+        if not any(p.title == title for p in (detail.positions or [])):
+            await org.add_position(workspace.id, dept_id, PositionCreate(title=title))
+
+    # Who reports to whom. Stored on the workspace membership, not the
+    # department, because a reporting line follows the person.
+    lines = [
+        (people["Priya Raman"].id, whoever("dana@northwind.example")),
+        (people["Marcus Bell"].id, whoever("dana@northwind.example")),
+        (people["Aiko Tanaka"].id, whoever("rowan@northwind.example")),
+        (whoever("dana@northwind.example"), dev.id),
+        (whoever("rowan@northwind.example"), dev.id),
+        (people["Elena Duarte"].id, dev.id),
+    ]
+    for developer_id, manager_id in lines:
+        if developer_id == manager_id:
+            continue
+        await org.set_manager(workspace.id, developer_id, manager_id)
+
+
+# --------------------------------------------------------------------- tickets
+
+#: (title, status, priority, requester, body) — a support queue mid-week, which
+#: is what the module is for: a couple untriaged, work in progress, one waiting
+#: on the person who raised it, one already resolved.
+DEMO_TICKETS = [
+    (
+        "Export to CSV times out on large boards",
+        "new",
+        "high",
+        ("Ravi Menon", "ravi@lumenanalytics.example"),
+        "Exporting a board with about 4,000 rows spins for a minute and then fails. Smaller boards are fine.",
+    ),
+    (
+        "Invite email never arrived",
+        "new",
+        "medium",
+        ("Sofia Ferreira", "sofia@brightpathlabs.example"),
+        "Two new starters were invited on Monday and neither has had the email. Not in spam.",
+    ),
+    (
+        "SSO login loops back to the sign-in page",
+        "in_progress",
+        "urgent",
+        ("Tom Whitfield", "tom@northwindtraders.example"),
+        "After authenticating with Okta the browser returns to /login instead of the dashboard.",
+    ),
+    (
+        "Can we change the working week to Sunday–Thursday?",
+        "waiting_on_submitter",
+        "low",
+        ("Layla Haddad", "layla@fieldstonelogistics.example"),
+        "Our team works Sunday to Thursday. Asked for the account name so we can check the plan.",
+    ),
+    (
+        "Attachment preview is blank for .heic images",
+        "resolved",
+        "medium",
+        ("Ravi Menon", "ravi@lumenanalytics.example"),
+        "Fixed in this week's release — previews now render, and older uploads regenerate on first view.",
+    ),
+]
+
+
+async def seed_tickets(db, workspace: Workspace, dev: Developer) -> None:
+    """A support queue for the ticketing module.
+
+    Separate from the Service Desk's tickets on purpose. Both modules store
+    rows in `tickets`, and the generic one excludes the desk by
+    `source LIKE 'service_desk%'` — so a demo where the only tickets belong to
+    the desk photographs an empty Tickets page, and a demo where the desk's
+    tickets have no `source` photographs the same five tickets twice.
+    """
+    form = (
+        await db.execute(
+            select(TicketForm).where(
+                TicketForm.workspace_id == workspace.id,
+                TicketForm.slug == "support",
+            )
+        )
+    ).scalar_one_or_none()
+    if form is None:
+        form = TicketForm(
+            id=str(uuid4()),
+            workspace_id=workspace.id,
+            name="Support",
+            slug="support",
+            description="Product support requests from customers.",
+            created_by_id=dev.id,
+        )
+        db.add(form)
+        await db.flush()
+    note("ticket form", "Support", form.created_at is None)
+
+    seen = {
+        title
+        for title in (
+            await db.execute(
+                select(Ticket.title).where(Ticket.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+    highest = (
+        await db.execute(
+            select(func.max(Ticket.ticket_number)).where(
+                Ticket.workspace_id == workspace.id
+            )
+        )
+    ).scalar() or 0
+
+    for offset, (title, status, priority, (name, email), body) in enumerate(
+        DEMO_TICKETS, start=1
+    ):
+        if title in seen:
+            note("ticket", title, False)
+            continue
+
+        db.add(
+            Ticket(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                form_id=form.id,
+                # Continues the workspace's numbering: `uq_ticket_number` is
+                # (workspace_id, ticket_number), and the desk has already used
+                # the low numbers.
+                ticket_number=highest + offset,
+                title=title,
+                submitter_name=name,
+                submitter_email=email,
+                field_values={"subject": title, "description": body},
+                status=status,
+                priority=priority,
+                assignee_id=dev.id if status in {"in_progress", "resolved"} else None,
+            )
+        )
+        note("ticket", title, True)
+
+
+# ----------------------------------------------------------------------- leave
+
+#: (name, slug, colour, paid?, quota, notice days)
+LEAVE_TYPES = [
+    ("Annual leave", "annual", "#3b82f6", True, 20.0, 3),
+    ("Sick leave", "sick", "#ef4444", True, 10.0, 0),
+    ("Unpaid leave", "unpaid", "#6b7280", False, 0.0, 7),
+]
+
+#: Public holidays. Mandatory, workspace-wide ones are also what the Service
+#: Desk's breach clock stops for, so a demo with none makes the two modules look
+#: unrelated when they are not.
+HOLIDAYS = [
+    ("New Year's Day", date(2027, 1, 1), False),
+    ("Republic Day", date(2027, 1, 26), False),
+    ("Holi", date(2027, 3, 22), False),
+    ("Founders' Day", date(2027, 5, 14), True),
+]
+
+
+async def seed_leave(db, workspace: Workspace, dev: Developer) -> None:
+    """Leave types, a policy each, a holiday calendar and a couple of requests.
+
+    One request is left **pending** on purpose: an approvals queue with nothing
+    in it photographs as a module nobody uses, and "there is a decision waiting
+    for you" is the state the page exists for.
+    """
+    types: dict[str, LeaveType] = {}
+    for name, slug, colour, paid, quota, notice in LEAVE_TYPES:
+        found = (
+            await db.execute(
+                select(LeaveType).where(
+                    LeaveType.workspace_id == workspace.id, LeaveType.slug == slug
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            found = LeaveType(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                name=name,
+                slug=slug,
+                color=colour,
+                is_paid=paid,
+                min_notice_days=notice,
+            )
+            db.add(found)
+            await db.flush()
+            note("leave type", name, True)
+        else:
+            note("leave type", name, False)
+        types[slug] = found
+
+        policy = (
+            await db.execute(
+                select(LeavePolicy).where(
+                    LeavePolicy.workspace_id == workspace.id,
+                    LeavePolicy.leave_type_id == found.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if policy is None and quota:
+            db.add(
+                LeavePolicy(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    leave_type_id=found.id,
+                    annual_quota=quota,
+                    carry_forward_enabled=slug == "annual",
+                    max_carry_forward_days=5.0 if slug == "annual" else 0.0,
+                )
+            )
+
+    for name, when, optional in HOLIDAYS:
+        found = (
+            await db.execute(
+                select(Holiday).where(
+                    Holiday.workspace_id == workspace.id, Holiday.date == when
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                Holiday(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    date=when,
+                    is_optional=optional,
+                )
+            )
+        note("holiday", name, found is None)
+
+    # Balances are not implied by a policy — they are rows, created per person
+    # per year. Without them the page says "no leave balances found, contact
+    # your admin", which is the state a workspace is in *before* it is set up,
+    # not after.
+    await db.flush()
+    from aexy.services.leave_balance_service import LeaveBalanceService
+
+    balances = LeaveBalanceService(db)
+    for member_id in {dev.id, *(p.id for p in [])}:
+        await balances.initialize_yearly_balances(
+            workspace.id, member_id, date.today().year
+        )
+
+    today = date.today()
+    requests = [
+        # (type, start offset, days, status, reason)
+        ("annual", 21, 5, "pending", "Family wedding"),
+        ("annual", -30, 3, "approved", "Long weekend"),
+        ("sick", -6, 1, "approved", None),
+    ]
+    for slug, offset, days, status, reason in requests:
+        start = today + timedelta(days=offset)
+        end = start + timedelta(days=days - 1)
+        found = (
+            await db.execute(
+                select(LeaveRequest).where(
+                    LeaveRequest.workspace_id == workspace.id,
+                    LeaveRequest.developer_id == dev.id,
+                    LeaveRequest.start_date == start,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                LeaveRequest(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    developer_id=dev.id,
+                    leave_type_id=types[slug].id,
+                    start_date=start,
+                    end_date=end,
+                    total_days=float(days),
+                    status=status,
+                    reason=reason,
+                )
+            )
+        note("leave request", f"{slug} from {start}", found is None)
+
+
+# ------------------------------------------------------------------------ forms
+
+#: (template, name, live?) — one of each shape the module supports, so the
+#: builder and the public page have something real to show. The bug report is
+#: left inactive: a form being drafted is a state the list has to be able to
+#: show, and every form being live makes the active switch look decorative.
+DEMO_FORMS = [
+    ("lead_capture", "Talk to sales", True),
+    ("feedback", "How are we doing?", True),
+    ("bug_report", "Report a bug", False),
+]
+
+
+async def seed_forms(db, workspace: Workspace, dev: Developer) -> None:
+    """Public forms, built from the module's own templates.
+
+    Through `FormsService` rather than as inserts, because a form is a row plus
+    its ordered fields plus a public token, and the template definitions are the
+    thing worth photographing — a hand-built two-field form would show less than
+    the product ships with.
+    """
+    from aexy.services.forms_service import FormsService
+
+    forms = FormsService(db)
+
+    for template, name, live in DEMO_FORMS:
+        found = (
+            await db.execute(
+                select(Form).where(
+                    Form.workspace_id == workspace.id, Form.name == name
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            note("form", name, False)
+            continue
+
+        form = await forms.create_form_from_template(
+            workspace_id=workspace.id,
+            created_by_id=dev.id,
+            template_type=template,
+            name=name,
+        )
+        # `is_active`, not `is_published` — the column that decides whether the
+        # public link answers is the active flag, and assigning a name the model
+        # does not have is a silent no-op.
+        form.is_active = live
+        note("form", name, True)
+
+
+# ----------------------------------------------------------------------- tables
+
+#: A table that is not a CRM concept. The Tables module lists standalone tables
+#: *and* the CRM's objects — they are the same storage seen through a different
+#: lens — so a workspace whose only tables are Company, Person, Deal and Lead
+#: shows nothing about what the module is for.
+DEMO_TABLE_FIELDS = [
+    ("Vendor", "text"),
+    ("Renewal date", "date"),
+    ("Annual cost", "number"),
+    ("Owner", "text"),
+]
+
+DEMO_TABLE_ROWS = [
+    {"vendor": "Northwind Cloud", "renewal_date": "2027-03-31", "annual_cost": 42000, "owner": "Dana"},
+    {"vendor": "Assurance Mutual", "renewal_date": "2027-01-15", "annual_cost": 18500, "owner": "Marcus Bell"},
+    {"vendor": "Fieldstone Freight", "renewal_date": "2026-11-30", "annual_cost": 7600, "owner": "Aiko Tanaka"},
+]
+
+
+async def seed_tables(db, workspace: Workspace, dev: Developer) -> None:
+    """One standalone table — a contract renewal tracker — with its rows."""
+    from aexy.services.data_table_service import DataTableService
+
+    tables = DataTableService(db)
+    existing = await tables.list_tables(
+        workspace_id=workspace.id, scope="standalone", user_id=dev.id
+    )
+    if any(t.name == "Contracts" for t in existing):
+        note("table", "Contracts", False)
+        return
+
+    table = await tables.create_table(
+        workspace_id=workspace.id,
+        name="Contracts",
+        plural_name="Contracts",
+        description="Vendor agreements, what they cost and when they renew.",
+        icon="FileText",
+        created_by_id=dev.id,
+    )
+    await db.flush()
+
+    for field_name, field_type in DEMO_TABLE_FIELDS:
+        await tables.add_field(
+            table_id=str(table.id), name=field_name, field_type=field_type
+        )
+    await db.flush()
+
+    for values in DEMO_TABLE_ROWS:
+        await tables.create_record(
+            table_id=str(table.id),
+            workspace_id=workspace.id,
+            values=values,
+            created_by_id=dev.id,
+        )
+    note("table", "Contracts", True)
+
+
+# ---------------------------------------------------------------------- booking
+
+#: (name, slug, minutes, location, notice hours, description)
+DEMO_EVENT_TYPES = [
+    (
+        "Intro call", "intro-call", 30, "google_meet", 12,
+        "A first conversation about what you need and whether we can help.",
+    ),
+    (
+        "Product walkthrough", "walkthrough", 45, "google_meet", 24,
+        "A guided tour of the parts of Aexy relevant to your team.",
+    ),
+    (
+        "Onboarding session", "onboarding", 60, "custom", 48,
+        "Setting your workspace up together, with your own data.",
+    ),
+]
+
+
+async def seed_booking(db, workspace: Workspace, dev: Developer) -> None:
+    """Bookable meeting types.
+
+    Availability itself comes from a connected calendar, which a seed cannot
+    fake — so these are the definitions, and the booking page will show no slots
+    until somebody connects one. That is the honest state of a fresh workspace.
+    """
+    for name, slug, minutes, location, notice, description in DEMO_EVENT_TYPES:
+        found = (
+            await db.execute(
+                select(EventType).where(
+                    EventType.workspace_id == workspace.id, EventType.slug == slug
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            note("event type", name, False)
+            continue
+
+        db.add(
+            EventType(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                owner_id=dev.id,
+                name=name,
+                slug=slug,
+                description=description,
+                duration_minutes=minutes,
+                location_type=location,
+                custom_location="Your office, or ours" if location == "custom" else None,
+                min_notice_hours=notice,
+                buffer_after=10,
+            )
+        )
+        note("event type", name, True)
+
+
+# ------------------------------------------------------------------- compliance
+
+#: (name, description, applies_to, due days, recurring months)
+DEMO_TRAINING = [
+    (
+        "Information security basics",
+        "What to do with a password, a phishing email and a lost laptop.",
+        "all", 30, 12,
+    ),
+    (
+        "Data protection",
+        "Handling customer data, and what counts as personal data here.",
+        "all", 45, 24,
+    ),
+    (
+        "Code of conduct",
+        "How we treat each other, and how to raise it when somebody does not.",
+        "all", 14, None,
+    ),
+]
+
+#: (name, issuing authority, validity months, category)
+DEMO_CERTIFICATIONS = [
+    ("IRDAI Certification", "Insurance Regulatory and Development Authority", 36, "Regulatory"),
+    ("First Aid at Work", "Red Cross", 36, "Health & Safety"),
+    ("ISO 27001 Lead Implementer", "PECB", 24, "Security"),
+]
+
+
+async def seed_compliance(db, workspace: Workspace, dev: Developer) -> None:
+    """Mandatory training, its assignments, and the certifications tracked.
+
+    The assignments matter more than the programmes. A workspace where every
+    training reads "0 assigned" photographs as a module nobody uses, and one
+    where everything is complete photographs as a module with nothing to do —
+    so these are deliberately mixed: one done, one in progress, one overdue.
+    """
+    for name, description, applies_to, due_days, recurring in DEMO_TRAINING:
+        found = (
+            await db.execute(
+                select(MandatoryTraining).where(
+                    MandatoryTraining.workspace_id == workspace.id,
+                    MandatoryTraining.name == name,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                MandatoryTraining(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    description=description,
+                    applies_to_type=applies_to,
+                    applies_to_ids=[],
+                    due_days_after_assignment=due_days,
+                    recurring_months=recurring,
+                    created_by_id=dev.id,
+                )
+            )
+        note("training", name, found is None)
+
+    await db.flush()
+
+    # (training, person, days until due, status, progress) — a spread, because
+    # the state of the queue is the thing worth showing.
+    people = {
+        d.email: d
+        for d in (
+            await db.execute(
+                select(Developer)
+                .join(WorkspaceMember, WorkspaceMember.developer_id == Developer.id)
+                .where(WorkspaceMember.workspace_id == workspace.id)
+            )
+        ).scalars()
+    }
+    plan = [
+        ("Information security basics", dev.email, 12, "in_progress", 40),
+        ("Information security basics", "priya.raman@northwind.example", -5, "overdue", 0),
+        ("Data protection", dev.email, 30, "pending", 0),
+        ("Code of conduct", "marcus.bell@northwind.example", -20, "completed", 100),
+    ]
+    for training_name, email, due_in, status, progress in plan:
+        person = people.get(email)
+        if person is None:
+            continue
+        training = (
+            await db.execute(
+                select(MandatoryTraining).where(
+                    MandatoryTraining.workspace_id == workspace.id,
+                    MandatoryTraining.name == training_name,
+                )
+            )
+        ).scalar_one_or_none()
+        if training is None:
+            continue
+
+        found = (
+            await db.execute(
+                select(TrainingAssignment).where(
+                    TrainingAssignment.workspace_id == workspace.id,
+                    TrainingAssignment.mandatory_training_id == training.id,
+                    TrainingAssignment.developer_id == person.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is not None:
+            continue
+
+        now = datetime.now(timezone.utc)
+        db.add(
+            TrainingAssignment(
+                id=str(uuid4()),
+                workspace_id=workspace.id,
+                mandatory_training_id=training.id,
+                developer_id=person.id,
+                due_date=now + timedelta(days=due_in),
+                status=status,
+                progress_percentage=progress,
+                started_at=now - timedelta(days=3) if progress else None,
+                completed_at=now - timedelta(days=1) if status == "completed" else None,
+            )
+        )
+        note("assignment", f"{training_name} → {person.name}", True)
+
+    for name, authority, validity, category in DEMO_CERTIFICATIONS:
+        found = (
+            await db.execute(
+                select(Certification).where(
+                    Certification.workspace_id == workspace.id,
+                    Certification.name == name,
+                )
+            )
+        ).scalar_one_or_none()
+        if found is None:
+            db.add(
+                Certification(
+                    id=str(uuid4()),
+                    workspace_id=workspace.id,
+                    name=name,
+                    issuing_authority=authority,
+                    validity_months=validity,
+                    renewal_required=True,
+                    category=category,
+                    created_by_id=dev.id,
+                )
+            )
+        note("certification", name, found is None)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--yes", "-y", action="store_true",
         help="actually write. Without it the script only reports its target.",
+    )
+    parser.add_argument(
+        "--workspace",
+        help=(
+            "seed this workspace instead of the first developer's first one. "
+            "The default picks whichever workspace happens to be oldest, which "
+            "is rarely the demo one once a database has more than one."
+        ),
     )
     args = parser.parse_args()
 
@@ -892,14 +1679,35 @@ async def main() -> int:
             print("No developer found — nothing to seed against.", file=sys.stderr)
             return 1
 
-        workspace = (
-            await db.execute(
-                select(Workspace)
-                .where(Workspace.owner_id == dev.id)
-                .order_by(Workspace.created_at)
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+        if args.workspace:
+            workspace = (
+                await db.execute(
+                    select(Workspace).where(Workspace.id == args.workspace)
+                )
+            ).scalar_one_or_none()
+            if workspace is None:
+                print(f"No workspace {args.workspace}.", file=sys.stderr)
+                return 1
+            # Act as its owner: seeded rows carry a creator, and attributing
+            # them to whoever happens to be the first developer in the database
+            # puts a stranger's name on every record in somebody else's
+            # workspace.
+            owner = (
+                await db.execute(
+                    select(Developer).where(Developer.id == workspace.owner_id)
+                )
+            ).scalar_one_or_none()
+            if owner is not None:
+                dev = owner
+        else:
+            workspace = (
+                await db.execute(
+                    select(Workspace)
+                    .where(Workspace.owner_id == dev.id)
+                    .order_by(Workspace.created_at)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
         if workspace is None:
             print(f"Developer {dev.id} owns no workspace.", file=sys.stderr)
             return 1
@@ -922,6 +1730,13 @@ async def main() -> int:
             return 1
 
         print()
+        await seed_organization(db, workspace, dev)
+        await seed_tickets(db, workspace, dev)
+        await seed_leave(db, workspace, dev)
+        await seed_forms(db, workspace, dev)
+        await seed_tables(db, workspace, dev)
+        await seed_booking(db, workspace, dev)
+        await seed_compliance(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)

@@ -39,6 +39,7 @@ class ReadDocumentTool(BaseTool):
     )
     args_schema: type[BaseModel] = ReadDocumentInput
     workspace_id: str = ""
+    user_id: str = ""
     db: Any = None
 
     def _run(self, document_id: str, max_chars: int = 20000) -> str:
@@ -67,7 +68,24 @@ class ReadDocumentTool(BaseTool):
                 )
             )
             document = result.scalar_one_or_none()
-            if document is None:
+            if document is None or document.deleted_at is not None:
+                return f"No document {document_id} in this workspace."
+
+            # The agent reads as its principal, not as the workspace. Without
+            # this a "summarise document X" prompt reads any private page whose
+            # id the model has seen — including one it saw in an earlier,
+            # differently-scoped conversation.
+            from aexy.services.document_access import AccessLevel, DocumentAccess
+
+            if not self.user_id:
+                return (
+                    "Error: this agent has no user to act for, so it cannot "
+                    "read documents."
+                )
+            level = await DocumentAccess(self.db).resolve(
+                document, self.user_id, workspace_id=self.workspace_id
+            )
+            if level == AccessLevel.NONE:
                 return f"No document {document_id} in this workspace."
 
             body = document.content_text or ""
@@ -111,6 +129,7 @@ class SearchDocumentsTool(BaseTool):
     )
     args_schema: type[BaseModel] = SearchDocumentsInput
     workspace_id: str = ""
+    user_id: str = ""
     db: Any = None
 
     def _run(self, query: str, limit: int = 10) -> str:
@@ -121,17 +140,37 @@ class SearchDocumentsTool(BaseTool):
             return "Error: Database connection not available"
 
         try:
+            from aexy.services.document_access import DocumentAccess
             from aexy.services.document_service import DocumentService
 
-            documents = await DocumentService(self.db).search_documents(
-                workspace_id=self.workspace_id, query=query, limit=limit
+            # An agent sees exactly what the person it is acting for sees.
+            # Refusing outright when there is no user is deliberate: an agent
+            # with no principal has no basis for reading anything, and the
+            # obvious alternative — search the whole workspace — is the leak.
+            if not self.user_id:
+                return (
+                    "Error: this agent has no user to act for, so it cannot "
+                    "search documents."
+                )
+
+            clause = await DocumentAccess(self.db).visible_clause(
+                self.workspace_id, self.user_id
             )
-            if not documents:
+            hits = await DocumentService(self.db).search_documents(
+                workspace_id=self.workspace_id,
+                query=query,
+                limit=limit,
+                access_clause=clause,
+            )
+            if not hits:
                 return f"No documents match '{query}'."
 
             lines = []
-            for document in documents:
-                snippet = " ".join((document.content_text or "").split())[:200]
+            for hit in hits:
+                document = hit.document
+                snippet = " ".join((hit.snippet or document.content_text or "").split())[
+                    :200
+                ]
                 kind = " [Word]" if document.is_docx else ""
                 lines.append(
                     f"- {document.title}{kind} (id: {document.id})"

@@ -5,6 +5,8 @@ exists internally can be published; its threads become ordinary web pages with
 ordinary URLs, readable and indexable by anyone, administered from workspace
 settings rather than a separate platform with its own logins.
 
+![The public forum, as somebody without an account sees it](./images/community/public.png)
+
 Everything here sits on top of the Team Chat model (`models/chat.py`). There is
 no second messaging system: a community thread *is* a `ChatTopic`, a post *is* a
 `ChatMessage`. What the community adds is a visibility contract and a small set

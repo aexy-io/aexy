@@ -20,7 +20,7 @@ from aexy.agents.tools.document_tools import (
 from aexy.models.developer import Developer
 from aexy.models.documentation import CONTENT_FORMAT_DOCX
 from aexy.services.document_service import DocumentService
-from tests.conftest import seed_workspace
+from tests.conftest import seed_member, seed_workspace
 
 docx = pytest.importorskip("docx", reason="python-docx is required for Word support")
 
@@ -65,10 +65,14 @@ def _docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
-async def _developer(db) -> str:
+async def _developer(db, workspace_id: str | None = None) -> str:
     developer = Developer(id=str(uuid.uuid4()), name="Ada")
     db.add(developer)
     await db.flush()
+    # Reading and searching now happen as a principal, so the tool's user has
+    # to be somebody in the workspace.
+    if workspace_id:
+        await seed_member(db, workspace_id, str(developer.id))
     return str(developer.id)
 
 
@@ -137,7 +141,7 @@ class TestRegistration:
 class TestReadDocument:
     async def test_reads_a_word_document_as_text(self, db_session, storage):
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=workspace_id,
             created_by_id=author,
@@ -145,7 +149,7 @@ class TestReadDocument:
             title="Pricing policy",
         )
 
-        tool = ReadDocumentTool(workspace_id=workspace_id, db=db_session)
+        tool = ReadDocumentTool(workspace_id=workspace_id, user_id=reader_id, db=db_session)
         out = await tool._arun(document_id=document.id)
 
         assert "Pricing policy" in out
@@ -157,7 +161,7 @@ class TestReadDocument:
 
     async def test_reads_a_tiptap_document(self, db_session, storage):
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         service = DocumentService(db_session)
         document = await service.create_document(
             workspace_id=workspace_id, created_by_id=author, title="Runbook"
@@ -176,7 +180,7 @@ class TestReadDocument:
             },
         )
 
-        tool = ReadDocumentTool(workspace_id=workspace_id, db=db_session)
+        tool = ReadDocumentTool(workspace_id=workspace_id, user_id=reader_id, db=db_session)
         out = await tool._arun(document_id=document.id)
 
         assert "Runbook" in out
@@ -186,7 +190,7 @@ class TestReadDocument:
         """A silently truncated document is one a model will reason about as if
         it were complete."""
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=workspace_id,
             created_by_id=author,
@@ -194,7 +198,7 @@ class TestReadDocument:
             title="Pricing policy",
         )
 
-        tool = ReadDocumentTool(workspace_id=workspace_id, db=db_session)
+        tool = ReadDocumentTool(workspace_id=workspace_id, user_id=reader_id, db=db_session)
         out = await tool._arun(document_id=document.id, max_chars=20)
 
         assert "[truncated at 20 characters of" in out
@@ -204,7 +208,7 @@ class TestReadDocument:
     ):
         mine = await seed_workspace(db_session)
         theirs = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, mine)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=theirs,
             created_by_id=author,
@@ -212,7 +216,7 @@ class TestReadDocument:
             title="Theirs",
         )
 
-        tool = ReadDocumentTool(workspace_id=mine, db=db_session)
+        tool = ReadDocumentTool(workspace_id=mine, user_id=reader_id, db=db_session)
         out = await tool._arun(document_id=document.id)
 
         assert "No document" in out
@@ -228,7 +232,7 @@ class TestSearchDocuments:
         """The body of a Word document is only searchable because extraction
         writes it to `content_text`."""
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         await DocumentService(db_session).create_docx_document(
             workspace_id=workspace_id,
             created_by_id=author,
@@ -236,7 +240,7 @@ class TestSearchDocuments:
             title="Untitled upload",
         )
 
-        tool = SearchDocumentsTool(workspace_id=workspace_id, db=db_session)
+        tool = SearchDocumentsTool(workspace_id=workspace_id, user_id=reader_id, db=db_session)
         out = await tool._arun(query="finance sign-off")
 
         assert "Untitled upload" in out
@@ -244,14 +248,15 @@ class TestSearchDocuments:
 
     async def test_no_matches_says_so(self, db_session, storage):
         workspace_id = await seed_workspace(db_session)
-        tool = SearchDocumentsTool(workspace_id=workspace_id, db=db_session)
+        reader_id = await _developer(db_session, workspace_id)
+        tool = SearchDocumentsTool(workspace_id=workspace_id, user_id=reader_id, db=db_session)
         assert "No documents match" in await tool._arun(query="nothing here")
 
 
 class TestCreateDocument:
     async def test_creates_a_tiptap_document_from_markdown(self, db_session, storage):
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
 
         tool = CreateDocumentTool(
             workspace_id=workspace_id, user_id=author, db=db_session
@@ -262,7 +267,7 @@ class TestCreateDocument:
 
     async def test_creates_a_real_word_document(self, db_session, storage):
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
 
         tool = CreateDocumentTool(
             workspace_id=workspace_id, user_id=author, db=db_session
@@ -295,7 +300,7 @@ class TestCreateDocument:
         """`markdown_to_tiptap` refuses empty input rather than saving a blank
         document, and the tool has to pass that on instead of swallowing it."""
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
 
         tool = CreateDocumentTool(
             workspace_id=workspace_id, user_id=author, db=db_session
@@ -325,7 +330,7 @@ class TestProposeDocxEdit:
         from aexy.services.proposed_edits_service import ProposedEditsService
 
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=workspace_id,
             created_by_id=author,
@@ -363,7 +368,7 @@ class TestProposeDocxEdit:
         from aexy.services.proposed_edits_service import ProposedEditsService
 
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=workspace_id,
             created_by_id=author,
@@ -389,7 +394,7 @@ class TestProposeDocxEdit:
         from aexy.agents.tools.document_tools import ProposeDocxEditTool
 
         workspace_id = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = reader_id = await _developer(db_session, workspace_id)
         document = await DocumentService(db_session).create_document(
             workspace_id=workspace_id, created_by_id=author, title="Runbook"
         )
@@ -408,7 +413,7 @@ class TestProposeDocxEdit:
 
         mine = await seed_workspace(db_session)
         theirs = await seed_workspace(db_session)
-        author = await _developer(db_session)
+        author = await _developer(db_session, mine)
         document = await DocumentService(db_session).create_docx_document(
             workspace_id=theirs,
             created_by_id=author,

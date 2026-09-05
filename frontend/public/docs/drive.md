@@ -9,6 +9,18 @@ The workspace file store — upload, foldering, sharing, search and quota.
 AI metadata pipeline that annotates uploads. This is the file browser those
 uploads land in.
 
+![The workspace drive: files, sources and the storage a workspace has used](./images/drive/files.png)
+
+## What it is for
+
+Files that belong to the workspace rather than to a page: contracts, board
+packs, the checklist somebody keeps sending round. The knowledge base is where
+you *write* things; this is where the things you were sent live.
+
+Three sources feed the same browser — files uploaded here, attachments from
+tasks, and compliance documents — so "where did that PDF go?" has one place to
+look rather than three.
+
 ## Mental model
 
 - **File** — a `drive_files` row. Bytes live in object storage (RustFS/S3, see
@@ -60,6 +72,19 @@ transferred is worse than allowing the overshoot and refusing the next one.
 `api/file_search.py` searches names, AI tags and extracted content.
 It is a different index from the handbook's docs search and from the CRM's;
 they do not share ranking.
+
+## Smart views are not folders
+
+The distinction is the whole design, and it is the one thing to understand
+before using the module:
+
+* A **folder** forces one answer to "where does this belong". A file is in
+  exactly one.
+* A **smart view** is a saved filter over the AI's tags. A file appears in
+  every view it matches, and moving nothing.
+
+So "taking a file out of" a smart view means changing its tags, not dragging
+it. The UI makes a view look like a folder, and it is not one.
 
 ## Common pitfalls
 

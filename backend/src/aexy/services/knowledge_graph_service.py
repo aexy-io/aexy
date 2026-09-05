@@ -327,22 +327,53 @@ class KnowledgeGraphService:
 
         return GraphData(nodes=nodes, edges=edges)
 
+    async def _restrict_to_readable(
+        self, stmt, workspace_id: str, viewer_id: str | None
+    ):
+        """Add the document access predicate to a query, when there is a viewer.
+
+        Imported lazily: `document_access` reaches `workspace_service`, which
+        reaches back into the documents area, and a top-level import here
+        closes a cycle.
+        """
+        if not viewer_id:
+            return stmt
+
+        from aexy.services.document_access import DocumentAccess
+
+        clause = await DocumentAccess(self.db).visible_clause(
+            workspace_id, viewer_id
+        )
+        return stmt.where(clause)
+
     async def get_document_connections(
         self,
         workspace_id: str,
         document_id: str,
+        viewer_id: str | None = None,
     ) -> dict[str, Any]:
         """Get all connections for a specific document.
+
+        `viewer_id` filters the documents named in the result to ones that
+        person may open. The graph is built *from* document content, so an
+        unfiltered answer here lists the titles of private pages beside the
+        entities extracted out of them — enough to infer what they say without
+        ever being served one. Optional only so background callers, which have
+        no viewer, keep working.
 
         Args:
             workspace_id: Workspace ID.
             document_id: Document ID.
+            viewer_id: Whose view of the graph this is.
 
         Returns:
             Document connections data.
         """
         # Get document
         doc_stmt = select(Document).where(Document.id == document_id)
+        doc_stmt = await self._restrict_to_readable(
+            doc_stmt, workspace_id, viewer_id
+        )
         doc_result = await self.db.execute(doc_stmt)
         document = doc_result.scalar_one_or_none()
 
@@ -391,6 +422,9 @@ class KnowledgeGraphService:
         related_documents = []
         if related_doc_ids:
             related_stmt = select(Document).where(Document.id.in_(related_doc_ids))
+            related_stmt = await self._restrict_to_readable(
+                related_stmt, workspace_id, viewer_id
+            )
             related_result = await self.db.execute(related_stmt)
             for doc in related_result.scalars().all():
                 # Find the relationship for strength
@@ -780,12 +814,17 @@ class KnowledgeGraphService:
         self,
         workspace_id: str,
         entity_id: str,
+        viewer_id: str | None = None,
     ) -> dict[str, Any] | None:
         """Get detailed entity information.
+
+        `viewer_id` filters the mentioned documents — see
+        `get_document_connections` for why that matters.
 
         Args:
             workspace_id: Workspace ID.
             entity_id: Entity ID.
+            viewer_id: Whose view of the graph this is.
 
         Returns:
             Entity details with documents.
@@ -807,6 +846,9 @@ class KnowledgeGraphService:
         documents = []
         if doc_ids:
             doc_stmt = select(Document).where(Document.id.in_(doc_ids))
+            doc_stmt = await self._restrict_to_readable(
+                doc_stmt, workspace_id, viewer_id
+            )
             doc_result = await self.db.execute(doc_stmt)
             for doc in doc_result.scalars().all():
                 documents.append({
