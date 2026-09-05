@@ -376,7 +376,13 @@
           "title": "Tables",
           "slug": "tables",
           "path": "tables.md",
-          "description": "Airtable-style custom data tables with saved views"
+          "description": "Custom tables, typed fields, saved views, who sees which rows"
+        },
+        {
+          "title": "Tables architecture",
+          "slug": "tables-architecture",
+          "path": "tables-architecture.md",
+          "description": "Shared CRM storage, view types, access modes, the audit trail"
         },
         {
           "title": "Email Marketing",
@@ -818,8 +824,14 @@
     "tables": {
       "title": "Tables",
       "section": "Modules — Customers",
-      "description": "Airtable-style custom data tables with saved views",
+      "description": "Custom tables, typed fields, saved views, who sees which rows",
       "path": "tables.md"
+    },
+    "tables-architecture": {
+      "title": "Tables architecture",
+      "section": "Modules — Customers",
+      "description": "Shared CRM storage, view types, access modes, the audit trail",
+      "path": "tables-architecture.md"
     },
     "email-marketing": {
       "title": "Email Marketing",
@@ -1450,14 +1462,24 @@
         "slug": "forms-architecture"
       },
       "next": {
+        "title": "Tables architecture",
+        "slug": "tables-architecture"
+      }
+    },
+    "tables-architecture": {
+      "prev": {
+        "title": "Tables",
+        "slug": "tables"
+      },
+      "next": {
         "title": "Email Marketing",
         "slug": "email-marketing"
       }
     },
     "email-marketing": {
       "prev": {
-        "title": "Tables",
-        "slug": "tables"
+        "title": "Tables architecture",
+        "slug": "tables-architecture"
       },
       "next": {
         "title": "AI Agents",

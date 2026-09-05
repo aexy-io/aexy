@@ -82,7 +82,8 @@ We're on a mission to bring positive change by building world-class tools actual
 - [GTM](./gtm.md) - Lead scoring, ABM, outreach sequences, intent, expansion playbooks
 - [Forms](./forms.md) - Templates, building a form, the public link, routing what it collects
 - [Forms architecture](./forms-architecture.md) - Model, public submission flow, the builder API, question bank
-- [Tables](./tables.md) - Airtable-style custom data tables with saved views
+- [Tables](./tables.md) - Custom tables, typed fields, saved views, who sees which rows
+- [Tables architecture](./tables-architecture.md) - Shared CRM storage, view types, access modes, the audit trail
 - [Email Marketing](./email-marketing.md) - Campaigns, automation & infrastructure
 
 ### Modules — AI & knowledge

@@ -1377,6 +1377,64 @@ async def seed_forms(db, workspace: Workspace, dev: Developer) -> None:
         note("form", name, True)
 
 
+# ----------------------------------------------------------------------- tables
+
+#: A table that is not a CRM concept. The Tables module lists standalone tables
+#: *and* the CRM's objects — they are the same storage seen through a different
+#: lens — so a workspace whose only tables are Company, Person, Deal and Lead
+#: shows nothing about what the module is for.
+DEMO_TABLE_FIELDS = [
+    ("Vendor", "text"),
+    ("Renewal date", "date"),
+    ("Annual cost", "number"),
+    ("Owner", "text"),
+]
+
+DEMO_TABLE_ROWS = [
+    {"vendor": "Northwind Cloud", "renewal_date": "2027-03-31", "annual_cost": 42000, "owner": "Dana"},
+    {"vendor": "Assurance Mutual", "renewal_date": "2027-01-15", "annual_cost": 18500, "owner": "Marcus Bell"},
+    {"vendor": "Fieldstone Freight", "renewal_date": "2026-11-30", "annual_cost": 7600, "owner": "Aiko Tanaka"},
+]
+
+
+async def seed_tables(db, workspace: Workspace, dev: Developer) -> None:
+    """One standalone table — a contract renewal tracker — with its rows."""
+    from aexy.services.data_table_service import DataTableService
+
+    tables = DataTableService(db)
+    existing = await tables.list_tables(
+        workspace_id=workspace.id, scope="standalone", user_id=dev.id
+    )
+    if any(t.name == "Contracts" for t in existing):
+        note("table", "Contracts", False)
+        return
+
+    table = await tables.create_table(
+        workspace_id=workspace.id,
+        name="Contracts",
+        plural_name="Contracts",
+        description="Vendor agreements, what they cost and when they renew.",
+        icon="FileText",
+        created_by_id=dev.id,
+    )
+    await db.flush()
+
+    for field_name, field_type in DEMO_TABLE_FIELDS:
+        await tables.add_field(
+            table_id=str(table.id), name=field_name, field_type=field_type
+        )
+    await db.flush()
+
+    for values in DEMO_TABLE_ROWS:
+        await tables.create_record(
+            table_id=str(table.id),
+            workspace_id=workspace.id,
+            values=values,
+            created_by_id=dev.id,
+        )
+    note("table", "Contracts", True)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1464,6 +1522,7 @@ async def main() -> int:
         await seed_tickets(db, workspace, dev)
         await seed_leave(db, workspace, dev)
         await seed_forms(db, workspace, dev)
+        await seed_tables(db, workspace, dev)
         await seed_crm(db, workspace.id, dev)
         await seed_planning(db, workspace, dev)
         await seed_automations(db, workspace.id, dev)

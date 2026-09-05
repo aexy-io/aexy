@@ -1606,9 +1606,24 @@
     "slug": "tables",
     "title": "Tables",
     "section": "Modules — Customers",
-    "description": "Airtable-style custom data tables with saved views",
+    "description": "Custom tables, typed fields, saved views, who sees which rows",
     "headings": [
       "Tables",
+      "Tables and the CRM are the same machinery",
+      "Making one",
+      "Saved views",
+      "Who sees which rows",
+      "Deleting",
+      "Common mistakes"
+    ]
+  },
+  {
+    "slug": "tables-architecture",
+    "title": "Tables architecture",
+    "section": "Modules — Customers",
+    "description": "Shared CRM storage, view types, access modes, the audit trail",
+    "headings": [
+      "Tables — architecture",
       "Why it shares the CRM models",
       "Router",
       "Core",
