@@ -320,14 +320,17 @@ class ReportBuilderService:
         data: CustomReportCreate,
         db: AsyncSession,
         workspace_id: str | None = None,
-        organization_id: str | None = None,
     ) -> CustomReport:
-        """Create a new custom report, owned by a workspace."""
+        """Create a new custom report, owned by a workspace.
+
+        No `organization_id`: nothing on this path ever supplied one, and it
+        names a GitHub organization rather than a tenant. New rows leave the
+        column null, as every row already written by the API does.
+        """
         report = CustomReport(
             id=str(uuid4()),
             creator_id=creator_id,
             workspace_id=workspace_id,
-            organization_id=organization_id,
             name=data.name,
             description=data.description,
             widgets=[w.model_dump() for w in data.widgets],
@@ -382,54 +385,39 @@ class ReportBuilderService:
         self,
         db: AsyncSession,
         creator_id: str | None = None,
-        organization_id: str | None = None,
         include_public: bool = True,
         include_templates: bool = False,
         workspace_id: str | None = None,
     ) -> list[CustomReport]:
-        """List reports with filters.
+        """List reports a caller may see, within a workspace.
 
-        WS-049: `is_public=True` reports were previously surfaced in *every*
-        caller's listing across tenants. Cross-tenant public sharing now
-        requires an explicit `organization_id` filter that matches the
-        report's owning org; without it only the caller's own reports
-        appear in the default listing.
+        The tenant is `workspace_id`. It used to be `organization_id`, which is
+        a **GitHub** organization — the wrong axis, since two workspaces can
+        share one and a workspace with no GitHub connection has none at all.
+        That is why WS-049's fix, which made cross-tenant sharing "require an
+        explicit organization filter", asked for something no caller on this
+        path could supply: the branch was unreachable, so a colleague's shared
+        report never appeared in the listing while `get_report` returned it
+        quite happily by id.
         """
         conditions = []
 
-        # The tenant filter, applied before anything about who is asking. A
-        # report shared with `is_public` is shared with *its workspace*, which
-        # is what the old `organization_id` check was trying to express and
-        # could not, because nothing ever set that field.
+        # The tenant filter, applied before anything about who is asking.
         if workspace_id:
             conditions.append(CustomReport.workspace_id == workspace_id)
 
         if creator_id:
             if include_public and workspace_id:
-                # Yours, plus anything shared with this workspace. The tenant
-                # filter above already limits the second half to this
-                # workspace, which is what `organization_id` was reaching for
-                # and could not do — nothing ever set it, so this branch was
-                # unreachable and a colleague's shared report was invisible
-                # while `get_report` happily returned it by id.
+                # Yours, plus anything shared with this workspace — the filter
+                # above already confines the second half to it.
                 conditions.append(
                     (CustomReport.creator_id == creator_id)
                     | CustomReport.is_public.is_(True)
                 )
-            elif include_public and organization_id:
-                conditions.append(
-                    (CustomReport.creator_id == creator_id)
-                    | (
-                        (CustomReport.is_public == True)
-                        & (CustomReport.organization_id == organization_id)
-                    )
-                )
             else:
-                # No workspace and no org: own reports only, which is what a
-                # caller that names no tenant is entitled to.
+                # No workspace named: own reports only, which is what a caller
+                # that names no tenant is entitled to.
                 conditions.append(CustomReport.creator_id == creator_id)
-        elif organization_id:
-            conditions.append(CustomReport.organization_id == organization_id)
 
         if not include_templates:
             conditions.append(CustomReport.is_template == False)
@@ -519,7 +507,11 @@ class ReportBuilderService:
         cloned = CustomReport(
             id=str(uuid4()),
             creator_id=user_id,
-            organization_id=original.organization_id,
+            # The clone lands in the workspace it was cloned from. Omitting
+            # this wrote a report with no workspace at all: absent from the
+            # listing, 404 by id, and reachable by nobody — a copy that
+            # vanished the moment it was made.
+            workspace_id=original.workspace_id,
             name=new_name,
             description=f"Cloned from: {original.name}",
             widgets=original.widgets.copy(),
@@ -563,7 +555,6 @@ class ReportBuilderService:
         creator_id: str,
         db: AsyncSession,
         name: str | None = None,
-        organization_id: str | None = None,
         workspace_id: str | None = None,
     ) -> CustomReport | None:
         """Create a new report from a template, into a workspace."""
@@ -578,7 +569,6 @@ class ReportBuilderService:
             id=str(uuid4()),
             creator_id=creator_id,
             workspace_id=workspace_id,
-            organization_id=organization_id,
             name=name or template["name"],
             description=template["description"],
             widgets=template["widgets"],

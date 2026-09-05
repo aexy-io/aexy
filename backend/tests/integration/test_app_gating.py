@@ -393,3 +393,45 @@ async def test_schedules_do_not_leak_across_workspaces(client, workspace, db_ses
         json={"recipients": ["attacker@example.com"]},
     )
     assert hijack.status_code == 404, hijack.text
+
+
+@pytest.mark.asyncio
+async def test_a_cloned_report_stays_in_its_workspace(client, workspace):
+    """A clone with no workspace is a report that vanishes as it is made.
+
+    `clone_report` copied the original's fields and not its workspace, so the
+    copy landed with `workspace_id` null: absent from the listing, 404 by id,
+    reachable by nobody. The button reported success either way.
+    """
+    owner = workspace["owner"]
+    made = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports",
+        headers=_auth(owner.id),
+        json={
+            "name": "Original",
+            "widgets": [
+                {"id": "w1", "type": "bar_chart", "title": "Commits", "metric": "commits"}
+            ],
+        },
+    )
+    assert made.status_code == 201, made.text
+
+    cloned = await client.post(
+        f"/api/v1/workspaces/{workspace['id']}/reports/{made.json()['id']}/clone",
+        headers=_auth(owner.id),
+        params={"new_name": "Copy"},
+    )
+    assert cloned.status_code == 200, cloned.text
+    clone_id = cloned.json()["id"]
+
+    listed = await client.get(
+        f"/api/v1/workspaces/{workspace['id']}/reports", headers=_auth(owner.id)
+    )
+    assert any(r["id"] == clone_id for r in listed.json()), (
+        "the clone is not in the workspace it was cloned from"
+    )
+    fetched = await client.get(
+        f"/api/v1/workspaces/{workspace['id']}/reports/{clone_id}",
+        headers=_auth(owner.id),
+    )
+    assert fetched.status_code == 200

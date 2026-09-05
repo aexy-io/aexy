@@ -42,8 +42,15 @@ class CustomReport(Base):
         nullable=True,
         index=True,
     )
-    #: Legacy. Never written by any caller — 0 rows carry one — and kept only
-    #: so an old row is not silently rewritten. `workspace_id` is the tenant.
+    #: Legacy, and the wrong axis: `Organization` here is a **GitHub**
+    #: organization (`organizations.github_id`, `login`), not a tenant above
+    #: workspace. Two workspaces can share one, and a workspace with no GitHub
+    #: connection has none — which is why scoping report visibility by it never
+    #: worked. Nothing on the API path has ever written it; no reader is left.
+    #:
+    #: Kept rather than dropped until somebody checks a production database for
+    #: non-null rows: `select count(*) from custom_reports where
+    #: organization_id is not null`. Zero means it can go in its own migration.
     organization_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         nullable=True,
