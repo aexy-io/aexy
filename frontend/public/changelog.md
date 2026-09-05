@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-09-05
+
+Switching a module off now switches it off, reports belong to a workspace
+instead of to nobody, and the MCP catalogue describes the application again.
+
+### Security: a disabled module answered anyway
+
+`require_app_access` checks both halves of app access — the workspace-wide
+toggle and the caller's own grant — but a router that never mounts it is not
+checked at all, and nine did not. **Leave, chat, GTM, booking, email
+infrastructure, reminders, the form builder, the knowledge graph and reports**
+all answered perfectly well for a workspace that had switched them off, which
+made "disabled" a sidebar preference rather than a decision.
+
+They are mounted now, and a workspace-level disable closes the module for
+everybody in it — administrators included. Administrator reach over a module an
+individual has hidden is deliberate; it stops at a module the workspace has
+turned off.
+
+Deliberately still open: the public booking page, RSVP links and the OAuth
+callback, all reached by people with no account and no workspace to check a
+toggle against, and the dashboard, which nobody can switch off. Five more
+modules mix workspace-scoped routes with account-scoped ones and need the
+former split out before a router-level guard can apply; the count of routes
+still unguarded is now asserted by a test, so it can fall but not quietly rise.
+
+The documentation is corrected in the same breath, because it overstated the
+hole in the other direction — it said app access "is not a security boundary"
+and the API "answers either way".
+
+### Security: reports belonged to nobody in particular
+
+Reports were the one module whose requests named no tenant. They scoped by
+creator, and the column that was supposed to carry the tenant had never been
+written by a single caller — so three things were true at once:
+
+- **A shared report was readable from any workspace.** Anybody holding its id
+  could read a report marked public, wherever they were, because the
+  cross-tenant check the code intended could never fire.
+- **Every workspace's scheduled reports were listed to anybody signed in**,
+  recipient addresses included — and a schedule could be pointed at another
+  address, or deleted, by anyone who knew its id. Nothing checked ownership.
+- **The module could not be switched off**, because a request that names no
+  workspace has no toggle to consult.
+
+Reports now carry a workspace, every query filters on it, and the module sits
+behind the same guard as the rest. `is_public` finally means something:
+*shared with this workspace*, which is what a colleague looking for it always
+assumed.
+
+**Breaking:** the report endpoints move from `/api/v1/reports/…` to
+`/api/v1/workspaces/{workspace_id}/reports/…`. Anything calling them directly —
+scripts, integrations, an MCP client holding an old catalogue — needs the new
+path. Reports saved before this upgrade have no workspace to attribute them to;
+they stay reachable by the person who created them rather than being guessed
+into a workspace they merely belong to.
+
+### Fixed: resuming a failed import looked like it did nothing
+
+A retry reuses the job id, so the dialog kept serving the cached *failed* job
+and stopped asking for progress. It sat on "Import failed", still offering
+Resume, while the run it had just started imported the rest of the archive.
+
+### Fixed: the MCP catalogue described an application that had moved on
+
+The generator had been refusing to run — on `main` too — because six tags
+carried no capability, so the catalogue could not be regenerated and drifted.
+It still advertised the old `/api/v1/reports/…` paths, and 25 document
+operations were missing from it entirely. Its tests passed throughout, because
+they checked the catalogue against itself rather than against the application.
+
+All six tags are capped, the catalogue is regenerated at 1,961 operations
+across 28 capabilities, and the public knowledge-base portal is excluded from
+it like the other unauthenticated surfaces.
+
+### Removed: `custom_reports.organization_id`
+
+An `Organization` here is a **GitHub** organization, synced from GitHub — two
+workspaces can share one, and a workspace with no GitHub connection has none.
+It could never answer "who may see this report". The workspace does. Production
+was checked before the column was dropped, and the migration re-checks and
+refuses rather than dropping if it finds a value.
+
+The `organization_id` columns on repositories, developer organizations, hiring,
+assessments and question banks are untouched — those use the concept as
+designed.
+
 ## [0.35.0] - 2026-09-05
 
 Documentation you can trust, a screen for an import that had none, and Hindi
