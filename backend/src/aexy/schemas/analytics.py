@@ -210,7 +210,9 @@ class CustomReportResponse(CustomReportBase):
 
     id: str
     creator_id: str
-    organization_id: str | None = None
+    #: The tenant. A report is readable only inside it, and `is_public` means
+    #: shared with this workspace rather than with the internet.
+    workspace_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

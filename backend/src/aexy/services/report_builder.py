@@ -323,9 +323,9 @@ class ReportBuilderService:
     ) -> CustomReport:
         """Create a new custom report, owned by a workspace.
 
-        No `organization_id`: nothing on this path ever supplied one, and it
-        names a GitHub organization rather than a tenant. New rows leave the
-        column null, as every row already written by the API does.
+        The tenant is the workspace. There was an `organization_id` column
+        here once, naming a **GitHub** organization rather than a tenant;
+        nothing on this path ever wrote it and it has since been dropped.
         """
         report = CustomReport(
             id=str(uuid4()),

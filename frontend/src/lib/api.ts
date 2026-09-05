@@ -1583,7 +1583,7 @@ export interface ReportFilters {
 export interface CustomReport {
   id: string;
   creator_id: string;
-  organization_id: string | null;
+  workspace_id: string | null;
   name: string;
   description: string | null;
   widgets: WidgetConfig[];
