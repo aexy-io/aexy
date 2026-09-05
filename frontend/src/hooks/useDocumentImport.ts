@@ -30,6 +30,9 @@ export function useDocumentImport(workspaceId: string | null) {
   const queryClient = useQueryClient();
   const [jobId, setJobId] = useState<string | null>(null);
 
+  /** Which job has already had its "documents arrived" refresh; see below. */
+  const settledJobId = useRef<string | null>(null);
+
   const start = useMutation({
     mutationFn: ({ file, spaceId }: { file: File; spaceId?: string | null }) =>
       documentApi.startImport(workspaceId!, file, spaceId),
@@ -44,6 +47,21 @@ export function useDocumentImport(workspaceId: string | null) {
     onSuccess: (started) => {
       setJobId(started.job_id);
       queryClient.invalidateQueries({ queryKey: ["document-imports", workspaceId] });
+
+      // **A retry reuses the job id.** So `setJobId` above changes nothing:
+      // the query key is identical, React Query keeps serving the cached
+      // terminal job, and `refetchInterval` — which asks that cached job
+      // whether it is still running — stays switched off. Without this
+      // invalidation the dialog sits on "Import failed", offering Resume,
+      // while the run it just started imports the rest of the archive.
+      //
+      // The settled marker is cleared for the same reason: it is keyed by job
+      // id, and the resumed run would otherwise be treated as one that has
+      // already had its sidebar refresh.
+      settledJobId.current = null;
+      queryClient.invalidateQueries({
+        queryKey: ["document-import", workspaceId, started.job_id],
+      });
     },
   });
 
@@ -67,7 +85,6 @@ export function useDocumentImport(workspaceId: string | null) {
    * query keeps returning the same terminal job for as long as the dialog is
    * open.
    */
-  const settledJobId = useRef<string | null>(null);
   const settled = !!job && !isImportRunning(job);
   useEffect(() => {
     if (!settled || !workspaceId || !job) return;

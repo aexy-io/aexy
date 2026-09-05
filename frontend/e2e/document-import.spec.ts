@@ -58,6 +58,14 @@ const RUNNING = {
   completed_at: null,
 };
 
+const FAILED = {
+  ...RUNNING,
+  status: "failed",
+  imported_pages: 40,
+  error: "The archive ended unexpectedly",
+  completed_at: "2026-09-05T09:02:00Z",
+};
+
 const PARTIAL = {
   ...RUNNING,
   status: "partial",
@@ -72,7 +80,12 @@ const PARTIAL = {
 
 async function setup(
   page: Page,
-  options: { startStatus?: number; startBody?: unknown } = {},
+  options: {
+    startStatus?: number;
+    startBody?: unknown;
+    /** Poll responses in order; the last one repeats. */
+    polls?: unknown[];
+  } = {},
 ) {
   await page.addInitScript(() => {
     localStorage.setItem("token", "fake-test-token");
@@ -136,8 +149,10 @@ async function setup(
       );
     }
     if (url.match(/\/documents\/import\/[^/]+$/)) {
+      const sequence = options.polls ?? [RUNNING, PARTIAL];
+      const body = sequence[Math.min(polls, sequence.length - 1)];
       polls += 1;
-      return json(polls === 1 ? RUNNING : PARTIAL);
+      return json(body);
     }
     if (url.endsWith("/documents/import")) return json([]);
     // AppAccessGuard renders "Access to Docs" instead of the page unless the
@@ -246,5 +261,29 @@ test.describe("Wiki import", () => {
 
     await expect(page.getByTestId("import-wiki-error")).toContainText(/admin/i);
     await expect(page.getByTestId("import-wiki-progress")).toHaveCount(0);
+  });
+
+  test("resuming a failed import leaves the failed state", async ({ page }) => {
+    // The bug this exists for: a retry **reuses the job id**, so setting it
+    // again changes no query key. Without an explicit invalidation the dialog
+    // keeps serving the cached failed job, polling stays switched off because
+    // that cached job is terminal, and Resume looks like it did nothing while
+    // the import runs to completion on the server.
+        // One FAILED, because polling stops the moment a job reaches a terminal
+    // state — there is exactly one poll before the retry, and the refetch the
+    // retry triggers is the second.
+    await setup(page, { polls: [FAILED, RUNNING, PARTIAL] });
+    await openDialog(page);
+
+    await page.getByTestId("import-wiki-file").setInputFiles(archive);
+    await page.getByTestId("import-wiki-start").click();
+
+    await expect(page.getByText("Import failed")).toBeVisible({ timeout: 15000 });
+    await page.getByTestId("import-wiki-retry").click();
+
+    await expect(page.getByText("Imported, with pages skipped")).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByTestId("import-wiki-retry")).toHaveCount(0);
   });
 });

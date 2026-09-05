@@ -144,3 +144,30 @@ async def test_a_disabled_module_does_not_close_its_neighbour(client, workspace)
     assert (
         await client.get(f"/api/v1/workspaces/{ws_id}/chat/channels", headers=headers)
     ).status_code != 403
+
+
+def test_the_chat_socket_is_not_behind_an_http_dependency():
+    """The websocket must not carry `require_app_access`.
+
+    Router-level dependencies apply to websocket routes as well as HTTP ones,
+    and the first thing this one does is read an `Authorization` header. A
+    browser cannot set headers on a WebSocket handshake — the chat socket
+    authenticates with a `token` query parameter — so mounting the guard across
+    the whole router did not deny connections, it crashed them:
+    `HTTPBearer.__call__() missing 1 required positional argument`, a 500 at
+    handshake, for every user whether or not chat was enabled.
+
+    Asserted against the built app rather than the source, because the mistake
+    is made at mount time and looks perfectly reasonable in the file.
+    """
+    from aexy.main import app
+
+    sockets = [
+        r for r in app.routes if r.path.endswith("/chat/ws")
+    ]
+    assert sockets, "the chat websocket route is missing"
+    for route in sockets:
+        names = [d.dependency.__name__ for d in getattr(route, "dependencies", [])]
+        assert not any("guard" in n or "app_access" in n for n in names), (
+            f"{route.path} carries an HTTP auth dependency: {names}"
+        )

@@ -219,6 +219,7 @@ from aexy.api.ask import router as ask_router, share_router as ask_share_router
 from aexy.api.ai_feedback import router as ai_feedback_router
 # Team Chat
 from aexy.api.chat import router as chat_router
+from aexy.api.chat import ws_router as chat_ws_router
 
 api_router = APIRouter()
 
@@ -505,3 +506,7 @@ api_router.include_router(ask_share_router, tags=["ask"])
 api_router.include_router(ai_feedback_router, tags=["ai-feedback"])
 # Team Chat
 api_router.include_router(chat_router, tags=["chat"], dependencies=[Depends(require_app_access("chat"))])
+# Without the guard: see `chat.ws_router` — the dependency reads an
+# Authorization header the handshake cannot carry, and the socket does the
+# check itself.
+api_router.include_router(chat_ws_router, tags=["chat"])
