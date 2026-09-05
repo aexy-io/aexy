@@ -7286,6 +7286,43 @@ export interface DocumentAncestor {
   icon: string | null;
 }
 
+export interface DocumentImportJob {
+  id: string;
+  /** Which product the archive came from — the server works it out. */
+  source: string;
+  /**
+   * pending | scanning | importing | completed | partial | failed
+   *
+   * `partial` is terminal and is **not** a failure: one page that would not
+   * convert must not roll back the four thousand that did.
+   */
+  status: string;
+  space_id: string | null;
+  archive_name: string | null;
+  total_pages: number;
+  imported_pages: number;
+  failed_pages: number;
+  /** Per-page conversion notes — why a page is missing or lossy. */
+  warnings: string[];
+  error: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface DocumentImportStarted {
+  job_id: string;
+  source: string;
+  total_pages: number;
+  status: string;
+}
+
+/** The states after which nothing more will change on its own. */
+export const DOCUMENT_IMPORT_TERMINAL = [
+  "completed",
+  "partial",
+  "failed",
+] as const;
+
 // ============ Document API ============
 
 export const documentApi = {
@@ -7428,6 +7465,68 @@ export const documentApi = {
       { responseType: "arraybuffer" }
     );
     return response.data as ArrayBuffer;
+  },
+
+  /**
+   * Upload a Notion or Confluence export and start importing it.
+   *
+   * Answers 202 with a job id rather than the documents: a Confluence space is
+   * thousands of pages, and the work happens after the response. Poll
+   * `importStatus` with the id.
+   *
+   * `spaceId` is optional; without one the server picks the destination. The
+   * caller needs admin on the workspace, or on that space.
+   */
+  startImport: async (
+    workspaceId: string,
+    file: File,
+    spaceId?: string | null
+  ): Promise<DocumentImportStarted> => {
+    const form = new FormData();
+    form.append("file", file);
+    const query = spaceId ? `?space_id=${encodeURIComponent(spaceId)}` : "";
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/import${query}`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
+  /** One job's progress, including the pages that would not convert. */
+  importStatus: async (
+    workspaceId: string,
+    jobId: string
+  ): Promise<DocumentImportJob> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/import/${jobId}`
+    );
+    return response.data;
+  },
+
+  /** Every import this workspace has run, newest first. */
+  listImports: async (workspaceId: string): Promise<DocumentImportJob[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/documents/import`
+    );
+    return response.data;
+  },
+
+  /**
+   * Resume a stopped import.
+   *
+   * It continues where it stopped rather than starting again, so a retry does
+   * not produce a second copy of everything that already imported. 409 while
+   * the job is still running.
+   */
+  retryImport: async (
+    workspaceId: string,
+    jobId: string
+  ): Promise<DocumentImportStarted> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/documents/import/${jobId}/retry`
+    );
+    return response.data;
   },
 
   /** Turn a .docx already in Drive into an editable document. */

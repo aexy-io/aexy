@@ -238,6 +238,21 @@ test.describe("knowledge base screenshots", () => {
     await shooter.shoot(page, "search");
   });
 
+  test("import — bringing a Notion or Confluence export in", async ({ page }) => {
+    await page.goto("/docs");
+    await ready(page);
+
+    await page.getByTestId("sidebar-import-wiki").click();
+
+    // The dialog itself, not the page behind it. It opens on the form rather
+    // than on a running job, which is the state a reader of the doc is in.
+    const dialog = page.getByTestId("import-wiki-modal");
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("import-wiki-space")).toBeVisible();
+
+    await shooter.shoot(page, "import", '[data-testid="import-wiki-modal"]');
+  });
+
   // No trash shot: the restore API exists but no screen reaches it yet, and a
   // screenshot named "trash" that is actually the documents home is worse than
   // no screenshot. Add one here when the UI lands.

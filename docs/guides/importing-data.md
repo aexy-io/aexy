@@ -2,7 +2,7 @@
 
 Arriving with a CRM full of contacts, a wiki full of pages, or a spreadsheet
 somebody has been maintaining for three years. Each module takes its own
-imports, and one of them has no screen yet — this is the map.
+imports, in its own place — this is the map.
 
 ## Contacts and companies
 
@@ -37,27 +37,20 @@ certain about the list.
 **A `.docx` file** can be dropped straight into the knowledge base and becomes
 a page. A file already in Drive can be promoted into one.
 
-**A Notion or Confluence export** is imported by archive: Aexy works out which
-product it came from, recreates the hierarchy, uploads the attachments, and
-rewrites internal links so they point at the new pages. Large spaces run in the
-background, pages that will not convert are listed with a reason instead of
-failing the whole run, and re-running continues where it stopped.
+**A Notion or Confluence export** is imported by archive: **Import a wiki** in
+the documents sidebar. Aexy works out which product it came from, recreates the
+hierarchy, uploads the attachments, and rewrites internal links so they point
+at the new pages.
 
-**There is no screen for it yet.** The import runs, and it is the same code
-path a UI would call, but today it is started with an API request:
+Large spaces run in the background and the dialog can be closed while they do.
+Pages that will not convert are listed with a reason instead of failing the
+whole run, and an import that stops resumes where it stopped.
 
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@confluence-space.zip" \
-  "https://<your-host>/api/v1/workspaces/$WORKSPACE_ID/documents/import?space_id=$SPACE_ID"
-```
+Two limits worth knowing before you export: you need **admin on the destination
+space**, and an archive over **500 MB** is refused — that size is a whole
+Confluence instance rather than a space, so export one space at a time.
 
-It answers `202` with a job id; `GET .../documents/import/{job_id}` reports
-progress, and `POST .../documents/import/{job_id}/retry` resumes a run that
-stopped. Importing needs admin on the destination space, and an archive over
-500 MB is refused — that size is a whole Confluence instance rather than a
-space, and should be split first.
+[Knowledge base](../knowledge-base.md) has the rest.
 
 ## Reminders and compliance records
 
