@@ -11,6 +11,12 @@ from aexy.models.api_token import ApiToken
 from aexy.schemas.api_token import ApiTokenCreate
 
 
+def _aware(value: datetime | None) -> datetime | None:
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 class ApiTokenService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -101,16 +107,25 @@ class ApiTokenService:
         if token is None:
             return None
 
-        # Check expiry
-        if token.expires_at and token.expires_at < datetime.now(timezone.utc):
+        # Check expiry. SQLite hands back naive datetimes; treat them as UTC
+        # rather than letting a comparison raise and turn a valid token into a
+        # 500.
+        now = datetime.now(timezone.utc)
+        expires_at = _aware(token.expires_at)
+        if expires_at and expires_at < now:
             return None
 
+        # A principal's token dies with the principal, whatever the row says.
+        if token.principal_id:
+            from aexy.models.agent_principal import AgentPrincipal
+
+            principal = await self.db.get(AgentPrincipal, token.principal_id)
+            if principal is None or not principal.is_active:
+                return None
+
         # Debounce last_used_at — only update if older than 5 minutes
-        now = datetime.now(timezone.utc)
-        if (
-            token.last_used_at is None
-            or (now - token.last_used_at).total_seconds() > 300
-        ):
+        last_used = _aware(token.last_used_at)
+        if last_used is None or (now - last_used).total_seconds() > 300:
             token.last_used_at = now
             await self.db.flush()
         return token

@@ -277,14 +277,40 @@ async def test_the_generic_ticket_module_cannot_be_used_to_walk_around_the_scope
 
 @pytest.mark.asyncio
 async def test_ask_ai_list_tickets_respects_the_same_scope(client, db_session, desk, tickets):
-    """The assistant reads the shared table directly, field_values and all."""
-    from aexy.services.ask_tools import _list_tickets
+    """Service desk tickets share the generic table, and `field_values` carries
+    the requester's subject and body — so "list the tickets" asked of the
+    assistant must not read out what the desk's row scope hides.
 
-    mine = await _list_tickets({}, db_session, desk["ws"], desk["kam_a_id"])
-    assert {t["id"] for t in mine["result"]} == {tickets["a"], tickets["finance"]}
+    Ask used to answer this from a hand-written tool that applied
+    `generic_ticket_scope_clause` itself. That tool is gone: Ask reaches the
+    catalogue now, and the guarantee comes from re-entering the endpoint as the
+    person asking, so the endpoint's own scope is the only scope there is.
+    Different mechanism, same property — asserted end to end here, through the
+    governed executor, as each of the two people.
+    """
+    from aexy.services.ask_tools import execute_tool
 
-    everything = await _list_tickets({}, db_session, desk["ws"], desk["head_id"])
-    assert {t["id"] for t in everything["result"]} == set(tickets.values())
+    detail = await client.get(
+        f"/api/v1/workspaces/{desk['ws']}/tickets/{tickets['a']}", headers=desk["head"]
+    )
+    assert detail.status_code == 200, detail.text
+    form_id = detail.json()["form_id"]
+
+    async def asked_by(developer_id: str) -> set[str]:
+        answer = await execute_tool(
+            # The capability tool, so `list_tickets` resolves within
+            # `mcp.tickets` — the service desk has an action of the same name.
+            "aexy_tickets",
+            {"action": "list_tickets", "query": {"form_id": form_id}},
+            db_session,
+            desk["ws"],
+            developer_id,
+        )
+        assert "error" not in answer, answer
+        return {t["id"] for t in answer["result"]["tickets"]}
+
+    assert await asked_by(desk["kam_a_id"]) == {tickets["a"], tickets["finance"]}
+    assert await asked_by(desk["head_id"]) == set(tickets.values())
 
 
 # ---------------------------------------------------------------- Ops Lead
@@ -623,3 +649,4 @@ async def test_the_desk_list_can_be_capped(client, desk, tickets):
     capped = await client.get(f"{_sd(ws)}/tickets?limit=1", headers=desk["head"])
     assert capped.status_code == 200, capped.text
     assert len(capped.json()) == 1
+

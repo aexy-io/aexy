@@ -94,6 +94,22 @@ async def _assert_agent_in_workspace(
 # =============================================================================
 
 
+
+async def _checked_principal(
+    db: AsyncSession, workspace_id: str, principal_id: str | None
+) -> str | None:
+    """A principal an agent may run as: this workspace's, and still active."""
+    if not principal_id:
+        return None
+    from aexy.services.agent_principal_service import AgentPrincipalService
+
+    principal = await AgentPrincipalService(db).get(workspace_id, principal_id)
+    if principal is None or not principal.is_active:
+        raise HTTPException(
+            status_code=422, detail="Principal not found in this workspace, or inactive"
+        )
+    return str(principal.id)
+
 @router.get("", response_model=list[AgentResponse])
 async def list_agents(
     workspace_id: str,
@@ -173,6 +189,7 @@ async def create_agent(
         escalation_email=data.escalation_email,
         escalation_slack_channel=data.escalation_slack_channel,
         created_by_id=current_developer.id,
+        principal_id=await _checked_principal(db, workspace_id, data.principal_id),
     )
     await log_activity(
         db,
@@ -384,6 +401,8 @@ async def update_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    if update_data.get("principal_id") is not None:
+        await _checked_principal(db, workspace_id, update_data["principal_id"])
     agent = await service.update_agent(
         agent_id, changed_by_id=str(current_developer.id), **update_data
     )

@@ -1,28 +1,21 @@
 /**
  * Setup recipes for every MCP client we support.
  *
- * These were previously three tabs on the /mcp page, and all three were wrong:
+ * There is one server: the backend's `POST /api/v1/mcp`. Every recipe reaches
+ * it, by one of two routes.
  *
- *  - Claude Code was told to put `mcpServers` in `.claude/settings.local.json`.
- *    That file holds `enabledMcpjsonServers` — a list of server *names* to
- *    auto-approve. Server definitions go in `.mcp.json` (project, committed) or
- *    `~/.claude.json` (user scope), and the supported path is `claude mcp add`.
- *  - Codex got a bare shell command and a table of environment variables, which
- *    is not a configuration format. Codex reads `~/.codex/config.toml`.
- *  - "Other clients" told the reader to export shell variables and run the
- *    binary, which no client consumes.
+ *  - **Remote (HTTP).** Clients that speak streamable HTTP connect to the URL
+ *    directly and authenticate through OAuth 2.1 — a consent screen, no token
+ *    to paste. ChatGPT can only do this; Claude Code and Claude Desktop can do
+ *    it and should, because it is one line and nothing to install.
+ *  - **Local (stdio).** Clients that only launch processes run `aexy-mcp`, a
+ *    thin bridge: it forwards JSON-RPC from stdin to the same endpoint with a
+ *    personal API token, and writes the answers back. It holds no tools of its
+ *    own, so it cannot drift from the server and cannot skip governance — the
+ *    previous stdio server did both.
  *
- * Claude Desktop, Cursor and VS Code were absent entirely. ChatGPT was too, and
- * it was the one client that could not be fixed with documentation: it consumes
- * remote MCP servers only. That gap is now closed — the streamable HTTP
- * transport and its OAuth 2.1 authorization server ship with the backend, so
- * ChatGPT gets a URL instead of a config file, and a consent screen instead of
- * an API token.
- *
- * Every recipe also drops `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` and
- * `AEXY_ENABLE_TEMPORAL`. The first two only existed because the Temporal tools
- * connect straight to the Temporal frontend from the client machine; the third
- * is a client-side env var, so it never gated anything. See docs/mcp.md.
+ * `AEXY_WORKSPACE_ID` is needed only when the token's owner belongs to more
+ * than one workspace; a person in one workspace can leave it out.
  */
 
 export type McpClientId =
@@ -47,9 +40,9 @@ export interface McpClientRecipe {
   /** i18n key under `mcp.clientSetup.tabs`. */
   tabKey: string;
   /**
-   * Set for clients that speak the remote HTTP transport rather than stdio.
-   * These get a URL to paste, and authenticate through OAuth — so they never
-   * see an API token, and the environment-variable reference does not apply.
+   * Set for clients that speak ONLY the remote HTTP transport. These get a URL
+   * to paste and authenticate through OAuth — so they never see an API token,
+   * and the environment-variable reference does not apply.
    */
   remoteUrl?: string;
   snippets: McpConfigSnippet[];
@@ -59,26 +52,38 @@ export interface McpClientRecipe {
 const COMMAND = "uvx";
 const ARGS = ["aexy-mcp@latest"];
 
-function stdioJson(apiUrl: string, indent = 0): string {
-  const block = {
-    mcpServers: {
-      aexy: {
-        command: COMMAND,
-        args: ARGS,
-        env: { AEXY_API_URL: apiUrl, AEXY_API_TOKEN: "<your-api-token>" },
-      },
-    },
+function env(apiUrl: string): Record<string, string> {
+  return {
+    AEXY_API_URL: apiUrl,
+    AEXY_API_TOKEN: "<your-api-token>",
+    AEXY_WORKSPACE_ID: "<workspace-id, if you are in more than one>",
   };
-  const text = JSON.stringify(block, null, 2);
-  return indent ? text.replace(/^/gm, " ".repeat(indent)) : text;
+}
+
+function stdioJson(apiUrl: string): string {
+  return JSON.stringify(
+    { mcpServers: { aexy: { command: COMMAND, args: ARGS, env: env(apiUrl) } } },
+    null,
+    2
+  );
+}
+
+export function mcpEndpoint(apiUrl: string): string {
+  return `${apiUrl.replace(/\/$/, "")}/mcp`;
 }
 
 export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
+  const remote = mcpEndpoint(apiUrl);
   return [
     {
       id: "claudeCode",
       tabKey: "claudeCode",
       snippets: [
+        {
+          labelKey: "remoteCli",
+          language: "bash",
+          code: `claude mcp add --transport http aexy ${remote}`,
+        },
         {
           labelKey: "cli",
           language: "bash",
@@ -102,6 +107,11 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
       tabKey: "claudeDesktop",
       snippets: [
         {
+          labelKey: "remoteConnector",
+          language: "bash",
+          code: remote,
+        },
+        {
           labelKey: "macos",
           filePath: "~/Library/Application Support/Claude/claude_desktop_config.json",
           language: "json",
@@ -118,7 +128,7 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
     {
       id: "chatgpt",
       tabKey: "chatgpt",
-      remoteUrl: `${apiUrl}/mcp`,
+      remoteUrl: remote,
       snippets: [],
     },
     {
@@ -137,6 +147,7 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
             "[mcp_servers.aexy.env]",
             `AEXY_API_URL = "${apiUrl}"`,
             'AEXY_API_TOKEN = "<your-api-token>"',
+            'AEXY_WORKSPACE_ID = "<workspace-id, if you are in more than one>"',
           ].join("\n"),
         },
       ],
@@ -155,7 +166,15 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
           labelKey: "vscodeFile",
           filePath: ".vscode/mcp.json",
           language: "json",
-          code: `{\n  "servers": {\n    "aexy": {\n      "type": "stdio",\n      "command": "${COMMAND}",\n      "args": [${ARGS.map((a) => `"${a}"`).join(", ")}],\n      "env": {\n        "AEXY_API_URL": "${apiUrl}",\n        "AEXY_API_TOKEN": "<your-api-token>"\n      }\n    }\n  }\n}`,
+          code: JSON.stringify(
+            {
+              servers: {
+                aexy: { type: "stdio", command: COMMAND, args: ARGS, env: env(apiUrl) },
+              },
+            },
+            null,
+            2
+          ),
         },
       ],
     },
@@ -163,6 +182,11 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
       id: "other",
       tabKey: "other",
       snippets: [
+        {
+          labelKey: "remoteConnector",
+          language: "bash",
+          code: remote,
+        },
         {
           labelKey: "genericStdio",
           language: "json",
@@ -173,8 +197,9 @@ export function getClientRecipes(apiUrl: string): McpClientRecipe[] {
   ];
 }
 
-/** Environment variables the server reads. The only two that remain. */
+/** Environment variables the bridge reads. */
 export const MCP_ENV_VARS: { name: string; descriptionKey: string }[] = [
   { name: "AEXY_API_URL", descriptionKey: "apiUrl" },
   { name: "AEXY_API_TOKEN", descriptionKey: "apiToken" },
+  { name: "AEXY_WORKSPACE_ID", descriptionKey: "workspaceId" },
 ];

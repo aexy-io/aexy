@@ -1,6 +1,6 @@
 {
   "name": "aexy-frontend",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "private": true,
   "scripts": {
     "predev": "npm run i18n:merge",
@@ -28,8 +28,8 @@
     "changelog": "node scripts/generate-changelog.mjs",
     "docs:gen": "node scripts/generate-docs.mjs",
     "docs:shots": "playwright test e2e/docs-shots",
-    "mcp:manifest": "node scripts/fetch-tool-manifest.mjs",
-    "mcp:manifest:check": "node scripts/fetch-tool-manifest.mjs --check",
+    "mcp:manifest": "node scripts/generate-mcp-manifest.mjs",
+    "mcp:manifest:check": "node scripts/generate-mcp-manifest.mjs --check",
     "mcp:doc": "node scripts/generate-mcp-doc.mjs",
     "mcp:doc:check": "node scripts/generate-mcp-doc.mjs --check",
     "schema:automation:precheck": "docker ps --filter name=aexy-backend --filter status=running --quiet | grep -q . || { echo 'Error: aexy-backend container is not running. Start it with: docker-compose up -d backend' >&2; exit 1; }",

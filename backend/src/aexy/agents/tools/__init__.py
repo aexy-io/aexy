@@ -1,54 +1,34 @@
-"""Tools available for AI agents."""
+"""Tools available to AI agents.
 
-from aexy.agents.tools.crm_tools import (
-    SearchContactsTool,
-    GetRecordTool,
-    UpdateRecordTool,
-    CreateRecordTool,
-    GetActivitiesTool,
-)
-from aexy.agents.tools.email_tools import (
-    SendEmailTool,
-    CreateDraftTool,
-    GetEmailHistoryTool,
-)
-from aexy.agents.tools.enrichment_tools import (
-    EnrichCompanyTool,
-    EnrichPersonTool,
-    WebSearchTool,
-)
-from aexy.agents.tools.communication_tools import (
-    SendSlackTool,
-    SendSMSTool,
-)
-from aexy.agents.tools.document_tools import (
-    CreateDocumentTool,
-    ProposeDocxEditTool,
-    ReadDocumentTool,
-    SearchDocumentsTool,
+There is one source of tools: the MCP catalogue, generated from the API and
+run through the governed executor. See `mcp_tools` for how an agent's tool
+names become LangChain tools, and `services/mcp_catalog.py` for the catalogue.
+"""
+
+from aexy.agents.tools.mcp_tools import (
+    McpActionTool,
+    McpCallTool,
+    McpCapabilityTool,
+    McpDiscoverTool,
+    McpRoutineTool,
+    McpToolContext,
+    attach_to_agent,
+    build_tools,
+    catalog_tool_listing,
+    resolve_context,
+    tool_definitions,
 )
 
 __all__ = [
-    # CRM
-    "SearchContactsTool",
-    "GetRecordTool",
-    "UpdateRecordTool",
-    "CreateRecordTool",
-    "GetActivitiesTool",
-    # Email
-    "SendEmailTool",
-    "CreateDraftTool",
-    "GetEmailHistoryTool",
-    # Enrichment
-    "EnrichCompanyTool",
-    "EnrichPersonTool",
-    "WebSearchTool",
-    # Communication
-    "SendSlackTool",
-    "SendSMSTool",
-    # Documents
-    "ReadDocumentTool",
-    "SearchDocumentsTool",
-    "CreateDocumentTool",
-    "ProposeDocxEditTool",
+    "McpActionTool",
+    "McpCallTool",
+    "McpCapabilityTool",
+    "McpDiscoverTool",
+    "McpRoutineTool",
+    "McpToolContext",
+    "attach_to_agent",
+    "build_tools",
+    "catalog_tool_listing",
+    "resolve_context",
+    "tool_definitions",
 ]

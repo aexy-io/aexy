@@ -1,0 +1,58 @@
+{
+  "agentSchedules": {
+    "title": "Agent Schedules",
+    "subtitle": "Routines an agent runs on a clock. Each run is an ordinary agent execution, acting as the agent's principal, with its writes governed and ledgered like any other.",
+    "createButton": "New schedule",
+    "form": {
+      "heading": "New schedule",
+      "agentLabel": "Agent",
+      "agentHint": "Only agents with a principal can be scheduled — a schedule has nobody at the keyboard to act as.",
+      "agentNone": "No agents with a principal yet. Set one on the agent's Tools tab.",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. \"Morning triage\"",
+      "routineLabel": "Routine",
+      "routinePlaceholder": "What the agent should do each run. The named routines on the /mcp page are a good starting point.",
+      "intervalLabel": "Every",
+      "submit": "Create"
+    },
+    "interval": {
+      "m15": "15 minutes",
+      "m30": "30 minutes",
+      "h1": "hour",
+      "h4": "4 hours",
+      "h12": "12 hours",
+      "d1": "day",
+      "w1": "week"
+    },
+    "table": {
+      "name": "Name",
+      "agent": "Agent",
+      "every": "Every",
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "runs": "Runs",
+      "status": "Status",
+      "never": "Never",
+      "paused": "Paused"
+    },
+    "status": {
+      "enabled": "On",
+      "disabled": "Off"
+    },
+    "actions": {
+      "runNow": "Run now",
+      "runNowTitle": "Fire the routine once, now",
+      "pause": "Pause",
+      "resume": "Resume",
+      "remove": "Remove",
+      "removeTitle": "Remove schedule",
+      "started": "Run started"
+    },
+    "empty": {
+      "title": "No schedules yet",
+      "description": "Create one to run a standup summary, a triage pass or a TAT sweep without anyone typing the request."
+    },
+    "footer": "The clock is checked every five minutes. A paused schedule keeps its history; a removed one is gone.",
+    "adminOnly": "Only workspace admins can manage agent schedules."
+  }
+}

@@ -56,7 +56,7 @@ _catalog_cache: dict[int, dict] = {}
 def _catalog(request: Request) -> dict:
     key = id(request.app)
     if key not in _catalog_cache:
-        _catalog_cache[key] = build_catalog(request.app.openapi())
+        _catalog_cache[key] = build_catalog(request.app.openapi(), include_schemas=True)
     return _catalog_cache[key]
 
 

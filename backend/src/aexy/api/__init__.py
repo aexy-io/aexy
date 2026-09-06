@@ -133,6 +133,10 @@ from aexy.api.google_integration import callback_router as google_callback_route
 from aexy.api.agents import router as agents_router
 from aexy.api.agents import writing_style_router
 from aexy.api.agent_pending_actions import router as agent_pending_actions_router
+from aexy.api.agent_pending_actions import self_router as agent_actions_self_router
+from aexy.api.agent_principals import router as agent_principals_router
+from aexy.api.agent_schedules import router as agent_schedules_router
+from aexy.api.outreach import router as outreach_router
 from aexy.api.review_items import router as review_items_router
 from aexy.api.agent_policies import router as agent_policies_router
 from aexy.api.agent_policies import audit_router as agent_audit_router
@@ -410,6 +414,27 @@ api_router.include_router(agent_policies_router, tags=["agent-policies"], depend
 # any MCP client, and a workspace without that app enabled still needs to be
 # able to see and decline what an agent asked to do in it.
 api_router.include_router(agent_pending_actions_router)
+# An agent's own held actions. Ungated for the same reason as the queue above:
+# an agent told "this is waiting for approval" has to be able to learn the
+# outcome whatever apps the workspace has switched on.
+api_router.include_router(agent_actions_self_router)
+# The identities agents run as. Ungated on purpose, like the rest of workspace
+# administration: switching the agents app off must not strand a live principal
+# with a valid token and no admin screen to revoke it from. Admin-checked per
+# endpoint, and excluded from the MCP catalogue entirely.
+api_router.include_router(agent_principals_router)
+# Routines an agent runs on a clock — agent configuration, so it answers only
+# where the agents app does.
+api_router.include_router(
+    agent_schedules_router,
+    tags=["agent-schedules"],
+    dependencies=[Depends(require_app_access("agents"))],
+)
+# Email, Slack and SMS an agent sends on a person's behalf: ordinary CRM
+# operations, behind the CRM app like the rest of `crm/`.
+api_router.include_router(
+    outreach_router, tags=["crm"], dependencies=[Depends(require_app_access("crm"))]
+)
 api_router.include_router(review_items_router)
 api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration

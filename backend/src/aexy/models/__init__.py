@@ -141,6 +141,10 @@ from aexy.models.proposed_change import (
     ChangeStatus,
     ProposedChange,
 )
+import aexy.models.agent  # noqa: E402,F401  (crm_agents: FK target of agent policies, schedules)
+from aexy.models.agent_action_log import AgentActionLog
+from aexy.models.agent_principal import AgentPrincipal
+from aexy.models.agent_schedule import AgentSchedule
 from aexy.models.agent_policy import (
     AgentPolicy,
     AgentPolicyDecision,
@@ -783,6 +787,9 @@ __all__ = [
     "ChangeKind",
     "ChangeStatus",
     "ProposedChange",
+    "AgentActionLog",
+    "AgentPrincipal",
+    "AgentSchedule",
     "AgentPolicy",
     "AgentPolicyDecision",
     "AgentConfigAudit",

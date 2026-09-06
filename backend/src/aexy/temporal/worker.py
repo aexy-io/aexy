@@ -123,6 +123,7 @@ def get_all_activities() -> list:
         send_notification_slack,
         send_notification_web_push,
     )
+    from aexy.temporal.activities.agent_schedules import run_due_agent_schedules
     from aexy.temporal.activities.integrations import (
         deliver_webhook,
         execute_agent,
@@ -387,6 +388,7 @@ def get_all_activities() -> list:
         send_slack_record_notification,
         deliver_webhook,
         retry_webhook_delivery,
+        run_due_agent_schedules,
         execute_agent,
         process_agent_chat_mention,
         process_chat_all_mention,

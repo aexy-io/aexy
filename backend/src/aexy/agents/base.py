@@ -57,6 +57,15 @@ class BaseAgent(ABC):
         self._llm: BaseChatModel | None = None
         self._resolved: ResolvedLLM | None = None
         self._tools: list[BaseTool] = []
+        # Tools resolved outside the agent's own registry — the MCP catalogue
+        # adapters — attached by whoever builds the agent, because resolving
+        # what the actor may reach needs the database and `tools` is sync.
+        self.extra_tools: list[BaseTool] = []
+        # Catalogue tool names this agent wants (routines, `aexy_<capability>`,
+        # bare action names, `aexy_discover`, `aexy_call`). Resolved into
+        # `extra_tools` by `agents.tools.mcp_tools.attach_to_agent`, as the
+        # principal or person the run acts for. Subclasses set the class
+        # attribute; CustomAgent takes them from its configuration.
         self._graph: StateGraph | None = None
         self.policy_engine = policy_engine
         self.agent_config = agent_config
@@ -142,11 +151,17 @@ class BaseAgent(ABC):
                 self._llm = ChatOpenAI(**kwargs)
         return self._llm
 
+    catalog_tool_names: list[str] = []
+
     @property
-    @abstractmethod
+    def unresolved_tool_names(self) -> list[str]:
+        """Catalogue names to attach. Everything an agent can hold is one."""
+        return list(self.catalog_tool_names)
+
+    @property
     def tools(self) -> list[BaseTool]:
-        """Define the tools available to this agent."""
-        pass
+        """The tools this agent holds: the catalogue tools attached for this run."""
+        return list(self.extra_tools)
 
     @property
     @abstractmethod
@@ -385,9 +400,14 @@ class BaseAgent(ABC):
         context: dict,
     ) -> str:
         """Build the initial user message for the agent."""
+        # A scheduled or automated run hands its instruction in `routine`.
+        # Shown first and as the task, not buried in a context list.
+        routine = (context or {}).get("routine")
+        task = f"Task:\n{routine}\n\n" if routine else ""
+        rest = {k: v for k, v in (context or {}).items() if k != "routine"}
         return f"""
-Context:
-{self._format_context(context)}
+{task}Context:
+{self._format_context(rest)}
 
 Record Data:
 {self._format_record(record_data)}

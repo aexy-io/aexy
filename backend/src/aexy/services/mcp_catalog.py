@@ -54,7 +54,12 @@ PLATFORM_CAPABILITIES = {"platform", "admin", "integrations"}
 # writes is not gated at all — the gate would be approving itself. A human
 # reaches these endpoints through the web app, where the reviewer is a session,
 # not a caller with a capability grant.
-EXCLUDED_CAPABILITIES = {"public", "system", "review_gate"}
+#
+# `agent_identity` creates principals and mints their tokens. An agent that
+# could reach it would be writing its own grant.
+# `credentials` is a person's own API tokens. An agent that could mint one
+# would be minting an identity with no principal behind it.
+EXCLUDED_CAPABILITIES = {"public", "system", "review_gate", "agent_identity", "credentials"}
 
 # Capabilities a wrongly-granted tool does lasting damage through. Defaulted off
 # rather than inherited.
@@ -135,6 +140,8 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     # -- Agents & automation -------------------------------------------------
     "agents": "agents",
     "agent_policies": "agents",
+    # When an existing, scoped agent runs. Configuration, not a grant.
+    "agent_schedules": "agents",
     "agent_audit": "agents",
     "automation_agents": "agents",
     "writing_style": "agents",
@@ -244,7 +251,7 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     # app access, and not an `agents` grant: it configures the provider,
     # it does not run anything.
     "ai_model_configuration": "platform",
-    "api_tokens": "platform",
+    "api_tokens": "credentials",
     "auth": "platform",
     "notifications": "platform",
     "preferences": "platform",
@@ -262,6 +269,12 @@ TAG_TO_CAPABILITY: dict[str, str] = {
     # -- The human gate (never reachable over MCP; see EXCLUDED_CAPABILITIES) --
     "review": "review_gate",
     "agent_actions": "review_gate",
+    # The one exception: an agent reading the status of the actions *it* asked
+    # for. Sees only its own rows, decides nothing. Without it an agent told
+    # "waiting for approval" has no way to learn it was approved and carry on.
+    "agent_actions_self": "platform",
+    # Creating the identities agents run as, and their tokens. Never over MCP.
+    "agent_principals": "agent_identity",
     # -- Admin (privileged) --------------------------------------------------
     "admin": "admin",
     "platform_admin": "admin",
@@ -384,8 +397,84 @@ def _assign_actions(entries: list[dict[str, Any]]) -> None:
             entry["action"] = candidate
 
 
-def build_catalog(schema: dict) -> dict[str, Any]:
-    """Group every operation in an OpenAPI schema by the capability governing it."""
+def _deref(node: Any, components: dict[str, Any], depth: int = 0) -> Any:
+    """Follow `$ref` and collapse nullable `anyOf`, a few levels deep."""
+    if not isinstance(node, dict) or depth > 4:
+        return node
+    if "$ref" in node:
+        name = node["$ref"].rsplit("/", 1)[-1]
+        return _deref(components.get(name, {}), components, depth + 1)
+    if "anyOf" in node:
+        options = [o for o in node["anyOf"] if not (isinstance(o, dict) and o.get("type") == "null")]
+        if len(options) == 1:
+            return _deref(options[0], components, depth + 1)
+    return node
+
+
+def _compact_parameters(op: dict[str, Any], components: dict[str, Any]) -> list[dict[str, Any]]:
+    """Path and query parameters as the model needs them, minus workspace_id,
+    which the executor fills in from the grant."""
+    out = []
+    for param in op.get("parameters", []) or []:
+        if param.get("name") == "workspace_id":
+            continue
+        schema = _deref(param.get("schema", {}), components)
+        entry = {
+            "name": param["name"],
+            "in": param.get("in", "query"),
+            "required": bool(param.get("required")),
+            "type": schema.get("type") or ("enum" if "enum" in schema else "string"),
+        }
+        if "enum" in schema:
+            entry["enum"] = schema["enum"]
+        if param.get("description"):
+            entry["description"] = str(param["description"]).split("\n")[0][:160]
+        out.append(entry)
+    return out
+
+
+def _compact_body(op: dict[str, Any], components: dict[str, Any]) -> dict[str, Any] | None:
+    """The JSON body as `{field: {type, required, description?, enum?}}`.
+
+    This is what the agent was guessing at before: `body: object` said nothing,
+    so the first attempt at a write was usually a 422 and the second was a
+    guess informed by the error. The schema was in hand the whole time.
+    """
+    body = op.get("requestBody")
+    if not body:
+        return None
+    content = (body.get("content") or {}).get("application/json") or {}
+    schema = _deref(content.get("schema", {}), components)
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return None
+    required = set(schema.get("required") or [])
+    fields: dict[str, Any] = {}
+    for name, raw in props.items():
+        prop = _deref(raw, components)
+        entry: dict[str, Any] = {
+            "type": prop.get("type") or ("enum" if "enum" in prop else "object"),
+            "required": name in required,
+        }
+        if "enum" in prop:
+            entry["enum"] = prop["enum"]
+        if prop.get("description"):
+            entry["description"] = str(prop["description"]).split("\n")[0][:160]
+        if prop.get("type") == "array":
+            items = _deref(prop.get("items", {}), components)
+            entry["items"] = items.get("type") or "object"
+        fields[name] = entry
+    return fields
+
+
+def build_catalog(schema: dict, include_schemas: bool = False) -> dict[str, Any]:
+    """Group every operation in an OpenAPI schema by the capability governing it.
+
+    `include_schemas` adds each operation's parameters and request-body fields,
+    for discovery and tool descriptions at runtime. The committed fixture is
+    built without them, so it stays a readable diff.
+    """
+    components = (schema.get("components") or {}).get("schemas") or {}
     by_capability: dict[str, list[dict[str, Any]]] = {}
     unmapped_tags: set[str] = set()
     unmapped_ops = 0
@@ -400,15 +489,19 @@ def build_catalog(schema: dict) -> dict[str, Any]:
                 unmapped_ops += 1
                 continue
             description = (op.get("description") or "").strip().split("\n")[0]
-            by_capability.setdefault(capability, []).append(
-                {
-                    "operation_id": op["operationId"],
-                    "method": method.upper(),
-                    "path": path,
-                    "summary": op.get("summary") or description,
-                    "mutating": method.lower() in MUTATING_METHODS,
-                }
-            )
+            entry: dict[str, Any] = {
+                "operation_id": op["operationId"],
+                "method": method.upper(),
+                "path": path,
+                "summary": op.get("summary") or description,
+                "mutating": method.lower() in MUTATING_METHODS,
+            }
+            if include_schemas:
+                entry["parameters"] = _compact_parameters(op, components)
+                body_fields = _compact_body(op, components)
+                if body_fields:
+                    entry["request_body"] = body_fields
+            by_capability.setdefault(capability, []).append(entry)
 
     groups: list[CapabilityGroup] = []
     for capability in sorted(by_capability):
@@ -430,6 +523,8 @@ def build_catalog(schema: dict) -> dict[str, Any]:
                         "path": e["path"],
                         "summary": e["summary"],
                         "mutating": e["mutating"],
+                        **({"parameters": e["parameters"]} if "parameters" in e else {}),
+                        **({"request_body": e["request_body"]} if "request_body" in e else {}),
                     }
                     for e in entries
                 ],
@@ -447,6 +542,17 @@ def build_catalog(schema: dict) -> dict[str, Any]:
     return {
         "catalog_version": 1,
         "capabilities": groups,
+        # The named routes, so the fixture (and the /mcp page generated from
+        # it) can list them beside the per-capability tools.
+        "workflow_tools": [
+            {
+                "name": tool["name"],
+                "capability": tool["capability"],
+                "action": tool["action"],
+                "description": tool["description"],
+            }
+            for tool in WORKFLOW_TOOLS
+        ],
         "duplicate_operation_ids": {k: v for k, v in sorted(seen.items()) if len(v) > 1},
         "excluded": {
             cap: len(by_capability.get(cap, []))
@@ -470,6 +576,18 @@ def build_catalog(schema: dict) -> dict[str, Any]:
 
 DISCOVER_TOOL = "aexy_discover"
 CALL_TOOL = "aexy_call"
+
+# Offered on every generic and per-capability tool. A list endpoint can return
+# far more than a model should read; naming the keys you want keeps the answer
+# to what the question was about.
+FIELDS_PARAMETER: dict[str, Any] = {
+    "type": "array",
+    "items": {"type": "string"},
+    "description": (
+        "Optional. Keys to keep in the response (applied to each item of a list). "
+        "Use with list endpoints to avoid reading fields you do not need."
+    ),
+}
 
 
 def _tool_name(capability: str) -> str:
@@ -502,13 +620,12 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "workspace_id": {"type": "string"},
                 "repository_id": {
                     "type": "string",
                     "description": "Optional. Restrict to one repository.",
                 },
             },
-            "required": ["workspace_id"],
+            "required": [],
         },
         "argument_map": {"workspace_id": "path", "repository_id": "query"},
     },
@@ -527,13 +644,12 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "workspace_id": {"type": "string"},
                 "repository_id": {
                     "type": "string",
                     "description": "Optional. Restrict to one repository.",
                 },
             },
-            "required": ["workspace_id"],
+            "required": [],
         },
         "argument_map": {"workspace_id": "path", "repository_id": "query"},
     },
@@ -550,7 +666,6 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "workspace_id": {"type": "string"},
                 "document_id": {"type": "string"},
                 "markdown": {
                     "type": "string",
@@ -561,7 +676,7 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
                     "description": "One line on what changed and why. Shown to the reviewer.",
                 },
             },
-            "required": ["workspace_id", "document_id", "markdown"],
+            "required": ["document_id", "markdown"],
         },
         "argument_map": {
             "workspace_id": "path",
@@ -590,7 +705,6 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "workspace_id": {"type": "string"},
                 "repository_id": {"type": "string"},
                 "path": {"type": "string"},
                 "link_type": {"type": "string", "enum": ["file", "directory"]},
@@ -607,7 +721,7 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
                     ),
                 },
             },
-            "required": ["workspace_id", "repository_id", "path"],
+            "required": ["repository_id", "path"],
         },
         "argument_map": {
             "workspace_id": "path",
@@ -618,6 +732,351 @@ WORKFLOW_TOOLS: list[dict[str, Any]] = [
             "title": "body",
             "parent_id": "body",
             "markdown": "body",
+        },
+    },
+    # ------------------------------------------------------------------
+    # Day-to-day routines. Each binds one operation and says, in its
+    # description, the order of work around it and what is left to a person.
+    # Writes among them are governed like any other: a held call waits in
+    # /review and the agent is told so.
+    # ------------------------------------------------------------------
+    {
+        "name": "aexy_sd_open_tickets",
+        "capability": "mcp.service_desk",
+        "action": "list_tickets",
+        "description": (
+            "Service desk work list. Lists tickets with their request type, who they "
+            "are pending with, owner and age. Start a triage or TAT pass here: filter "
+            "needs_triage=true for tickets the classifier was unsure about, or "
+            "pending_with=<stakeholder> to see one queue. Pass `fields` to keep the "
+            "answer short. Each row carries `ticket_id`: that is the id every other "
+            "ticket routine and action takes (`id` is the desk row, and will 404)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "needs_triage": {"type": "boolean"},
+                "pending_with": {"type": "string", "description": "Stakeholder slug."},
+                "request_type": {"type": "string"},
+                "status": {"type": "string"},
+                "is_open": {"type": "boolean"},
+                "assigned_to": {"type": "string", "description": "Developer id."},
+                "q": {"type": "string", "description": "Free-text search."},
+                "limit": {"type": "integer"},
+                "offset": {"type": "integer"},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": [],
+        },
+        "argument_map": {
+            "workspace_id": "path", "needs_triage": "query", "pending_with": "query",
+            "request_type": "query", "status": "query", "is_open": "query",
+            "assigned_to": "query", "q": "query", "limit": "query", "offset": "query",
+            "fields": "fields",
+        },
+    },
+    {
+        "name": "aexy_sd_triage_ticket",
+        "capability": "mcp.service_desk",
+        "action": "update_ticket_fields",
+        "description": (
+            "Classify or correct a service desk ticket: set its request type, the "
+            "product, account or vendor it concerns, its owner, and clear "
+            "needs_triage once you are sure. Read the ticket first (aexy_service_desk "
+            "action get_ticket) and only set fields you have evidence for. "
+            "Reassigning a ticket to a different owner is a change a person may want "
+            "to approve; if the call is held, say so and stop."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "string", "description": "The row's `ticket_id` from aexy_sd_open_tickets (not its `id`)."},
+                "request_type": {"type": "string", "description": "A request-type slug from this workspace's taxonomy."},
+                "product_id": {"type": "string"},
+                "account_id": {"type": "string"},
+                "vendor_id": {"type": "string"},
+                "assigned_owner_id": {"type": "string"},
+                "needs_triage": {"type": "boolean"},
+            },
+            "required": ["ticket_id"],
+        },
+        "argument_map": {
+            "workspace_id": "path", "ticket_id": "path", "request_type": "body",
+            "product_id": "body", "account_id": "body", "vendor_id": "body",
+            "assigned_owner_id": "body", "needs_triage": "body",
+        },
+    },
+    {
+        "name": "aexy_sd_park_ticket",
+        "capability": "mcp.service_desk",
+        "action": "change_pending_with",
+        "description": (
+            "Move a service desk ticket to a different stakeholder's queue "
+            "(pending_with) with a note saying why. This is how the TAT clock is "
+            "handed over; the ledger records the segment. Use a stakeholder slug the "
+            "workspace defines — the ticket detail lists them."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "string", "description": "The row's `ticket_id` from aexy_sd_open_tickets (not its `id`)."},
+                "pending_with": {"type": "string"},
+                "note": {"type": "string"},
+            },
+            "required": ["ticket_id", "pending_with"],
+        },
+        "argument_map": {
+            "workspace_id": "path", "ticket_id": "path", "pending_with": "body", "note": "body",
+        },
+    },
+    {
+        "name": "aexy_sd_tat_report",
+        "capability": "mcp.service_desk",
+        "action": "get_tat_report",
+        "description": (
+            "Turnaround-time report for service desk tickets: time spent with each "
+            "stakeholder against target, per ticket. Use it for a TAT sweep — find "
+            "breaches and near-breaches, then nudge the owner (aexy_sd_email_stakeholder) "
+            "or park the ticket onward (aexy_sd_park_ticket). Filter to one "
+            "stakeholder or request type to keep it readable."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "pending_with": {"type": "string"},
+                "request_type": {"type": "string"},
+                "is_open": {"type": "boolean"},
+                "created_from": {"type": "string", "description": "ISO date."},
+                "created_to": {"type": "string", "description": "ISO date."},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": [],
+        },
+        "argument_map": {
+            "workspace_id": "path", "pending_with": "query", "request_type": "query",
+            "is_open": "query", "created_from": "query", "created_to": "query", "fields": "fields",
+        },
+    },
+    {
+        "name": "aexy_sd_email_stakeholder",
+        "capability": "mcp.service_desk",
+        "action": "email_stakeholder",
+        "description": (
+            "Email a stakeholder about a service desk ticket, from the desk's "
+            "mailbox, threaded on the ticket. To park the ticket with them as well, call "
+            "aexy_sd_park_ticket with that stakeholder. Sending mail is outward-facing: workspace "
+            "policy normally holds it for a person to approve. Draft it well and "
+            "expect to wait."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "string", "description": "The row's `ticket_id` from aexy_sd_open_tickets (not its `id`)."},
+                "to": {"type": "string", "description": "A stakeholder slug or an email address."},
+                "cc": {"type": "array", "items": {"type": "string"}},
+                "subject": {"type": "string"},
+                "body": {"type": "string"},
+            },
+            "required": ["ticket_id", "to", "subject", "body"],
+        },
+        "argument_map": {
+            "workspace_id": "path", "ticket_id": "path", "to": "body", "cc": "body",
+            "subject": "body", "body": "body",
+        },
+    },
+    {
+        "name": "aexy_sprint_standup",
+        "capability": "mcp.tracking",
+        "action": "get_sprint_standup_summary",
+        "description": (
+            "Everyone's standup for a sprint in one call: what they did, what is "
+            "next, what is blocking. The daily standup routine: fetch this, fetch "
+            "aexy_active_blockers, and write the summary a person would — who is "
+            "blocked and on what, what is at risk, who has not reported. Find the "
+            "sprint id with aexy_sprints action get_active_sprint."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"sprint_id": {"type": "string"}},
+            "required": ["sprint_id"],
+        },
+        "argument_map": {"workspace_id": "path", "sprint_id": "path"},
+    },
+    {
+        "name": "aexy_active_blockers",
+        "capability": "mcp.tracking",
+        "action": "get_active_blockers",
+        "description": (
+            "Open blockers, optionally for one team, with how long each has been "
+            "open. Anything older than a day belongs in the standup summary by name."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"team_id": {"type": "string"}},
+            "required": [],
+        },
+        "argument_map": {"workspace_id": "path", "team_id": "query"},
+    },
+    {
+        "name": "aexy_sprint_tasks",
+        "capability": "mcp.sprints",
+        "action": "list_tasks",
+        "description": (
+            "Tasks in a sprint, filterable by status or assignee. Sprint hygiene: "
+            "look for unassigned tasks, tasks with no estimate, and in-progress tasks "
+            "that have not moved. Comment or ask rather than reassign — changing "
+            "status or owner is a decision the team makes, and policy may hold it."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sprint_id": {"type": "string"},
+                "status_filter": {"type": "string"},
+                "assignee_id": {"type": "string"},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": ["sprint_id"],
+        },
+        "argument_map": {
+            "workspace_id": "path", "sprint_id": "path", "status_filter": "query",
+            "assignee_id": "query", "fields": "fields",
+        },
+    },
+    {
+        "name": "aexy_leave_pending_approvals",
+        "capability": "mcp.leave",
+        "action": "list_pending_approvals",
+        "description": (
+            "Leave requests waiting on the caller's approval. The leave routine: for "
+            "each, check the requester's balance (aexy_leave action "
+            "get_developer_balance) and the team calendar for clashes, then "
+            "recommend. Approving or rejecting is a person's decision; "
+            "approve_leave_request and reject_leave_request exist, but say what you "
+            "would do and why rather than doing it unless you were asked to."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"fields": FIELDS_PARAMETER},
+            "required": [],
+        },
+        "argument_map": {"workspace_id": "path", "fields": "fields"},
+    },
+    {
+        "name": "aexy_compliance_overdue",
+        "capability": "mcp.compliance",
+        "action": "get_overdue_report",
+        "description": (
+            "Training and certification assignments that are overdue, by person. "
+            "The compliance sweep: pair this with aexy_compliance_expiring, then "
+            "notify owners. Waiving a requirement is held for approval."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"fields": FIELDS_PARAMETER},
+            "required": [],
+        },
+        "argument_map": {"workspace_id": "query", "fields": "fields"},
+    },
+    {
+        "name": "aexy_compliance_expiring",
+        "capability": "mcp.compliance",
+        "action": "get_expiring_certifications_report",
+        "description": (
+            "Certifications expiring within a window (default 30 days), by person, "
+            "so renewals can be chased before they lapse."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days_ahead": {"type": "integer"},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": [],
+        },
+        "argument_map": {"workspace_id": "query", "days_ahead": "query", "fields": "fields"},
+    },
+    {
+        "name": "aexy_campaign_preflight",
+        "capability": "mcp.email_marketing",
+        "action": "get_audience_count",
+        "description": (
+            "How many recipients a campaign will go to right now. Preflight before "
+            "any send: a count of zero or an unexpectedly large one is a reason to "
+            "stop and ask. Sending itself (send_campaign) is held for approval by "
+            "default."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"campaign_id": {"type": "string"}},
+            "required": ["campaign_id"],
+        },
+        "argument_map": {"workspace_id": "path", "campaign_id": "path"},
+    },
+    {
+        "name": "aexy_open_incidents",
+        "capability": "mcp.uptime",
+        "action": "list_incidents",
+        "description": (
+            "Uptime incidents, filterable by monitor and status. Incident first "
+            "response: acknowledge new ones (aexy_incident_acknowledge), open a "
+            "ticket if the monitor is customer-facing, and escalate through the "
+            "matrix only if nobody has responded — escalation is held for approval."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "monitor_id": {"type": "string"},
+                "status": {"type": "string"},
+                "limit": {"type": "integer"},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": [],
+        },
+        "argument_map": {
+            "workspace_id": "path", "monitor_id": "query", "status": "query",
+            "limit": "query", "fields": "fields",
+        },
+    },
+    {
+        "name": "aexy_incident_acknowledge",
+        "capability": "mcp.uptime",
+        "action": "acknowledge_incident",
+        "description": (
+            "Acknowledge an uptime incident so the on-call knows someone is looking. "
+            "Safe to do unattended; it changes nothing about the service."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"incident_id": {"type": "string"}},
+            "required": ["incident_id"],
+        },
+        "argument_map": {"workspace_id": "path", "incident_id": "path"},
+    },
+    {
+        "name": "aexy_crm_records",
+        "capability": "mcp.crm",
+        "action": "list_records",
+        "description": (
+            "Records of one CRM object (people, companies, deals), with filters and "
+            "sorts as JSON strings. CRM follow-up routine: list deals sorted by last "
+            "activity, find the stale ones, and draft the follow-up — sending is held "
+            "for approval. Find object ids with aexy_crm action list_objects."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "object_id": {"type": "string"},
+                "filters": {"type": "string", "description": "JSON-encoded filter list."},
+                "sorts": {"type": "string", "description": "JSON-encoded sort list."},
+                "limit": {"type": "integer"},
+                "offset": {"type": "integer"},
+                "fields": FIELDS_PARAMETER,
+            },
+            "required": ["object_id"],
+        },
+        "argument_map": {
+            "workspace_id": "path", "object_id": "path", "filters": "query", "sorts": "query",
+            "limit": "query", "offset": "query", "fields": "fields",
         },
     },
 ]
@@ -678,12 +1137,21 @@ def _generic_tools(granted: list[CapabilityGroup]) -> list[dict[str, Any]]:
                         "type": "string",
                         "description": "Action name or operation id to invoke.",
                     },
+                    "capability": {
+                        "type": "string",
+                        "enum": capabilities,
+                        "description": (
+                            "Which capability the action belongs to. Only needed when the "
+                            "same action name exists in two (e.g. list_records in crm and tables)."
+                        ),
+                    },
                     "path_params": {
                         "type": "object",
                         "description": "Values for {braced} segments of the path, e.g. workspace_id.",
                     },
                     "query": {"type": "object", "description": "Query string parameters."},
                     "body": {"type": "object", "description": "JSON request body, for writes."},
+                    "fields": FIELDS_PARAMETER,
                 },
                 "required": ["action"],
             },
@@ -707,11 +1175,11 @@ def build_tools(catalog: dict[str, Any], granted_capabilities: set[str]) -> list
 
     # Named workflows first: an agent scanning the list should meet the route
     # before the enum that contains it.
-    reachable_actions = {
-        op["action"] for group in granted for op in group["operations"]
+    reachable = {
+        (group["capability"], op["action"]) for group in granted for op in group["operations"]
     }
     for workflow in WORKFLOW_TOOLS:
-        if workflow["action"] not in reachable_actions:
+        if (workflow["capability"], workflow["action"]) not in reachable:
             # The operation is not in this caller's grants, so the shortcut to
             # it must not be either — a tool that always refuses is worse than
             # an absent one.
@@ -750,6 +1218,7 @@ def build_tools(catalog: dict[str, Any], granted_capabilities: set[str]) -> list
                         "path_params": {"type": "object"},
                         "query": {"type": "object"},
                         "body": {"type": "object"},
+                        "fields": FIELDS_PARAMETER,
                     },
                     "required": ["action"],
                 },

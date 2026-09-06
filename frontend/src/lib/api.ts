@@ -8136,6 +8136,25 @@ export interface ReviewSummaryCounts {
   agent_actions: number;
 }
 
+/** One row of the agent action ledger: a mutating call an agent made. */
+export interface AgentActivityRow {
+  id: string;
+  workspace_id: string;
+  actor_kind: string;
+  actor_developer_id?: string | null;
+  tool_name: string;
+  action: string;
+  method: string;
+  path: string;
+  resolved_path?: string | null;
+  arguments: Record<string, unknown>;
+  status_code?: number | null;
+  is_error: boolean;
+  duration_ms?: number | null;
+  pending_action_id?: string | null;
+  created_at: string;
+}
+
 export const reviewApi = {
   list: async (workspaceId: string): Promise<ReviewItem[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/review`);
@@ -8163,6 +8182,179 @@ export const reviewApi = {
       `/workspaces/${workspaceId}/agent-actions/${actionId}/reject`,
       { note }
     );
+    return response.data;
+  },
+
+  /** What agents have done, newest first. The ledger of allowed writes. */
+  activity: async (
+    workspaceId: string,
+    params?: { limit?: number; errors_only?: boolean }
+  ): Promise<AgentActivityRow[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/agent-actions/activity`,
+      { params }
+    );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// MCP — the tool surface a caller holds, and the identities agents run as
+// ============================================================================
+
+export interface McpToolAction {
+  action: string;
+  method: string;
+  path: string;
+  summary: string;
+  mutating: boolean;
+}
+
+export interface McpToolEntry {
+  name: string;
+  capability: string | null;
+  description: string;
+  input_schema: Record<string, unknown>;
+  actions: McpToolAction[];
+}
+
+export interface McpToolsResponse {
+  workspace_id: string;
+  catalog_version: number;
+  granted_capabilities: string[];
+  denied_capabilities: { capability: string; operation_count: number; reason: string }[];
+  reachable_operation_count: number;
+  total_operation_count: number;
+  tools: McpToolEntry[];
+}
+
+export const mcpApi = {
+  /** The tools this caller would be offered in this workspace. */
+  tools: async (workspaceId: string): Promise<McpToolsResponse> => {
+    const response = await api.get(`/workspaces/${workspaceId}/mcp/tools`);
+    return response.data;
+  },
+};
+
+export interface AgentPrincipal {
+  id: string;
+  workspace_id: string;
+  developer_id: string;
+  name: string;
+  description: string | null;
+  capabilities: string[];
+  is_active: boolean;
+  created_by_id: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+  active_token_count: number;
+}
+
+export interface PrincipalToken {
+  id: string;
+  name: string;
+  token_prefix: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PrincipalTokenCreated extends PrincipalToken {
+  token: string;
+}
+
+export const agentPrincipalsApi = {
+  list: async (workspaceId: string): Promise<AgentPrincipal[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/agent-principals`);
+    return response.data;
+  },
+  create: async (
+    workspaceId: string,
+    data: { name: string; description?: string | null; capabilities: string[] }
+  ): Promise<AgentPrincipal> => {
+    const response = await api.post(`/workspaces/${workspaceId}/agent-principals`, data);
+    return response.data;
+  },
+  update: async (
+    workspaceId: string,
+    principalId: string,
+    data: Partial<{ name: string; description: string | null; capabilities: string[]; is_active: boolean }>
+  ): Promise<AgentPrincipal> => {
+    const response = await api.patch(
+      `/workspaces/${workspaceId}/agent-principals/${principalId}`,
+      data
+    );
+    return response.data;
+  },
+  remove: async (workspaceId: string, principalId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/agent-principals/${principalId}`);
+  },
+  tokens: async (workspaceId: string, principalId: string): Promise<PrincipalToken[]> => {
+    const response = await api.get(
+      `/workspaces/${workspaceId}/agent-principals/${principalId}/tokens`
+    );
+    return response.data;
+  },
+  /** Issue a fresh token and revoke every earlier one. The raw token is shown once. */
+  rotateToken: async (
+    workspaceId: string,
+    principalId: string,
+    data: { name?: string; expires_in_days?: number | null } = {}
+  ): Promise<PrincipalTokenCreated> => {
+    const response = await api.post(
+      `/workspaces/${workspaceId}/agent-principals/${principalId}/tokens`,
+      data
+    );
+    return response.data;
+  },
+};
+
+export interface AgentSchedule {
+  id: string;
+  workspace_id: string;
+  agent_id: string;
+  name: string;
+  routine: string;
+  interval_minutes: number;
+  timezone: string;
+  enabled: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  last_execution_id: string | null;
+  run_count: number;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const agentSchedulesApi = {
+  list: async (workspaceId: string): Promise<AgentSchedule[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/agent-schedules`);
+    return response.data;
+  },
+  create: async (
+    workspaceId: string,
+    data: { agent_id: string; name: string; routine: string; interval_minutes: number; timezone?: string; enabled?: boolean }
+  ): Promise<AgentSchedule> => {
+    const response = await api.post(`/workspaces/${workspaceId}/agent-schedules`, data);
+    return response.data;
+  },
+  update: async (
+    workspaceId: string,
+    scheduleId: string,
+    data: Partial<{ name: string; routine: string; interval_minutes: number; timezone: string; enabled: boolean }>
+  ): Promise<AgentSchedule> => {
+    const response = await api.patch(`/workspaces/${workspaceId}/agent-schedules/${scheduleId}`, data);
+    return response.data;
+  },
+  remove: async (workspaceId: string, scheduleId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/agent-schedules/${scheduleId}`);
+  },
+  /** Fire the routine once, now. Does not move the clock. */
+  runNow: async (workspaceId: string, scheduleId: string): Promise<AgentSchedule> => {
+    const response = await api.post(`/workspaces/${workspaceId}/agent-schedules/${scheduleId}/run`);
     return response.data;
   },
 };
@@ -13087,6 +13279,8 @@ export interface CRMAgent {
   // Escalation
   escalation_email?: string | null;
   escalation_slack_channel?: string | null;
+  /** Identity the agent's catalogue tools act as. Null: the person who triggered the run. */
+  principal_id?: string | null;
 
   // Email Integration
   email_address?: string | null;
@@ -13293,33 +13487,21 @@ export interface AgentToolInfo {
   category: string;
   is_dangerous?: boolean;
   requires_approval?: boolean;
+  /** Set on a hand-written tool a governed catalogue operation replaces. */
 }
 
 export const TOOL_CATEGORIES = {
-  actions: {
-    label: "Agent Actions",
-    description: "Core actions the agent can take",
-    tools: ["reply", "forward", "escalate", "schedule", "create_task", "update_crm", "wait"],
+  routines: {
+    label: "Routines",
+    description:
+      "Named day-to-day jobs — triage, TAT sweeps, standups, leave, compliance — each bound to one API operation with plain arguments.",
+    tools: [] as string[],
   },
-  crm: {
-    label: "CRM Tools",
-    description: "Interact with CRM data",
-    tools: ["search_contacts", "get_record", "update_record", "create_record", "get_activities"],
-  },
-  email: {
-    label: "Email Tools",
-    description: "Send and manage emails",
-    tools: ["send_email", "create_draft", "get_email_history", "get_writing_style"],
-  },
-  enrichment: {
-    label: "Enrichment Tools",
-    description: "Enrich contact and company data",
-    tools: ["enrich_company", "enrich_person", "web_search"],
-  },
-  communication: {
-    label: "Communication",
-    description: "Send messages via various channels",
-    tools: ["send_slack", "send_sms"],
+  catalogue: {
+    label: "Aexy API (governed)",
+    description:
+      "Every API operation, through the same governed executor MCP clients use. One tool per app plus discovery and a generic call. Writes follow workspace policies and land in the ledger.",
+    tools: [] as string[],
   },
 } as const;
 
@@ -13339,14 +13521,14 @@ export const AGENT_TYPE_CONFIG: Record<StandardAgentType, AgentTypeConfigItem> =
     description: "Handle customer support inquiries and issues",
     icon: "headphones",
     color: "#22c55e",
-    defaultTools: ["reply", "escalate", "search_contacts", "get_email_history", "create_task"],
+    defaultTools: ["reply", "escalate", "aexy_crm_records", "get_email_history", "create_task"],
   },
   sales: {
     label: "Sales Agent",
     description: "Assist with sales outreach and follow-ups",
     icon: "trending-up",
     color: "#3b82f6",
-    defaultTools: ["reply", "send_email", "search_contacts", "enrich_person", "update_crm", "schedule"],
+    defaultTools: ["reply", "send_email", "aexy_crm_records", "update_crm", "schedule"],
   },
   scheduling: {
     label: "Scheduling Agent",
@@ -13367,7 +13549,7 @@ export const AGENT_TYPE_CONFIG: Record<StandardAgentType, AgentTypeConfigItem> =
     description: "Assist with candidate outreach and screening",
     icon: "users",
     color: "#f97316",
-    defaultTools: ["reply", "send_email", "enrich_person", "search_contacts", "schedule"],
+    defaultTools: ["reply", "send_email", "aexy_crm_records", "schedule"],
   },
   newsletter: {
     label: "Newsletter Agent",
@@ -13381,21 +13563,21 @@ export const AGENT_TYPE_CONFIG: Record<StandardAgentType, AgentTypeConfigItem> =
     description: "Classify and route incoming tickets by priority and department",
     icon: "filter",
     color: "#ef4444",
-    defaultTools: ["classify_ticket", "assign_ticket", "escalate", "reply", "search_contacts"],
+    defaultTools: ["classify_ticket", "assign_ticket", "escalate", "reply", "aexy_crm_records"],
   },
   insights: {
     label: "Insights Agent",
     description: "Proactively surface team metrics, burnout risks, and performance trends",
     icon: "bar-chart",
     color: "#10b981",
-    defaultTools: ["get_team_metrics", "get_burnout_risk", "get_velocity", "send_slack", "create_task"],
+    defaultTools: ["get_team_metrics", "get_burnout_risk", "get_velocity", "send_slack_message", "create_task"],
   },
   standup: {
     label: "Standup Agent",
     description: "Draft standup summaries from activity and remind team members",
     icon: "message-circle",
     color: "#8b5cf6",
-    defaultTools: ["get_git_activity", "get_task_updates", "send_slack", "reply", "create_task"],
+    defaultTools: ["get_git_activity", "get_task_updates", "send_slack_message", "reply", "create_task"],
   },
   custom: {
     label: "Custom Agent",
@@ -13469,6 +13651,7 @@ export interface AgentCreateData {
   working_hours?: WorkingHoursConfig | null;
   escalation_email?: string;
   escalation_slack_channel?: string;
+  principal_id?: string | null;
   // Email integration (matches CRMAgent shape so the edit form can
   // round-trip these fields without a separate update payload type).
   email_address?: string | null;

@@ -2,33 +2,30 @@
   "mcp": {
     "title": "Model Context Protocol",
     "subtitle": "AI coding assistants को Aexy से जोड़ें",
-
     "overview": {
       "heading": "अवलोकन",
       "descriptionBefore": "",
       "linkText": "Model Context Protocol (MCP)",
       "descriptionAfter": " Claude Code, Claude Desktop और OpenAI Codex जैसे AI assistants को आपके Aexy workspace के साथ सीधे इंटरैक्ट करने देता है — sprints प्रबंधित करना, analytics query करना, agents चलाना, और बहुत कुछ, वह भी प्राकृतिक भाषा के ज़रिए।",
-      "toolCount": "{count, plural, =1 {1 tool} other {# tools}}",
-      "summary": "aexy-mcp {version} से, {categories} categories में कुल {total} tools"
+      "toolCount": "{count, plural, =1 {1 operation} other {# operations}}",
+      "summary": "Backend के अपने API schema से जनरेट, {categories} capabilities में {total} operations। आपको जो दिखेगा वह आपके apps तक सीमित है।"
     },
-
     "quickStart": {
       "heading": "Quick Start",
       "step1": {
         "title": "एक API token बनाएं",
-        "description": "MCP server को आपके Aexy खाते के साथ प्रमाणित करने के लिए एक token जनरेट करें।",
+        "description": "Remote कनेक्शन के लिए कुछ नहीं चाहिए — client पूछे तो sign in करें। Local (stdio) bridge के लिए एक token बनाएं; वह आपके रूप में प्रमाणित होता है और केवल आपकी permissions रखता है।",
         "link": "Settings → API Tokens"
       },
       "step2": {
         "title": "अपना client चुनें",
-        "description": "Server uvx के ज़रिए चलता है, इसलिए clone करने या अपडेट रखने के लिए कुछ नहीं है — आपका client इसे ज़रूरत पड़ने पर खुद ले आता है।"
+        "description": "Remote clients सीधे server URL से जुड़ते हैं। Local clients uvx से aexy-mcp bridge चलाते हैं, इसलिए clone या अपडेट रखने के लिए कुछ नहीं।"
       },
       "step3": {
         "title": "Configuration जोड़ें",
         "description": "नीचे अपने client का block कॉपी करके बताई गई file में डालें, फिर client को restart करें।"
       }
     },
-
     "clientSetup": {
       "heading": "Client Setup",
       "tabs": {
@@ -40,12 +37,12 @@
         "other": "अन्य Clients"
       },
       "intro": {
-        "claudeCode": "या तो CLI command चलाएं, या project file कमिट करें ताकि repo पर काम करने वाले सभी लोगों को server मिल जाए। दोनों बराबर हैं; CLI आपकी user config में लिखता है, जबकि file साझा होती है।",
-        "claudeDesktop": "Claude Desktop एक ही config file पढ़ता है। न हो तो बनाएं, फिर ऐप को पूरी तरह बंद करके दोबारा खोलें — यह file केवल startup पर ही पढ़ी जाती है।",
+        "claudeCode": "Remote server के लिए एक लाइन, जो browser से प्रमाणित होती है। या token के साथ stdio bridge चलाएं — .mcp.json कमिट करें ताकि repo पर सभी को मिले।",
+        "claudeDesktop": "Settings → Connectors में server URL जोड़ें और पूछे जाने पर sign in करें। या desktop config को stdio bridge पर पॉइंट करें; फिर app बंद करके दोबारा खोलें।",
         "chatgpt": "ChatGPT लोकल process चलाने के बजाय Aexy से HTTP पर जुड़ता है। ChatGPT में Settings → Connectors → Create खोलें, नीचे दिया URL पेस्ट करें, और जो workspace यह मांगे उसे स्वीकृति दें।",
         "codex": "Codex अपने TOML config से MCP servers पढ़ता है। यह table जोड़ें, फिर Codex restart करें।",
         "cursor": "Cursor और VS Code वही stdio server इस्तेमाल करते हैं, बस file का आकार थोड़ा अलग होता है। जो आपके editor से मेल खाए, वही उपयोग करें।",
-        "other": "stdio transport सपोर्ट करने वाला कोई भी MCP client इसी आकार में server चला सकता है। इसे अपने client के अपेक्षित format में बदल लें।"
+        "other": "Streamable HTTP बोलने वाला कोई भी client OAuth के साथ URL इस्तेमाल कर सकता है। Process लॉन्च करने वाला कोई भी client इस आकार में bridge चला सकता है।"
       },
       "snippet": {
         "cli": "CLI से जोड़ें",
@@ -56,7 +53,9 @@
         "cursorFile": "Cursor",
         "vscodeFile": "VS Code",
         "genericStdio": "stdio server definition",
-        "remoteUrl": "MCP server URL"
+        "remoteUrl": "MCP server URL",
+        "remoteCli": "Remote (अनुशंसित)",
+        "remoteConnector": "Remote server URL"
       },
       "remoteAuth": {
         "body": "किसी API token की ज़रूरत नहीं। ChatGPT खुद को रजिस्टर करता है और साइन इन के लिए आपको यहां भेजता है, जहां आप चुनते हैं कि वह कौन-सा workspace इस्तेमाल कर सकता है। उस workspace में आपके पास जिन apps की पहुंच है, उसे बस उन्हीं की पहुंच मिलती है — उससे ज़्यादा कभी नहीं। Settings → जुड़े हुए Apps में जाकर इसे कभी भी देख या रद्द कर सकते हैं।"
@@ -64,14 +63,25 @@
       "envReferenceLabel": "Environment variables:",
       "env": {
         "apiUrl": "Aexy backend API का base URL",
-        "apiToken": "आपका API token, Settings → API Tokens में बनाया गया"
-      }
+        "apiToken": "आपका API token, Settings → API Tokens में बनाया गया",
+        "workspaceId": "किस workspace में काम करना है। केवल तब ज़रूरी जब आप एक से अधिक में हों।"
+      },
+      "bridgeNote": "Bridge के पास अपने कोई tools नहीं हैं। हर call उसी server से जाती है, इसलिए tool list, governance और audit ledger हर रास्ते पर समान हैं।"
     },
-
     "availableTools": {
       "heading": "उपलब्ध Tools",
-      "generatedNote": "aexy-mcp {version} से जनरेट किया गया",
-      "writesTitle": "यह tool डेटा बदल सकता है"
+      "generatedNote": "Backend catalogue, version {version} से जनरेट",
+      "writesTitle": "यह operation डेटा बदलता है",
+      "yours": "इस workspace में {total} में से {granted} capabilities आपके लिए उपलब्ध हैं",
+      "notGranted": "आपको नहीं दी गई",
+      "granted": "आपके लिए उपलब्ध",
+      "alwaysHeading": "हमेशा उपलब्ध",
+      "routinesHeading": "नामित routines",
+      "operations": "{count, plural, =1 {1 operation} other {# operations}}",
+      "writes": "{count, plural, =1 {1 write} other {# writes}}",
+      "privileged": "विशेषाधिकार",
+      "showAll": "सभी {count} दिखाएं",
+      "showFewer": "कम दिखाएं"
     }
   }
 }

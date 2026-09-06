@@ -220,6 +220,42 @@ Service Desk → Scorecard**, and a desk can define its own KPI there from a
 fixed vocabulary of fields and filters — no formula language to learn, and no
 way to write one that the report cannot compute.
 
+## Automating the desk
+
+The desk fires three automation triggers, and offers three actions, so routine
+handling can be written once in the no-code builder at **Automations** rather
+than done by hand on every ticket.
+
+| Trigger | Fires when |
+|---|---|
+| `service_desk.ticket_created` | The desk opens a ticket, from mail intake or manual logging |
+| `service_desk.ticket_updated` | A ticket's request type, owner, account or another field changes |
+| `service_desk.pending_with_changed` | A ticket is parked with a different stakeholder |
+
+Every one carries the same fields — `trigger.ticket_id`, `ticket_number`,
+`title`, `status`, `priority`, `request_type`, `pending_with`, `account_id`,
+`assigned_owner_id`, `source`, `needs_triage` — so a workflow built against one
+reads the same way against the others. `ticket_updated` adds
+`trigger.changed_fields`; `pending_with_changed` adds
+`trigger.previous_pending_with` and `trigger.note`.
+
+| Action | Does |
+|---|---|
+| `set_pending_with` | Parks the ticket with a stakeholder, with an optional note |
+| `set_request_type` | Sets the request type, from the workspace's taxonomy |
+| `assign_owner` | Assigns the ticket to a workspace member |
+
+Two things keep this from looping. An update that changes nothing is not an
+event, so an automation that re-applies the value it was triggered by stops
+there. And automation-caused events nest two deep at most — enough for "triage
+sets the type, then routing assigns an owner", and not enough for a cycle.
+
+`trigger.needs_triage` is the useful one to build on: it marks the tickets the
+classifier was not confident about, which is exactly the set a person or an
+agent should look at. An AI agent can be pointed at the same work — see
+[AI agents](./ai-agents.md#agent-schedules) for running a triage or turnaround
+pass on a clock.
+
 ## Who sees what
 
 Three answers, and a person gets exactly one of them:

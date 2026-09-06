@@ -166,6 +166,13 @@ class WorkspaceService:
         task_config_service = TaskConfigService(self.db)
         await task_config_service.seed_default_statuses(workspace.id)
 
+        # Agents start governed. Without these a new workspace lets an agent
+        # run every mutating operation unattended until somebody writes the
+        # first policy by hand.
+        from aexy.services.agent_policy_defaults import ensure_default_policies
+
+        await ensure_default_policies(self.db, workspace.id)
+
         # Create default document space for the workspace
         space_service = DocumentSpaceService(self.db)
         await space_service.create_default_space(

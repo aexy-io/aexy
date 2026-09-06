@@ -147,6 +147,10 @@ class NotificationEventType(str, Enum):
     AGENT_TOOL_BLOCKED = "agent_tool_blocked"
     AGENT_APPROVAL_REQUIRED = "agent_approval_required"
     AGENT_CONFIG_CHANGED = "agent_config_changed"
+    # A held agent action was approved or rejected. Sent to whoever's grant
+    # the agent ran under, so the person the agent works for learns the
+    # outcome without polling the queue.
+    AGENT_ACTION_DECIDED = "agent_action_decided"
 
     # Blocker escalation
     BLOCKER_ESCALATED = "blocker_escalated"
@@ -577,6 +581,7 @@ NOTIFICATION_CATEGORIES: dict[str, list[str]] = {
         NotificationEventType.AGENT_TOOL_BLOCKED.value,
         NotificationEventType.AGENT_APPROVAL_REQUIRED.value,
         NotificationEventType.AGENT_CONFIG_CHANGED.value,
+        NotificationEventType.AGENT_ACTION_DECIDED.value,
     ],
     "uptime": [
         NotificationEventType.UPTIME_INCIDENT_CREATED.value,
@@ -753,6 +758,7 @@ DEFAULT_NOTIFICATION_PREFERENCES = {
     NotificationEventType.AGENT_TOOL_BLOCKED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     NotificationEventType.AGENT_APPROVAL_REQUIRED: {"in_app": True, "email": True, "slack": True, "web_push": True},
     NotificationEventType.AGENT_CONFIG_CHANGED: {"in_app": True, "email": False, "slack": False, "web_push": False},
+    NotificationEventType.AGENT_ACTION_DECIDED: {"in_app": True, "email": False, "slack": False, "web_push": False},
     # Blocker escalation
     NotificationEventType.BLOCKER_ESCALATED: {"in_app": True, "email": True, "slack": True, "web_push": True},
     # Uptime

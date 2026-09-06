@@ -55,7 +55,9 @@ async def verify_token(token: str, db: AsyncSession) -> tuple[str, str | None] |
         api_token = await ApiTokenService(db).validate(token)
         if api_token is None:
             return None
-        return api_token.developer_id, None
+        # A token issued to an agent principal is always an agent, whatever it
+        # calls. A person's token is a person.
+        return api_token.developer_id, (AGENT_ACTOR if api_token.principal_id else None)
 
     try:
         payload = jwt.decode(
@@ -95,6 +97,9 @@ async def get_current_developer_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired API token",
             )
+        # An agent principal's token marks every request as an agent's, so the
+        # review gate and governance apply even when it calls REST directly.
+        request.state.token_actor = AGENT_ACTOR if api_token.principal_id else None
         return api_token.developer_id
 
     # JWT auth

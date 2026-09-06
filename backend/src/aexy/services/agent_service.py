@@ -59,11 +59,13 @@ class AgentService:
         escalation_email: str | None = None,
         escalation_slack_channel: str | None = None,
         created_by_id: str | None = None,
+        principal_id: str | None = None,
     ) -> CRMAgent:
         """Create a new agent."""
         agent = CRMAgent(
             id=str(uuid4()),
             workspace_id=workspace_id,
+            principal_id=principal_id,
             name=name,
             description=description,
             agent_type=agent_type,
@@ -151,6 +153,13 @@ class AgentService:
         for key, value in kwargs.items():
             if value is not None and hasattr(agent, key):
                 setattr(agent, key, value)
+        # `None` means "leave alone" for every field but this one: detaching
+        # an agent from its principal is an explicit null, and the API only
+        # passes fields the caller set.
+        if "principal_id" in kwargs and kwargs["principal_id"] is None:
+            if agent.principal_id is not None:
+                field_changes["principal_id"] = {"old": agent.principal_id, "new": None}
+            agent.principal_id = None
 
         await self.db.flush()
         await self.db.refresh(agent)
@@ -254,43 +263,39 @@ class AgentService:
 
     async def ensure_system_agents(self, workspace_id: str) -> list[CRMAgent]:
         """Ensure system agents exist for a workspace."""
+        # Tool names are the prebuilt classes' own catalogue names, so the
+        # seeded configuration and the agent that runs it cannot disagree.
+        from aexy.agents.prebuilt import (
+            DataEnrichmentAgent,
+            EmailDrafterAgent,
+            LeadScoringAgent,
+            SalesOutreachAgent,
+        )
+
         system_agents = [
             {
                 "name": "Sales Outreach",
                 "description": "Research prospects and craft personalized outreach emails",
                 "agent_type": "sales_outreach",
-                "tools": [
-                    "search_contacts", "get_record", "update_record", "get_activities",
-                    "send_email", "create_draft", "get_email_history", "get_writing_style",
-                    "enrich_company", "enrich_person", "web_search",
-                ],
+                "tools": list(SalesOutreachAgent.catalog_tool_names),
             },
             {
                 "name": "Lead Scoring",
                 "description": "Score leads 0-100 based on fit and engagement",
                 "agent_type": "lead_scoring",
-                "tools": [
-                    "get_record", "update_record", "get_activities",
-                    "enrich_company", "enrich_person",
-                ],
+                "tools": list(LeadScoringAgent.catalog_tool_names),
             },
             {
                 "name": "Email Drafter",
                 "description": "Generate emails matching your personal writing style",
                 "agent_type": "email_drafter",
-                "tools": [
-                    "get_record", "get_activities",
-                    "create_draft", "get_email_history", "get_writing_style",
-                ],
+                "tools": list(EmailDrafterAgent.catalog_tool_names),
             },
             {
                 "name": "Data Enrichment",
-                "description": "Fill missing CRM fields from external data sources",
+                "description": "Fill missing CRM fields from what the CRM already knows",
                 "agent_type": "data_enrichment",
-                "tools": [
-                    "get_record", "update_record",
-                    "enrich_company", "enrich_person", "web_search",
-                ],
+                "tools": list(DataEnrichmentAgent.catalog_tool_names),
             },
         ]
 
@@ -447,6 +452,16 @@ class AgentService:
         self.db.add(execution)
         await self.db.flush()
 
+        if triggered_by == "schedule" and trigger_id:
+            # The schedule remembers its latest run so the settings page can
+            # link straight to it.
+            from aexy.models.agent_schedule import AgentSchedule
+
+            schedule = await self.db.get(AgentSchedule, trigger_id)
+            if schedule is not None:
+                schedule.last_execution_id = execution.id
+                await self.db.flush()
+
         # Load record data if record_id provided
         record_data = {}
         if record_id:
@@ -479,6 +494,24 @@ class AgentService:
             max_iterations=agent.max_iterations,
             timeout_seconds=agent.timeout_seconds,
         )
+
+        # Every tool an agent holds is a catalogue tool, run through the
+        # governed executor as the agent's principal, or as the person who
+        # triggered the run.
+        try:
+            from aexy.agents.tools.mcp_tools import attach_to_agent
+
+            attached = await attach_to_agent(
+                agent_instance,
+                self.db,
+                workspace_id=agent.workspace_id,
+                developer_id=user_id,
+                principal_id=agent.principal_id,
+            )
+            if attached:
+                logger.info("Agent %s runs with catalogue tools %s", agent.id, attached)
+        except Exception as e:
+            logger.warning("Could not attach catalogue tools to agent %s: %s", agent.id, e)
 
         # Inject policy engine for governance
         try:
@@ -1448,6 +1481,14 @@ class AgentService:
             name=agent_type,
             agent_type=agent_type,
         )
+        from aexy.agents.tools.mcp_tools import attach_to_agent
+
+        await attach_to_agent(
+            agent_instance,
+            self.db,
+            workspace_id=workspace_id,
+            developer_id=input_data.get("user_id"),
+        )
 
         # Load record data if needed
         record_data = input_data.get("record_data", {})
@@ -1594,13 +1635,23 @@ class SyncAgentService:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                result = loop.run_until_complete(
-                    agent_instance.run(
+                from aexy.agents.tools.mcp_tools import attach_to_agent
+
+                async def _attach_and_run():
+                    await attach_to_agent(
+                        agent_instance,
+                        self.db,
+                        workspace_id=workspace_id,
+                        developer_id=input_data.get("user_id"),
+                        principal_id=getattr(agent, "principal_id", None) if agent else None,
+                    )
+                    return await agent_instance.run(
                         record_id=record_id,
                         record_data=record_data,
                         context=input_data,
                     )
-                )
+
+                result = loop.run_until_complete(_attach_and_run())
             finally:
                 loop.close()
 

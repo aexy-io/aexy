@@ -1,15 +1,8 @@
 """Lead Scoring Agent - Score leads based on fit and engagement."""
 
 from typing import Any
-from langchain_core.tools import BaseTool
 
 from aexy.agents.base import BaseAgent
-from aexy.agents.tools.crm_tools import (
-    GetRecordTool,
-    UpdateRecordTool,
-    GetActivitiesTool,
-)
-from aexy.agents.tools.enrichment_tools import EnrichCompanyTool, EnrichPersonTool
 
 
 class LeadScoringAgent(BaseAgent):
@@ -17,6 +10,14 @@ class LeadScoringAgent(BaseAgent):
 
     name = "lead_scoring"
     description = "Score leads 0-100 based on company fit, role match, and engagement signals"
+
+    # Catalogue tools, attached per run as the person or principal the agent
+    # acts for (see `agents.tools.mcp_tools.attach_to_agent`).
+    catalog_tool_names = [
+        "get_record_by_id",
+        "update_record_by_id",
+        "list_activities",
+    ]
 
     def __init__(
         self,
@@ -63,16 +64,6 @@ Always provide:
 """
 
     @property
-    def tools(self) -> list[BaseTool]:
-        return [
-            GetRecordTool(db=self.db),
-            UpdateRecordTool(db=self.db),
-            GetActivitiesTool(db=self.db),
-            EnrichCompanyTool(),
-            EnrichPersonTool(),
-        ]
-
-    @property
     def goal(self) -> str:
         return "Analyze the lead and provide a score from 0-100 with reasoning and next action recommendation"
 
@@ -112,7 +103,7 @@ Please score this lead:
 **Instructions:**
 1. Get the full record data
 2. Get the activity history to assess engagement
-3. Enrich the company and person data if needed
+3. Use the record's existing company and person data
 4. Calculate the fit score (0-50) and engagement score (0-50)
 5. Update the record with the new lead_score field
 6. Provide your analysis

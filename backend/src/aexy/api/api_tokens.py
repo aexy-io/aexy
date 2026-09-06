@@ -1,9 +1,9 @@
 """API Token management endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aexy.api.developers import get_current_developer_id
+from aexy.api.developers import AGENT_ACTOR, get_current_developer_id
 from aexy.core.database import get_db
 from aexy.schemas.api_token import (
     ApiTokenCreate,
@@ -17,11 +17,23 @@ router = APIRouter(prefix="/developers/me/api-tokens")
 
 @router.post("", response_model=ApiTokenCreatedResponse, status_code=201)
 async def create_api_token(
+    request: Request,
     data: ApiTokenCreate,
     developer_id: str = Depends(get_current_developer_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new API token. The full token is returned only once."""
+    # A principal's token, or any call made as an agent, must not be able to
+    # mint a plain personal token: that token would carry no principal, so it
+    # would shed the agent marker, the capability scope and the rotation that
+    # the principal's own tokens are subject to.
+    if getattr(request.state, "token_actor", None) == AGENT_ACTOR:
+        raise HTTPException(status_code=403, detail="Agents cannot create API tokens")
+    from aexy.models.developer import Developer
+
+    developer = await db.get(Developer, developer_id)
+    if developer is not None and developer.account_type == "agent":
+        raise HTTPException(status_code=403, detail="Agents cannot create API tokens")
     service = ApiTokenService(db)
     token_model, raw_token = await service.create(developer_id, data)
     base = ApiTokenResponse.model_validate(token_model)

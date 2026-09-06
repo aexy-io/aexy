@@ -46,7 +46,7 @@ Each non-CUSTOM type has a prebuilt implementation in `backend/src/aexy/agents/p
 | `mention_handle` | `@handle` triggers the agent from chat |
 | `is_system` | System-defined agents that the workspace can't delete |
 | `goal`, `system_prompt`, `custom_instructions` | Prompting |
-| `tools` (JSONB list) | Tool names — e.g. `["search_contacts", "send_email", "enrich_company"]` |
+| `tools` (JSONB list) | MCP catalogue names — e.g. `["aexy_crm_records", "get_record_by_id", "send_email"]` (see [Tool names](#tool-names)) |
 | `llm_provider`, `model`, `temperature`, `max_tokens` | LLM config |
 | `max_iterations` (default 10), `timeout_seconds` (default 300) | Execution bounds |
 | `confidence_threshold` | Minimum confidence to act without approval |
@@ -66,43 +66,63 @@ Each non-CUSTOM type has a prebuilt implementation in `backend/src/aexy/agents/p
 | File | Purpose |
 |---|---|
 | `base.py` | `BaseAgent` abstract class — wraps LangGraph `StateGraph`, defines `AgentState` TypedDict (`messages`, `record_id`, `record_data`, `context`, `steps`, `final_output`, `error`), tool binding via `llm.bind_tools()`, async `ToolNode` execution with policy gating |
-| `builder.py` | `CustomAgent` (line 51-140) + `AgentBuilder` (line 142-266) + `TOOL_REGISTRY` |
-| `prebuilt/sales_outreach.py` | Sales outreach agent |
+| `builder.py` | `CustomAgent` + `AgentBuilder`; `get_available_tools()` lists the catalogue |
+| `prebuilt/sales_outreach.py` | Sales outreach agent (`catalog_tool_names`) |
 | `prebuilt/lead_scoring.py` | Lead scoring agent |
 | `prebuilt/email_drafter.py` | Email draft agent |
 | `prebuilt/data_enrichment.py` | Record enrichment agent |
-| `tools/crm_tools.py` | CRM record tools |
-| `tools/email_tools.py` | Email-related tools |
-| `tools/enrichment_tools.py` | Enrichment tools |
-| `tools/communication_tools.py` | Slack/SMS tools |
+| `tools/mcp_tools.py` | The only tool module: catalogue operations, routines and per-capability tools as LangChain tools; `attach_to_agent` |
+| `api/outreach.py` | Email, Slack and SMS as CRM operations (`crm/outreach/*`), so agents send through the catalogue |
 
-### Tool registry
+### Tool names
 
-From `builder.py:29-48`:
+There is no hand-written tool registry any more. Every name in `CRMAgent.tools`
+is an **MCP catalogue name**, resolved by `agents/tools/mcp_tools.py` and run
+through `McpToolExecutor` — see [One tool substrate](#one-tool-substrate) below
+for what that buys. Four shapes of name are accepted:
 
-**CRM**
-- `search_contacts` — semantic + filtered search over CRM records
-- `get_record` — fetch one record + linked context
-- `update_record` — write back to a record's `values` JSONB
-- `create_record` — insert a new record
-- `get_activities` — pull a record's CRMActivity timeline
+| Shape | Example | What it binds |
+|---|---|---|
+| A named routine | `aexy_crm_records`, `aexy_sd_open_tickets` | One operation with flat arguments |
+| One capability's whole surface | `aexy_crm`, `aexy_service_desk` | `action` is an enum of that capability's operations |
+| A bare action name | `get_record_by_id`, `update_ticket` | That one operation, with its own description |
+| The two generic tools | `aexy_discover`, `aexy_call` | Search the catalogue; call anything reachable |
 
-**Email**
-- `send_email` — send via the workspace's configured provider
-- `create_draft` — write a draft to the user's mailbox (not send)
-- `get_email_history` — pull prior thread for context
-- `get_writing_style` — analyze the persona's prior emails to match tone
+`AgentBuilder.get_available_tools()` (`builder.py`) is what the tool picker
+renders: the two generic tools, the named routines, and one entry per
+capability. Individual actions are not listed — ~1,900 checkboxes is not a
+picker — but any action name typed into an agent's tool list still works.
 
-**Enrichment**
-- `enrich_company` — fill in firmographics from external sources
-- `enrich_person` — fill in personal data (title, LinkedIn, …)
-- `web_search` — general web search
+A name is only attached if the actor running the agent holds the capability it
+belongs to; anything else is skipped with a log line rather than failing the
+run. So the tools a given agent actually holds depend on its principal's scope
+(or, with no principal, on the person who triggered the run).
 
-**Communication**
-- `send_slack` — post to Slack
-- `send_sms` — send SMS via Twilio
+The CRM tools the prebuilt agents use, as catalogue names:
 
-> **Note**: words like `reply`, `forward`, `escalate`, `schedule`, `create_task` are **not** tools — those are MailAgent-side decision actions (see [MailAgent](#mailagent) below). A CRM agent that needs to escalate calls `send_slack` to its escalation channel, not an "escalate" tool.
+| Purpose | Name | Capability |
+|---|---|---|
+| Search CRM records | `aexy_crm_records` (routine) | `mcp.crm` |
+| Read one record | `get_record_by_id` | `mcp.crm` |
+| Write back to a record | `update_record_by_id` | `mcp.crm` |
+| Create a record | `create_record` | `mcp.crm` |
+| A record's activity timeline | `list_activities` | `mcp.crm` |
+| Send an email | `send_email` (`POST crm/outreach/email`) | `mcp.crm` |
+| Prior thread with an address | `get_email_history` | `mcp.crm` |
+| Post to Slack / send an SMS | `send_slack_message`, `send_sms` | `mcp.crm` |
+| Match the persona's tone | `get_writing_style` | `mcp.agents` |
+| Read / search / write documents | `get_document`, `list_documents`, `create_document`, `aexy_docs_propose` | `mcp.docs` |
+
+There is no drafting tool. Under the default policy pack (see
+[workflows-and-automations.md](./workflows-and-automations.md#agent-policies))
+an agent's `send_email`
+is held in `/review` for a person to approve, which *is* the draft step —
+`create_draft` is gone. Enrichment and web search are gone too: `enrich_company`,
+`enrich_person` and `web_search` returned canned placeholder text and never
+called a provider, so they were removed rather than ported. An agent fills gaps
+from what the CRM already holds — the record, its activities, related records.
+
+> **Note**: words like `reply`, `forward`, `escalate`, `schedule`, `create_task` are **not** tools — those are MailAgent-side decision actions (see [MailAgent](#mailagent) below). A CRM agent that needs to escalate calls `send_slack_message` to its escalation channel, not an "escalate" tool.
 
 ### Execution model
 
@@ -180,6 +200,77 @@ Both registered in `dispatch.py:97-98`.
 
 `/frontend/src/app/(app)/crm/agents/` — agent list, configuration UI, execution history, policy administration. Agents also surface in chat (`/chat/`) via `@mention` and in automation builders (`/crm/automations/`).
 
+## Agent principals
+
+The identity an agent runs *as* when nobody is at a keyboard.
+
+Every MCP call used to run as a person — an OAuth grant somebody consented to,
+or a personal API token. A **principal** (`models/agent_principal.py`) is a
+workspace-owned identity with a capability scope that can only ever be a subset
+of what the workspace grants. It acts through one synthetic `Developer` row
+(`account_type = "agent"`) and one `WorkspaceMember` row whose app overrides
+mirror its capabilities, so every `created_by_id` and `requested_by_id` column in
+the application can name it without change.
+
+| Property | Behaviour |
+|---|---|
+| Scope | `capabilities` (e.g. `["mcp.service_desk", "mcp.tickets"]`), intersected with workspace grants on every call and mirrored into the member row's app access |
+| Actor | Every request on a principal token carries `actor=agent`, so governance, the review gate and the ledger apply over MCP and REST alike |
+| Tokens | One live token; issuing another revokes the previous. Deactivating the principal revokes its token in the same transaction |
+| Audit | Ledger rows and held actions carry `principal_id` and the synthetic developer id |
+
+API: `api/agent_principals.py` — prefix `/workspaces/{ws}/agent-principals`,
+admin-only, excluded from the MCP catalogue (`agent_identity`). UI: **Settings →
+Agent Principals**.
+
+## One tool substrate
+
+Three tool registries used to exist: the MCP catalogue, a hand-written
+LangGraph registry (18 tools), and Ask's five reads. There is now one: the
+catalogue, generated from the API and run through one executor.
+
+- **Agents.** Every name in `CRMAgent.tools` is a catalogue name
+  (`agents/tools/mcp_tools.py`): a routine such as `aexy_sd_open_tickets`, an
+  action such as `update_ticket`, a per-capability tool such as
+  `aexy_service_desk`, or `aexy_discover` / `aexy_call`. It runs through
+  `McpToolExecutor` as the agent's principal, or as the person who triggered
+  the run — so the endpoint's permissions, workspace policies and the ledger
+  apply. The picker lists routines and the catalogue; any action name typed in
+  also works. Prebuilt agents declare `catalog_tool_names` the same way.
+- **Outreach.** Email, Slack and SMS had no API behind them, so they became
+  endpoints (`POST crm/outreach/email|slack|sms`, `GET crm/outreach/email-history`)
+  in the `crm` capability. The default policy pack holds every send for a
+  person to approve — an agent's "draft" is a send waiting in `/review`.
+  The old enrichment and web-search tools returned canned placeholder text and
+  were removed rather than ported.
+- **Migration.** `scripts/migrate_agent_tools_to_catalogue.sql` rewrites
+  stored tool lists (`search_contacts` → `aexy_crm_records`, `get_record` →
+  `get_record_by_id`, `create_draft` → `send_email`, …) so existing agents run
+  unchanged; the placeholders are dropped from them.
+- **Ask.** Offers `current_time` plus the caller's MCP surface, restricted to
+  read operations unless `ASK_ALLOW_WRITES=true`.
+- **Automations.** The `service_desk` module now exposes triggers
+  (`ticket_created`, `ticket_updated`, `pending_with_changed`) and actions
+  (`set_pending_with`, `set_request_type`, `assign_owner`), so an automation
+  can run a principal-backed agent against a desk event.
+
+## Agent schedules
+
+A routine an agent runs on a clock (`models/agent_schedule.py`). Each run is a
+`CRMAgentExecution` with `triggered_by = "schedule"` and `trigger_id` naming
+the schedule; the routine text arrives as the `routine` key of the run context
+and is shown to the model as its task.
+
+Only agents with a principal can be scheduled — a schedule has nobody at the
+keyboard. `run_due_agent_schedules` (Temporal, every 5 minutes) claims each due
+row by advancing `next_run_at` before dispatching, anchored on the slot so a
+daily routine does not drift. A schedule whose agent loses its principal is
+switched off rather than failing every tick.
+
+API: `api/agent_schedules.py` — `/workspaces/{ws}/agent-schedules` (members
+read, admins write, `POST /{id}/run` fires once now). UI: **Settings → Agent
+Schedules**.
+
 ## MailAgent
 
 A separate FastAPI microservice (`mailagent/`) on `:8001`. Its primary job is **inbox triage** — when mail lands in a managed mailbox, classify it and decide what to do.
@@ -248,7 +339,7 @@ The two systems pass `MessageData`, `ContactData`, and `AgentContext` around as 
 ## Common pitfalls
 
 - **Looking for "SUPPORT"/"SCHEDULING" agent types**: those exist in **MailAgent** as built-in agent classes, not in CRM agents. CRM `AgentType` values are `SALES_OUTREACH`, `LEAD_SCORING`, `EMAIL_DRAFTER`, `DATA_ENRICHMENT`, `CUSTOM`.
-- **Treating MailAgent actions as CRM tools**: `reply`, `forward`, `escalate`, `create_task`, `update_crm` are MailAgent `AgentAction` enum values — they describe **decisions a MailAgent makes**. A CRM agent doesn't have a `reply` tool — it has `send_email` or `create_draft`.
+- **Treating MailAgent actions as CRM tools**: `reply`, `forward`, `escalate`, `create_task`, `update_crm` are MailAgent `AgentAction` enum values — they describe **decisions a MailAgent makes**. A CRM agent doesn't have a `reply` tool — it has `send_email`, which workspace policy holds for approval.
 - **Confidence threshold semantics differ**: in CRM agents, `confidence_threshold` and `require_approval_below` are separate fields with different roles (act / require approval). In MailAgent, there's one threshold passed to `should_auto_execute(threshold=0.8)`. Don't mix them.
 - **Policy is restrictive-wins**: if two `AgentPolicy` rows match a tool call, the more restrictive decision applies (`BLOCK` > `REQUIRE_APPROVAL` > `RATE_LIMITED` > `ALLOW`). Multiple policies are additive, not last-write.
 - **`is_system=True` agents can't be deleted by workspace admins** — they're seeded by platform code. Trying to delete one returns a 4xx.

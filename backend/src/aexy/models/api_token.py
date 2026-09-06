@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from aexy.core.database import Base
@@ -22,6 +22,18 @@ class ApiToken(Base):
         nullable=False,
         index=True,
     )
+    # Set when the token belongs to an agent principal rather than a person.
+    # Such a token carries `actor=agent` on every request it makes.
+    principal_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("agent_principals.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # Capabilities the token is limited to. Null means everything its owner
+    # holds. Informational for personal tokens today; a principal token
+    # records the principal's scope at issue time.
+    scopes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     token_prefix: Mapped[str] = mapped_column(String(12), nullable=False)

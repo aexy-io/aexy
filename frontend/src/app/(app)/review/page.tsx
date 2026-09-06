@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Activity,
   AlertCircle,
   Bot,
   Check,
   CheckCheck,
+  ChevronDown,
+  ChevronRight,
   FileText,
   GitCommitHorizontal,
   Inbox,
@@ -17,7 +20,12 @@ import {
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { ReviewItem, documentApi, reviewApi } from "@/lib/api";
+import {
+  AgentActivityRow,
+  ReviewItem,
+  documentApi,
+  reviewApi,
+} from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -46,9 +54,20 @@ export default function ReviewPage() {
     enabled: Boolean(currentWorkspaceId),
   });
 
+  // The other half of the story. The queue is what agents were *stopped*
+  // from doing; the ledger is what they did. A page that showed only the
+  // first would leave "what changed yesterday" unanswerable from here.
+  const { data: activity = [] } = useQuery<AgentActivityRow[]>({
+    queryKey: ["agent-activity", currentWorkspaceId],
+    queryFn: () => reviewApi.activity(currentWorkspaceId!, { limit: 50 }),
+    enabled: Boolean(currentWorkspaceId),
+  });
+  const [activityOpen, setActivityOpen] = useState(false);
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["review-items", currentWorkspaceId] });
     queryClient.invalidateQueries({ queryKey: ["review-summary", currentWorkspaceId] });
+    queryClient.invalidateQueries({ queryKey: ["agent-activity", currentWorkspaceId] });
   };
 
   const decide = useMutation({
@@ -246,20 +265,90 @@ export default function ReviewPage() {
     );
   }
 
+  /** The ledger, collapsed by default: it is context, not work. */
+  const activitySection = (
+    <section
+      data-testid="agent-activity"
+      className="mt-8 rounded-xl border border-border"
+    >
+      <button
+        type="button"
+        onClick={() => setActivityOpen((open) => !open)}
+        aria-expanded={activityOpen}
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/50 rounded-xl transition"
+      >
+        <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-medium text-foreground">
+            {t("activityTitle")}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {activity.length
+              ? t("activityCount", { count: activity.length })
+              : t("activityEmpty")}
+          </p>
+        </div>
+        {activityOpen ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+      {activityOpen && activity.length > 0 && (
+        <ul className="divide-y divide-border/60 border-t border-border px-3 py-1">
+          {activity.map((row) => (
+            <li
+              key={row.id}
+              data-testid={`agent-activity-${row.id}`}
+              className="flex items-start gap-3 py-2"
+            >
+              <span
+                className={
+                  row.is_error
+                    ? "mt-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive"
+                    : "mt-0.5 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                }
+              >
+                {row.status_code ?? "—"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-mono text-sm text-foreground">
+                  {row.method} {row.action}
+                </p>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {row.resolved_path ?? row.path}
+                </p>
+              </div>
+              <time
+                dateTime={row.created_at}
+                className="shrink-0 text-xs text-muted-foreground"
+              >
+                {new Date(row.created_at).toLocaleString()}
+              </time>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
   if (!items.length) {
     return (
-      <div className="flex h-full items-center justify-center px-8 text-center">
-        <div className="max-w-md">
-          <Inbox className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <h1 className="mb-2 text-lg font-semibold text-foreground">
-            {t("emptyTitle")}
-          </h1>
-          {/* Explains the mechanism, because for most workspaces this page is
-              empty until the day it suddenly is not — and arriving at an
-              unexplained queue of blocked agent actions is its own kind of
-              alarming. */}
-          <p className="text-sm text-muted-foreground">{t("emptyBody")}</p>
+      <div className="mx-auto w-full max-w-3xl px-6 py-8">
+        <div className="flex items-center justify-center px-8 py-12 text-center">
+          <div className="max-w-md">
+            <Inbox className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+            <h1 className="mb-2 text-lg font-semibold text-foreground">
+              {t("emptyTitle")}
+            </h1>
+            {/* Explains the mechanism, because for most workspaces this page is
+                empty until the day it suddenly is not — and arriving at an
+                unexplained queue of blocked agent actions is its own kind of
+                alarming. */}
+            <p className="text-sm text-muted-foreground">{t("emptyBody")}</p>
+          </div>
         </div>
+        {activitySection}
       </div>
     );
   }
@@ -331,6 +420,8 @@ export default function ReviewPage() {
           </li>
         ))}
       </ul>
+
+      {activitySection}
     </div>
   );
 }

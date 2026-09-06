@@ -50,6 +50,18 @@ SCHEDULES: list[dict] = [
         "interval": timedelta(hours=24),
         "queue": TaskQueue.ANALYSIS,
     },
+    # === Agent schedules ===
+    # Fires every routine whose next_run_at has passed. Five minutes is the
+    # resolution a "daily at 9" routine can be late by; the service anchors
+    # the next slot on the schedule, not on the tick, so it does not drift.
+    {
+        "id": "agent-schedules-tick",
+        "activity": "run_due_agent_schedules",
+        "input_module": "aexy.temporal.activities.agent_schedules",
+        "input_class": "RunDueAgentSchedulesInput",
+        "interval": timedelta(minutes=5),
+        "queue": TaskQueue.OPERATIONS,
+    },
     {
         "id": "reset-daily-limits",
         "activity": "reset_daily_limits",

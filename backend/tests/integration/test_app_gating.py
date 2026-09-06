@@ -210,8 +210,25 @@ def test_the_unguarded_surface_is_declared_rather_than_discovered():
 
     # Raise this only with a reason, and lower it whenever a router moves
     # behind its module.
-    assert unguarded <= 282, (
-        f"{unguarded} workspace-scoped routes carry no app guard, up from 282. "
+    #
+    # 282 -> 290 (0.37.0, agent operations over MCP). Eight routes, each one a
+    # deliberate answer rather than an oversight:
+    #
+    #   * six on `agent-principals`. A principal is an identity holding a live
+    #     token; switching the agents app off must not strand one with no admin
+    #     screen to revoke it from. Ungated for the same reason members and
+    #     roles are — and admin-checked per endpoint, and absent from the MCP
+    #     catalogue entirely.
+    #   * `agent-actions/activity` and `agent-actions/mine`, which join the
+    #     already-ungated approval queue: a workspace has to be able to read
+    #     and decide what an agent asked to do in it whatever it has switched
+    #     on, and an agent told "this is waiting" has to be able to learn the
+    #     outcome.
+    #
+    # The same change added nine routes that ARE gated: agent schedules behind
+    # `agents`, and `crm/outreach/*` behind `crm`.
+    assert unguarded <= 290, (
+        f"{unguarded} workspace-scoped routes carry no app guard, up from 290. "
         "A new router needs either `require_app_access(<app>)` or a note here "
         "saying why it must answer for a workspace that switched the module off."
     )
