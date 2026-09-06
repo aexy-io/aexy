@@ -45,7 +45,7 @@ The bridge reads three, plus an optional `AEXY_TIMEOUT_SECONDS`:
 
 | Variable | Meaning |
 | --- | --- |
-| `AEXY_API_URL` | Backend API base URL, e.g. `https://api.aexy.io/api/v1` |
+| `AEXY_API_URL` | Backend API base URL, e.g. `https://server.aexy.io/api/v1` |
 | `AEXY_API_TOKEN` | Your token from Settings → API Tokens, or a principal's token |
 | `AEXY_WORKSPACE_ID` | Which workspace to act in. Needed only when the token's owner belongs to more than one; a principal is already bound to one |
 
@@ -64,11 +64,27 @@ the placeholder or delete the line — the bridge ignores an unreplaced one.
 
 ### Claude Code
 
-Remote, one line — it authenticates through the browser:
+Remote, one line — it authenticates through the browser (for the hosted
+service, `<api-url>` is `https://server.aexy.io/api/v1`):
 
 ```bash
 claude mcp add --transport http aexy <api-url>/mcp
 ```
+
+Claude Code discovers the OAuth server from the endpoint's `WWW-Authenticate`
+header and registers itself; the first `/mcp` in a session opens the browser to
+approve the grant.
+
+Remote with a fixed API token instead of a browser login — no bridge needed,
+useful for CI or an agent principal:
+
+```bash
+claude mcp add --transport http aexy <api-url>/mcp \
+  --header "Authorization: Bearer <your-api-token>"
+```
+
+Add `--header "X-Aexy-Workspace-Id: <workspace-id>"` only if the token's owner
+belongs to more than one workspace.
 
 Or run the stdio bridge with a token:
 
