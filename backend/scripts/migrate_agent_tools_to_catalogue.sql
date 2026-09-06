@@ -17,7 +17,10 @@
 --   send_slack          -> send_slack_message
 --   send_sms            -> send_sms
 --   read_document       -> get_document
---   search_documents    -> search_documents
+--   search_documents    -> list_documents              (GET documents?search=, which is what
+--                                                       SearchDocumentsTool called; there is no
+--                                                       `search_documents` action in the catalogue,
+--                                                       and leaving the name alone dropped the tool)
 --   create_document     -> create_document
 --   propose_docx_edit   -> aexy_docs_propose          (routine)
 --   enrich_company, enrich_person, web_search -> removed: they were
@@ -35,6 +38,7 @@ WITH mapping(old_name, new_name) AS (
         ('create_draft',      'send_email'),
         ('send_slack',        'send_slack_message'),
         ('read_document',     'get_document'),
+        ('search_documents',  'list_documents'),
         ('propose_docx_edit', 'aexy_docs_propose'),
         ('enrich_company',    NULL),
         ('enrich_person',     NULL),

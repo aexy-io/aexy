@@ -129,6 +129,64 @@ const recipientEmail: ModuleActionField = {
 };
 
 export const MODULE_ACTION_FIELDS: Record<string, ModuleActionSpec> = {
+  // ---- Service desk -----------------------------------------------------
+  // Stakeholders and request types are per-workspace slugs, configured under
+  // Settings -> Service Desk, so these are free text rather than a select: a
+  // hardcoded option list would be right for exactly one workspace. The
+  // executor validates against the workspace's own taxonomy and refuses an
+  // unknown slug, so a typo fails the step rather than parking the ticket in a
+  // bucket no queue can match.
+  set_pending_with: {
+    summary: "Park the ticket with a stakeholder.",
+    fields: [
+      ticketId,
+      {
+        key: "pending_with",
+        label: "Pending with",
+        type: "text",
+        required: true,
+        placeholder: "customer",
+        help: "The stakeholder slug, from Settings → Service Desk → Pending-With Buckets.",
+        supportsVariables: true,
+      },
+      {
+        key: "note",
+        label: "Note",
+        type: "textarea",
+        help: "Added to the ticket timeline alongside the handover.",
+        supportsVariables: true,
+      },
+    ],
+  },
+  set_request_type: {
+    summary: "Set the ticket's request type.",
+    fields: [
+      ticketId,
+      {
+        key: "request_type",
+        label: "Request type",
+        type: "text",
+        required: true,
+        help: "The request-type slug, from this workspace's service desk taxonomy.",
+        supportsVariables: true,
+      },
+    ],
+  },
+  assign_owner: {
+    summary: "Assign the service desk ticket to a workspace member.",
+    fields: [
+      ticketId,
+      {
+        key: "assigned_owner_id",
+        label: "Owner (developer ID)",
+        type: "text",
+        required: true,
+        help: "Must be a member of this workspace.",
+        supportsVariables: true,
+      },
+    ],
+  },
+
   // ---- Tickets ----------------------------------------------------------
   assign_ticket: {
     summary: "Assign the ticket to an agent or a team.",

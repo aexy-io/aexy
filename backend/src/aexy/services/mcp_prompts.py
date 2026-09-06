@@ -82,7 +82,10 @@ PROMPTS: list[dict[str, Any]] = [
     {
         "name": "weekly_report",
         "description": "Weekly engineering report from sprint analytics and insights, as a document proposal.",
-        "capabilities": {"mcp.sprints", "mcp.docs"},
+        # `mcp.tracking` because the text calls `aexy_active_blockers`, which
+        # lives there — same as `sprint_standup`. Without it the prompt was
+        # offered to callers whose tools/list does not contain that routine.
+        "capabilities": {"mcp.sprints", "mcp.docs", "mcp.tracking"},
         "arguments": [{"name": "team_id", "description": "Team id.", "required": False}],
         "text": (
             "Write the weekly engineering report for the team{team}. Gather: sprint progress and velocity "

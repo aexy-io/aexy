@@ -58,19 +58,35 @@ def catalog() -> dict[str, Any]:
 
 
 def find_operation(
-    action: str, capability: str | None = None
+    action: str,
+    capability: str | None = None,
+    granted: set[str] | None = None,
 ) -> tuple[dict[str, Any], str] | None:
     """The operation called `action`, within `capability` when given.
 
     Action names are unique within a capability, not across the catalogue —
-    `list_records` is CRM and Tables, and `get_team_health` is a read in one
+    `list_records` is CRM and Tables, and `get_bus_factor` is a read in one
     capability and a write in another — so an unscoped lookup is a guess.
+
+    Pass `granted` and it becomes the *same* guess `McpToolExecutor.
+    _find_operation` makes: granted capabilities first, in catalogue order
+    within each half. That the two agreed was already load-bearing and was
+    never enforced. When they disagreed, the read-only gate below inspected
+    one operation while the executor ran another — `get_bus_factor` is a GET
+    in `mcp.insights` and a POST in `mcp.platform`, so an actor holding only
+    `mcp.platform` was cleared on the read and ran the write. `build_tools`
+    had the mirror failure: it resolved `get_document` to `mcp.compliance`,
+    found that ungranted, and dropped a tool the actor could reach through
+    `mcp.docs`.
     """
     if capability and not capability.startswith("mcp."):
         capability = f"mcp.{capability}"
-    for group in catalog()["capabilities"]:
-        if capability and group["capability"] != capability:
-            continue
+    groups = catalog()["capabilities"]
+    if capability:
+        groups = [g for g in groups if g["capability"] == capability]
+    elif granted is not None:
+        groups = sorted(groups, key=lambda g: g["capability"] not in granted)
+    for group in groups:
         for op in group["operations"]:
             if op["action"] == action:
                 return op, group["capability"]
@@ -78,8 +94,16 @@ def find_operation(
 
 
 def is_catalog_tool_name(name: str) -> bool:
-    """Whether `name` is something this module can build a tool for."""
+    """Whether `name` is something this module can build a tool for.
+
+    The four shapes `build_tools` accepts, in the order it tries them. The
+    named routines belong here as much as the rest: `aexy_crm_records` and
+    `aexy_docs_propose` are what the tool migration rewrites two legacy names
+    to, and this said they were unbindable.
+    """
     if name in (DISCOVER_TOOL, CALL_TOOL):
+        return True
+    if workflow_tool(name) is not None:
         return True
     if capability_group(name) is not None:
         return True
@@ -174,7 +198,12 @@ class McpToolContext:
                 action = arguments.get("action")
                 group = capability_group(tool_name)
                 scope = group["capability"] if group else arguments.get("capability")
-            found = find_operation(action, scope) if action else None
+            # `granted` so an unscoped name resolves to the operation the
+            # executor will actually run, and not to a different one that
+            # happens to sort earlier and happens to be a read.
+            found = (
+                find_operation(action, scope, self.granted) if action else None
+            )
             if found is not None and found[0]["mutating"]:
                 return ToolResult(
                     f"`{action}` changes data, and this assistant is read-only. "
@@ -419,7 +448,9 @@ def build_tools(context: McpToolContext, names: list[str]) -> list[BaseTool]:
                 )
             )
             continue
-        found = find_operation(name)
+        # Granted-first, so a name carried by two capabilities binds to the
+        # one this actor holds rather than to whichever sorts first.
+        found = find_operation(name, granted=context.granted)
         if found is None:
             logger.warning("Agent names tool %r, which is neither a registry tool nor a catalogue action", name)
             continue

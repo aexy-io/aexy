@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aexy.api.crm import check_workspace_permission
@@ -103,16 +103,33 @@ async def get_email_history(
 ):
     """Previous email activity with one address, newest first."""
     await check_workspace_permission(workspace_id, current_user, db)
+    needle = str(email).lower()
+    # The address has to be matched in the database, not after the fact. This
+    # read the newest `limit * 5` email activities in the whole workspace and
+    # filtered them in Python, so a workspace sending a few hundred mails a day
+    # answered "the history with this contact" with an empty list whenever the
+    # last exchange fell outside that window — and an agent reading no history
+    # opens cold on a live thread.
+    #
+    # `activity_metadata` is JSONB, so the recipient is not a column to compare.
+    # Casting the document to text and matching the address anywhere in it is a
+    # coarse prefilter — it also catches an address quoted in the subject — but
+    # it is a filter the database applies before ordering and limiting, which is
+    # what makes the answer correct. The precise `to` / `from` check below still
+    # decides what is returned. `autoescape` matters: an address may contain the
+    # `_` that LIKE reads as a wildcard.
     rows = await db.execute(
         select(CRMActivity)
         .where(
             CRMActivity.workspace_id == workspace_id,
             CRMActivity.activity_type.in_(["email.sent", "email.received", "email.replied"]),
+            func.lower(cast(CRMActivity.activity_metadata, String)).contains(
+                needle, autoescape=True
+            ),
         )
         .order_by(CRMActivity.occurred_at.desc())
         .limit(limit * 5)
     )
-    needle = str(email).lower()
     out: list[EmailHistoryItem] = []
     for activity in rows.scalars().all():
         meta: dict[str, Any] = activity.activity_metadata or {}

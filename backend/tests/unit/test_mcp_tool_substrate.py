@@ -161,3 +161,189 @@ class TestServiceDeskAutomation:
     def test_trigger_fields_are_declared(self):
         fields = {f[0] for f in trigger_fields_for("service_desk", "service_desk.pending_with_changed")}
         assert {"trigger.ticket_id", "trigger.pending_with", "trigger.previous_pending_with"} <= fields
+
+
+class TestAmbiguousActionNames:
+    """An action name is unique within a capability, not across the catalogue.
+
+    Two resolvers used to disagree about which operation an unscoped name meant:
+    `mcp_tools.find_operation` walked the catalogue in order, while
+    `McpToolExecutor._find_operation` put granted capabilities first. Both
+    directions of that disagreement were bugs — one cleared a read and ran a
+    write, the other dropped a tool the actor could reach.
+    """
+
+    @staticmethod
+    def _carried_twice(mutating_split: bool) -> tuple[str, list[tuple[str, bool]]]:
+        """A real action name carried by two capabilities, or skip the test."""
+        from aexy.agents.tools.mcp_tools import catalog
+
+        seen: dict[str, list[tuple[str, bool]]] = {}
+        for group in catalog()["capabilities"]:
+            for op in group["operations"]:
+                seen.setdefault(op["action"], []).append(
+                    (group["capability"], op["mutating"])
+                )
+        for action, carried in seen.items():
+            if len({c for c, _ in carried}) < 2:
+                continue
+            mixed = len({m for _, m in carried}) > 1
+            if mixed is mutating_split:
+                return action, carried
+        pytest.skip("the catalogue no longer carries such an action name")
+
+    def test_resolution_follows_the_grant_not_catalogue_order(self):
+        """`get_bus_factor` is a GET in one capability and a POST in another.
+
+        Holding only the writing one, this used to resolve to the other
+        capability's GET — so the read-only gate saw `mutating: false` and
+        cleared a call the executor then ran as a write.
+        """
+        from aexy.agents.tools.mcp_tools import find_operation
+
+        action, carried = self._carried_twice(mutating_split=True)
+        for capability, mutating in carried:
+            op, resolved = find_operation(action, granted={capability})
+            assert resolved == capability
+            assert op["mutating"] is mutating
+
+    async def test_a_write_reached_by_an_ambiguous_name_is_refused(self):
+        from aexy.agents.tools.mcp_tools import CALL_TOOL
+
+        action, carried = self._carried_twice(mutating_split=True)
+        writing = next(cap for cap, mutating in carried if mutating)
+
+        context = McpToolContext(
+            db=None,
+            workspace_id="w",
+            developer_id="d",
+            granted={writing},
+            allow_writes=False,
+        )
+        result = await context.call(CALL_TOOL, {"action": action})
+        assert result.is_error is True
+        assert "read-only" in result.content
+
+    def test_a_tool_binds_to_a_capability_the_actor_holds(self):
+        """`get_document` is in both compliance and docs.
+
+        Resolving in catalogue order found compliance, saw it ungranted, and
+        dropped the tool — so an agent scoped to docs alone silently lost the
+        document read its own tool list named.
+        """
+        action, carried = self._carried_twice(mutating_split=False)
+        for capability, _ in carried:
+            tools = build_tools(
+                McpToolContext(
+                    db=None, workspace_id="w", developer_id="d", granted={capability}
+                ),
+                [action],
+            )
+            assert [t.name for t in tools] == [action], (
+                f"{action!r} was dropped for an actor holding {capability}"
+            )
+            assert tools[0].capability_tool == f"aexy_{capability.removeprefix('mcp.')}"
+
+
+class TestMigratedToolNamesResolve:
+    """Every name `migrate_agent_tools_to_catalogue.sql` can leave in a stored
+    tool list has to be one `build_tools` can bind.
+
+    A mapping target the catalogue does not carry drops the tool silently, and
+    so does a legacy name the mapping forgets — which is what happened to
+    `search_documents`, the one name the migration's own header claimed passed
+    through unchanged.
+    """
+
+    # The registry this migration exists to replace (`builder.py`'s
+    # TOOL_REGISTRY, deleted in 0.37.0). Every one of these can be sitting in
+    # `crm_agents.tools` in a database that predates the change.
+    LEGACY_TOOL_NAMES = frozenset(
+        {
+            "search_contacts",
+            "get_record",
+            "update_record",
+            "create_record",
+            "get_activities",
+            "send_email",
+            "create_draft",
+            "get_email_history",
+            "get_writing_style",
+            "enrich_company",
+            "enrich_person",
+            "web_search",
+            "send_slack",
+            "send_sms",
+            "read_document",
+            "search_documents",
+            "create_document",
+            "propose_docx_edit",
+        }
+    )
+
+    @staticmethod
+    def _mapping() -> dict[str, str | None]:
+        import re
+        from pathlib import Path
+
+        sql = (
+            Path(__file__).resolve().parents[2]
+            / "scripts"
+            / "migrate_agent_tools_to_catalogue.sql"
+        )
+        table = sql.read_text().split("WITH mapping", 1)[1].split("),\nrewritten", 1)[0]
+        pairs = re.findall(r"\(\s*'([a-z_]+)'\s*,\s*(?:'([a-z_]+)'|NULL)\s*\)", table)
+        assert pairs, "could not read the mapping table out of the migration"
+        return {old: (new or None) for old, new in pairs}
+
+    def test_every_legacy_name_survives_as_something_bindable(self):
+        from aexy.agents.tools.mcp_tools import is_catalog_tool_name
+
+        mapping = self._mapping()
+        for legacy in sorted(self.LEGACY_TOOL_NAMES):
+            if legacy in mapping:
+                target = mapping[legacy]
+                if target is None:
+                    continue  # deliberately dropped (the enrichment placeholders)
+                assert is_catalog_tool_name(target), (
+                    f"{legacy!r} is rewritten to {target!r}, which is not a catalogue name"
+                )
+            else:
+                assert is_catalog_tool_name(legacy), (
+                    f"{legacy!r} passes through the migration untouched but is "
+                    "not a catalogue name, so the tool is lost"
+                )
+
+    def test_the_placeholders_are_the_only_names_dropped(self):
+        mapping = self._mapping()
+        dropped = {old for old, new in mapping.items() if new is None}
+        assert dropped == {"enrich_company", "enrich_person", "web_search"}
+
+
+class TestPromptsNameOnlyReachableTools:
+    """A prompt is filtered by its declared capabilities, so a routine it
+    instructs the model to call must be inside them — `weekly_report` named
+    `aexy_active_blockers` (mcp.tracking) while declaring only sprints and
+    docs, and was offered to callers whose tools/list did not contain it."""
+
+    def test_every_routine_a_prompt_names_is_within_its_capabilities(self):
+        import re
+
+        from aexy.services.mcp_catalog import WORKFLOW_TOOLS
+        from aexy.services.mcp_prompts import PROMPTS
+
+        routines = {tool["name"]: tool["capability"] for tool in WORKFLOW_TOOLS}
+        for prompt in PROMPTS:
+            declared = prompt["capabilities"]
+            for name in set(re.findall(r"aexy_[a-z0-9_]+", prompt["text"])):
+                if name in routines:
+                    assert routines[name] in declared, (
+                        f"prompt {prompt['name']!r} calls routine {name!r} "
+                        f"({routines[name]}), which its capabilities do not include"
+                    )
+                elif name.startswith("aexy_"):
+                    capability = f"mcp.{name.removeprefix('aexy_')}"
+                    assert capability in declared, (
+                        f"prompt {prompt['name']!r} calls {name!r} "
+                        f"({capability}), which its capabilities do not include"
+                    )

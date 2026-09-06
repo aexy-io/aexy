@@ -414,13 +414,27 @@ api_router.include_router(agent_policies_router, tags=["agent-policies"], depend
 # any MCP client, and a workspace without that app enabled still needs to be
 # able to see and decline what an agent asked to do in it.
 api_router.include_router(agent_pending_actions_router)
-# An agent's own held actions. The only part of the queue MCP can reach.
+# An agent's own held actions. Ungated for the same reason as the queue above:
+# an agent told "this is waiting for approval" has to be able to learn the
+# outcome whatever apps the workspace has switched on.
 api_router.include_router(agent_actions_self_router)
-# The identities agents run as. Admin-checked per endpoint; excluded from MCP.
+# The identities agents run as. Ungated on purpose, like the rest of workspace
+# administration: switching the agents app off must not strand a live principal
+# with a valid token and no admin screen to revoke it from. Admin-checked per
+# endpoint, and excluded from the MCP catalogue entirely.
 api_router.include_router(agent_principals_router)
-# Routines an agent runs on a clock. Admin-checked per endpoint.
-api_router.include_router(agent_schedules_router)
-api_router.include_router(outreach_router)
+# Routines an agent runs on a clock — agent configuration, so it answers only
+# where the agents app does.
+api_router.include_router(
+    agent_schedules_router,
+    tags=["agent-schedules"],
+    dependencies=[Depends(require_app_access("agents"))],
+)
+# Email, Slack and SMS an agent sends on a person's behalf: ordinary CRM
+# operations, behind the CRM app like the rest of `crm/`.
+api_router.include_router(
+    outreach_router, tags=["crm"], dependencies=[Depends(require_app_access("crm"))]
+)
 api_router.include_router(review_items_router)
 api_router.include_router(agent_audit_router, tags=["agent-audit"])
 # Automation-Agent Integration

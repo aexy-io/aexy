@@ -78,6 +78,11 @@ Mirrors the pattern this repo already uses for the app catalog
 - `frontend/scripts/fetch-tool-manifest.js` — pulls the pinned manifest into
   `frontend/src/config/mcpTools.generated.json`, wired into `prebuild` alongside
   `merge-messages.js`. Pinned by version, committed, so builds stay hermetic.
+  > **Superseded (0.37.0).** The manifest is no longer fetched from the stdio
+  > server. `frontend/scripts/generate-mcp-manifest.mjs` renders it from
+  > `backend/tests/fixtures/mcp-catalog.generated.json`, which the backend
+  > derives from its own OpenAPI schema and CI checks for staleness. Same file
+  > out, one fewer repo in the seam. `fetch-tool-manifest.mjs` is deleted.
 - Delete the hand-written `TOOL_CATEGORIES` array (`page.tsx:44`) and read the manifest.
 - Tool names/descriptions come from the manifest; i18n keeps only category names and page chrome.
   This ends the "update the array AND the i18n keys" rule in the file's comment.

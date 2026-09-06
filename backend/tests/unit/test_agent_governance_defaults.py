@@ -62,6 +62,23 @@ class FakeDb:
     async def flush(self):
         pass
 
+    def begin_nested(self):
+        """The ledger writes inside a savepoint, so the stub offers one.
+
+        A real failed insert must not leave the caller's session needing a
+        rollback; this stands in for that and does nothing, since nothing here
+        fails.
+        """
+
+        class _Savepoint:
+            async def __aenter__(self_inner):
+                return self_inner
+
+            async def __aexit__(self_inner, *exc):
+                return False
+
+        return _Savepoint()
+
     async def execute(self, _stmt):
         rows = self._policies
         return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: rows))

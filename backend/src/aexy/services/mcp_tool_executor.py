@@ -435,33 +435,40 @@ class McpToolExecutor:
         Mutating operations only — a read changes nothing and the volume would
         bury the writes. Best effort: a ledger that cannot be written must not
         turn a completed call into an error the agent then retries.
+
+        Written inside a savepoint, because "best effort" has to mean the
+        caller's transaction survives, not merely that the error is logged. A
+        failed flush on the shared session leaves it needing a rollback, so
+        catching the exception here and carrying on would hand the next
+        statement — the request's commit, or the session's next tool call — a
+        PendingRollbackError instead. `begin_nested` rolls back to the
+        savepoint and expunges the row, leaving everything before it intact.
         """
         if self._db is None or not operation.get("mutating"):
             return
         try:
             from aexy.models.agent_action_log import AgentActionLog
 
-            self._db.add(
-                AgentActionLog(
-                    id=str(uuid4()),
-                    workspace_id=workspace_id,
-                    actor_kind=self._actor_kind,
-                    actor_developer_id=developer_id,
-                    principal_id=self._principal_id,
-                    tool_name=tool_name or operation["action"],
-                    action=operation["action"],
-                    capability=operation.get("_capability"),
-                    method=str(operation["method"]).upper(),
-                    path=operation["path"],
-                    resolved_path=resolved_path[:1000],
-                    arguments=redact(arguments),
-                    status_code=status_code,
-                    is_error=is_error,
-                    duration_ms=duration_ms,
-                    pending_action_id=pending_action_id,
-                )
+            row = AgentActionLog(
+                id=str(uuid4()),
+                workspace_id=workspace_id,
+                actor_kind=self._actor_kind,
+                actor_developer_id=developer_id,
+                principal_id=self._principal_id,
+                tool_name=tool_name or operation["action"],
+                action=operation["action"],
+                capability=operation.get("_capability"),
+                method=str(operation["method"]).upper(),
+                path=operation["path"],
+                resolved_path=resolved_path[:1000],
+                arguments=redact(arguments),
+                status_code=status_code,
+                is_error=is_error,
+                duration_ms=duration_ms,
+                pending_action_id=pending_action_id,
             )
-            await self._db.flush()
+            async with self._db.begin_nested():
+                self._db.add(row)
         except Exception:
             logger.exception(
                 "Could not record agent action %s in workspace %s",

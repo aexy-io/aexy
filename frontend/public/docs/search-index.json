@@ -1168,6 +1168,7 @@
       "Reports",
       "Turnaround per ticket",
       "The owner scorecard",
+      "Automating the desk",
       "Who sees what",
       "Where each setting lives",
       "Common mistakes"
@@ -1776,7 +1777,7 @@
       "Agent types",
       "CRMAgent model",
       "Backend code",
-      "Tool registry",
+      "Tool names",
       "Execution model",
       "Agent policies",
       "API",

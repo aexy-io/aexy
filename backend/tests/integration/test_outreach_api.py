@@ -87,6 +87,75 @@ async def test_email_history_filters_by_address(client, db_session, setup):
     assert [x["subject"] for x in r.json()] == ["Q2"]
 
 
+async def test_email_history_reaches_past_the_recent_noise(client, db_session, setup):
+    """The match is older than the newest `limit * 5` email activities.
+
+    This read the newest rows in the whole workspace and filtered them in
+    Python, so a busy desk answered "the history with this contact" with an
+    empty list whenever the last exchange fell outside that window — and an
+    agent reading no history opens cold on a live thread. The address is
+    matched in the query now, so age does not hide it.
+    """
+    dev, ws = setup
+    obj = CRMObject(workspace_id=ws.id, name="Person", slug="person", plural_name="People", object_type="person")
+    db_session.add(obj)
+    await db_session.flush()
+    record = CRMRecord(workspace_id=ws.id, object_id=obj.id, values={"name": "Alice"})
+    db_session.add(record)
+    await db_session.flush()
+
+    now = datetime.now(timezone.utc)
+    db_session.add(CRMActivity(
+        workspace_id=ws.id, record_id=record.id, activity_type="email.sent", actor_type="user",
+        title="Q2", description="body", activity_metadata={"to": "alice@example.com", "subject": "Q2"},
+        occurred_at=now - timedelta(days=30),
+    ))
+    # Well past `limit * 5` newer rows for other people, all in front of it.
+    for n in range(60):
+        db_session.add(CRMActivity(
+            workspace_id=ws.id, record_id=record.id, activity_type="email.sent", actor_type="user",
+            title=f"noise {n}", description="body",
+            activity_metadata={"to": f"bob{n}@example.com", "subject": f"noise {n}"},
+            occurred_at=now - timedelta(minutes=n),
+        ))
+    await db_session.commit()
+
+    r = await client.get(
+        f"/api/v1/workspaces/{ws.id}/crm/outreach/email-history",
+        params={"email": "alice@example.com", "limit": 10},
+        headers={"Authorization": f"Bearer {_jwt(str(dev.id))}"},
+    )
+    assert r.status_code == 200, r.text
+    assert [x["subject"] for x in r.json()] == ["Q2"]
+
+
+async def test_email_history_does_not_read_underscores_as_wildcards(client, db_session, setup):
+    """An address may contain `_`, which LIKE reads as "any character"."""
+    dev, ws = setup
+    obj = CRMObject(workspace_id=ws.id, name="Person", slug="person", plural_name="People", object_type="person")
+    db_session.add(obj)
+    await db_session.flush()
+    record = CRMRecord(workspace_id=ws.id, object_id=obj.id, values={"name": "A"})
+    db_session.add(record)
+    await db_session.flush()
+    now = datetime.now(timezone.utc)
+    db_session.add(CRMActivity(
+        workspace_id=ws.id, record_id=record.id, activity_type="email.sent", actor_type="user",
+        title="Wrong", description="body",
+        activity_metadata={"to": "aXb@example.com", "subject": "Wrong"},
+        occurred_at=now,
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        f"/api/v1/workspaces/{ws.id}/crm/outreach/email-history",
+        params={"email": "a_b@example.com"},
+        headers={"Authorization": f"Bearer {_jwt(str(dev.id))}"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == []
+
+
 async def test_non_members_are_refused(client, db_session, setup):
     _dev, ws = setup
     other = Developer(email="x@example.com", name="X")
