@@ -30,5 +30,7 @@
       "medium": "Medium",
       "low": "Low"
     }
-  }
+  },
+  "saved": "Saved",
+  "deleted": "Deleted"
 }

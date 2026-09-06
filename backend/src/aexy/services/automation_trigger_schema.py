@@ -113,6 +113,22 @@ _CRM_TRIGGER_FIELDS: dict[str, tuple[tuple[str, str, str, str], ...]] = {
 }
 
 
+_SERVICE_DESK_TICKET_FIELDS: tuple[tuple[str, str, str, str], ...] = (
+    ("trigger.ticket_id", "Ticket ID", "text", ""),
+    ("trigger.ticket_number", "Ticket Number", "number", ""),
+    ("trigger.title", "Title", "text", ""),
+    ("trigger.status", "Status", "text", ""),
+    ("trigger.priority", "Priority", "text", ""),
+    ("trigger.request_type", "Request Type", "text", ""),
+    ("trigger.pending_with", "Pending With", "text", "Stakeholder the ticket is parked with"),
+    ("trigger.account_id", "Account ID", "text", ""),
+    ("trigger.assigned_owner_id", "Assigned Owner ID", "text", ""),
+    ("trigger.source", "Source", "text", "email, manual, api"),
+    ("trigger.needs_triage", "Needs Triage", "boolean", "AI could not classify it confidently"),
+    ("trigger.workspace_id", "Workspace ID", "text", ""),
+)
+
+
 _MODULE_TRIGGER_FIELDS: dict[str, dict[str, tuple[tuple[str, str, str, str], ...]]] = {
     "booking": {
         "booking.cancelled": (
@@ -492,6 +508,16 @@ _MODULE_TRIGGER_FIELDS: dict[str, dict[str, tuple[tuple[str, str, str, str], ...
             ("trigger.assignee_id", "Assignee ID", "text", ""),
             ("trigger.assignee_email", "Assignee Email", "email", ""),
             ("trigger.workspace_id", "Workspace ID", "text", ""),
+        ),
+    },
+    "service_desk": {
+        "service_desk.ticket_created": _SERVICE_DESK_TICKET_FIELDS,
+        "service_desk.ticket_updated": _SERVICE_DESK_TICKET_FIELDS + (
+            ("trigger.changed_fields", "Changed Fields", "object", "Field name to new value"),
+        ),
+        "service_desk.pending_with_changed": _SERVICE_DESK_TICKET_FIELDS + (
+            ("trigger.previous_pending_with", "Previous Pending With", "text", ""),
+            ("trigger.note", "Note", "text", "The note left with the change, if any"),
         ),
     },
     "tickets": {

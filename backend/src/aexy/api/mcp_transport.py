@@ -23,12 +23,21 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from aexy.core.config import settings
 from aexy.core.database import get_db
+from aexy.models.workspace import WorkspaceMember
 from aexy.services.mcp_access_service import McpAccessService
 from aexy.services.mcp_catalog import build_catalog, build_tools
 from aexy.services.mcp_oauth_service import McpOAuthService, ResolvedGrant
+from aexy.services.mcp_prompts import prompts_for, read_resource, render_prompt, resources_for
 from aexy.services.mcp_tool_executor import McpToolExecutor
+
+# A personal API token is not bound to a workspace the way an OAuth grant is.
+# The bridge (and any direct caller) names one with this header; a developer in
+# exactly one workspace may omit it.
+WORKSPACE_HEADER = "X-Aexy-Workspace-Id"
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
@@ -49,7 +58,7 @@ _catalog_cache: dict[int, dict] = {}
 def _catalog(request: Request) -> dict:
     key = id(request.app)
     if key not in _catalog_cache:
-        _catalog_cache[key] = build_catalog(request.app.openapi())
+        _catalog_cache[key] = build_catalog(request.app.openapi(), include_schemas=True)
     return _catalog_cache[key]
 
 
@@ -74,11 +83,95 @@ def _unauthorized() -> JSONResponse:
     )
 
 
+class GrantProblem(Exception):
+    """The bearer is valid but the request cannot be served as sent."""
+
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message)
+        self.status_code = status_code
+        self.message = message
+
+
 async def _resolve_grant(request: Request, db: AsyncSession) -> ResolvedGrant | None:
+    """Who is calling, and for which workspace.
+
+    Three bearers are accepted:
+
+      * an OAuth access token — a remote client that walked the consent flow;
+        the grant names the workspace;
+      * an agent principal's API token — the principal *is* a workspace
+        identity, and its declared capabilities travel with the grant;
+      * a person's API token — what the stdio bridge sends. Not bound to a
+        workspace, so one is taken from the header, or inferred when the
+        person belongs to exactly one.
+
+    Routing a person's token through here rather than at the REST API is the
+    whole point: the stdio server used to call endpoints directly with such a
+    token, which made every call look like the person at a keyboard and
+    skipped governance, the review gate and the ledger.
+    """
     header = request.headers.get("authorization", "")
     if not header.lower().startswith("bearer "):
         return None
-    return await McpOAuthService(db).resolve_access_token(header[7:].strip())
+    token = header[7:].strip()
+
+    if not token.startswith("aexy_"):
+        return await McpOAuthService(db).resolve_access_token(token)
+
+    from aexy.services.api_token_service import ApiTokenService
+
+    api_token = await ApiTokenService(db).validate(token)
+    if api_token is None:
+        return None
+
+    if api_token.principal_id:
+        from aexy.services.agent_principal_service import AgentPrincipalService
+
+        principals = AgentPrincipalService(db)
+        principal = await principals.get_by_id(api_token.principal_id)
+        if principal is None or not principal.is_active:
+            return None
+        await principals.touch(principal)
+        return ResolvedGrant(
+            developer_id=principal.developer_id,
+            workspace_id=principal.workspace_id,
+            client_id="agent-principal",
+            scope="mcp",
+            grant_id=api_token.id,
+            principal_id=principal.id,
+            capabilities=frozenset(principal.capabilities or []),
+        )
+
+    workspace_id = (request.headers.get(WORKSPACE_HEADER) or "").strip()
+    memberships = [
+        str(row)
+        for row in (
+            await db.execute(
+                select(WorkspaceMember.workspace_id)
+                .where(WorkspaceMember.developer_id == api_token.developer_id)
+                .where(WorkspaceMember.status == "active")
+            )
+        ).scalars().all()
+    ]
+    if workspace_id:
+        if workspace_id not in memberships:
+            raise GrantProblem(403, f"You are not a member of workspace {workspace_id}.")
+    elif len(memberships) == 1:
+        workspace_id = memberships[0]
+    else:
+        raise GrantProblem(
+            400,
+            f"This token belongs to a person in {len(memberships)} workspaces. Send the "
+            f"{WORKSPACE_HEADER} header (the bridge reads AEXY_WORKSPACE_ID) to say which.",
+        )
+
+    return ResolvedGrant(
+        developer_id=api_token.developer_id,
+        workspace_id=workspace_id,
+        client_id="api-token",
+        scope="mcp",
+        grant_id=api_token.id,
+    )
 
 
 def _result(request_id: Any, payload: dict) -> dict:
@@ -92,7 +185,13 @@ def _error(request_id: Any, code: int, message: str) -> dict:
 @router.post("")
 async def mcp_endpoint(request: Request, db: AsyncSession = Depends(get_db)):
     """Single JSON-RPC entry point for the whole protocol."""
-    grant = await _resolve_grant(request, db)
+    try:
+        grant = await _resolve_grant(request, db)
+    except GrantProblem as problem:
+        return JSONResponse(
+            status_code=problem.status_code,
+            content={"error": "invalid_request", "error_description": problem.message},
+        )
     if grant is None:
         return _unauthorized()
 
@@ -140,7 +239,11 @@ async def _dispatch(
             request_id,
             {
                 "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": {"tools": {"listChanged": False}},
+                "capabilities": {
+                    "tools": {"listChanged": False},
+                    "prompts": {"listChanged": False},
+                    "resources": {"subscribe": False, "listChanged": False},
+                },
                 "serverInfo": {"name": "aexy", "version": "1.0.0"},
             },
         )
@@ -169,6 +272,38 @@ async def _dispatch(
             },
         )
 
+    if method == "prompts/list":
+        catalog = _catalog(request)
+        granted = await _granted(db, grant, catalog)
+        return _result(request_id, {"prompts": prompts_for(granted)})
+
+    if method == "prompts/get":
+        name = params.get("name")
+        if not name:
+            return _error(request_id, INVALID_PARAMS, "params.name is required")
+        catalog = _catalog(request)
+        granted = await _granted(db, grant, catalog)
+        rendered = render_prompt(name, params.get("arguments"), granted)
+        if rendered is None:
+            return _error(request_id, INVALID_PARAMS, f"Unknown prompt: {name}")
+        return _result(request_id, rendered)
+
+    if method == "resources/list":
+        catalog = _catalog(request)
+        granted = await _granted(db, grant, catalog)
+        return _result(request_id, {"resources": resources_for(catalog, granted)})
+
+    if method == "resources/read":
+        uri = params.get("uri")
+        if not uri:
+            return _error(request_id, INVALID_PARAMS, "params.uri is required")
+        catalog = _catalog(request)
+        granted = await _granted(db, grant, catalog)
+        content = read_resource(uri, catalog, granted, grant.workspace_id)
+        if content is None:
+            return _error(request_id, INVALID_PARAMS, f"Unknown resource: {uri}")
+        return _result(request_id, {"contents": [content]})
+
     if method == "tools/call":
         name = params.get("name")
         if not name:
@@ -176,7 +311,14 @@ async def _dispatch(
 
         catalog = _catalog(request)
         granted = await _granted(db, grant, catalog)
-        executor = McpToolExecutor(request.app, catalog, granted, db=db)
+        executor = McpToolExecutor(
+            request.app,
+            catalog,
+            granted,
+            db=db,
+            principal_id=grant.principal_id,
+            actor_kind="principal" if grant.principal_id else "mcp",
+        )
         outcome = await executor.call(
             tool_name=name,
             arguments=params.get("arguments") or {},
@@ -209,4 +351,10 @@ async def _granted(db: AsyncSession, grant: ResolvedGrant, catalog: dict) -> set
         grant.workspace_id, grant.developer_id
     )
     known = {group["capability"] for group in catalog["capabilities"]}
-    return held & known
+    granted = held & known
+    if grant.capabilities is not None:
+        # A principal's declared scope. Its member row already mirrors this
+        # into app access, so `held` should agree — intersecting anyway means
+        # the scope holds even if the mirror is ever stale.
+        granted &= set(grant.capabilities)
+    return granted

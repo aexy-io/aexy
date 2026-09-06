@@ -71,7 +71,10 @@ def test_one_tool_per_granted_capability(catalog):
     # rather than capabilities of their own. This assertion passed while the
     # fixture was stale — the operations they resolve against were missing, so
     # they were silently withheld, which is the failure mode a named tool has.
-    workflow = {t["name"] for t in WORKFLOW_TOOLS}
+    # Only the routines whose capability is granted: a docs caller gets the
+    # docs routines, and the service-desk routines stay absent.
+    workflow = {t["name"] for t in WORKFLOW_TOOLS if t["capability"] in granted}
+    assert workflow, "the granted capabilities should carry at least one routine"
     assert _names(tools) == {
         DISCOVER_TOOL,
         CALL_TOOL,
@@ -129,7 +132,14 @@ def test_invoking_tools_require_an_action(catalog):
     """Every tool that calls something needs to be told what. Discovery is the
     exception — it takes a query, because not knowing the action is the reason
     to reach for it."""
+    routines = {t["name"] for t in WORKFLOW_TOOLS}
     for tool in build_tools(catalog, {"mcp.sprints"}):
+        if tool["name"] in routines:
+            # A routine binds its action; what it requires is its own flat
+            # args. The workspace comes from the grant, so it is never asked for.
+            assert "workspace_id" not in tool["input_schema"]["properties"], tool["name"]
+            assert "workspace_id" not in tool["input_schema"]["required"], tool["name"]
+            continue
         expected = ["query"] if tool["name"] == DISCOVER_TOOL else ["action"]
         assert tool["input_schema"]["required"] == expected, tool["name"]
 
@@ -335,12 +345,13 @@ def test_built_tools_satisfy_the_response_schema(catalog):
     response = _response_for(catalog, {"mcp.sprints", "mcp.crm"})
     payload = response.model_dump()
 
+    routines = {t["name"] for t in WORKFLOW_TOOLS if t["capability"] in {"mcp.sprints", "mcp.crm"}}
     assert {t["name"] for t in payload["tools"]} == {
         DISCOVER_TOOL,
         CALL_TOOL,
         "aexy_sprints",
         "aexy_crm",
-    }
+    } | routines
     sprints = next(t for t in payload["tools"] if t["name"] == "aexy_sprints")
     assert sprints["capability"] == "mcp.sprints"
     assert sprints["actions"] and sprints["actions"][0]["method"]

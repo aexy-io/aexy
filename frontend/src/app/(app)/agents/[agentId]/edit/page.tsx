@@ -2,6 +2,7 @@
 
 import { getApiErrorMessage } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAgent, useAgentTools } from "@/hooks/useAgents";
+import { AgentPrincipal, agentPrincipalsApi } from "@/lib/api";
 import { useAgentEmail, useEmailDomains } from "@/hooks/useAgentInbox";
 import { useRouteGuard } from "@/hooks/useRouteGuard";
 import { agentsApi, getAgentTypeConfig, AgentType, WorkingHoursConfig } from "@/lib/api";
@@ -77,6 +79,13 @@ export default function EditAgentPage() {
   } = useAgent(currentWorkspaceId, agentId);
 
   const { tools: availableTools, isLoading: toolsLoading } = useAgentTools(currentWorkspaceId);
+  // Admin-only endpoint; a member editing an agent sees an empty list and the
+  // option to run as the triggering person, which is all they may choose.
+  const { data: principals = [] } = useQuery<AgentPrincipal[]>({
+    queryKey: ["agent-principals", currentWorkspaceId],
+    queryFn: () => agentPrincipalsApi.list(currentWorkspaceId!).catch(() => []),
+    enabled: Boolean(currentWorkspaceId),
+  });
   const { enableEmail, disableEmail, isEnabling, isDisabling } = useAgentEmail(currentWorkspaceId, agentId);
   const { domains, defaultDomain } = useEmailDomains(currentWorkspaceId);
 
@@ -100,6 +109,7 @@ export default function EditAgentPage() {
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2000);
   const [tools, setTools] = useState<string[]>([]);
+  const [principalId, setPrincipalId] = useState<string>("");
   const [autoRespond, setAutoRespond] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
   const [requireApprovalBelow, setRequireApprovalBelow] = useState(0.8);
@@ -146,6 +156,7 @@ export default function EditAgentPage() {
     setTemperature(agent.temperature ?? 0.7);
     setMaxTokens(agent.max_tokens ?? 2000);
     setTools(agent.tools || []);
+    setPrincipalId(agent.principal_id || "");
     setAutoRespond(agent.auto_respond ?? true);
     setConfidenceThreshold(agent.confidence_threshold ?? 0.7);
     setRequireApprovalBelow(agent.require_approval_below ?? 0.8);
@@ -211,7 +222,9 @@ export default function EditAgentPage() {
           (agent.llm_model || agent.model || "gemini-2.0-flash") ||
         temperature !== (agent.temperature ?? 0.7) ||
         maxTokens !== (agent.max_tokens ?? 2000),
-      tools: JSON.stringify(tools) !== JSON.stringify(agent.tools || []),
+      tools:
+        JSON.stringify(tools) !== JSON.stringify(agent.tools || []) ||
+        principalId !== (agent.principal_id || ""),
       behavior:
         autoRespond !== (agent.auto_respond ?? true) ||
         confidenceThreshold !== (agent.confidence_threshold ?? 0.7) ||
@@ -394,6 +407,7 @@ export default function EditAgentPage() {
           temperature,
           max_tokens: maxTokens,
           tools,
+          principal_id: principalId || null,
           auto_respond: autoRespond,
           confidence_threshold: confidenceThreshold,
           require_approval_below: requireApprovalBelow,
@@ -640,6 +654,41 @@ export default function EditAgentPage() {
                 This is a system agent. Tools cannot be modified.
               </div>
             )}
+            <div className="mb-6 rounded-lg border border-border p-4">
+              <label htmlFor="agent-principal" className="block text-sm font-medium text-foreground mb-1.5">
+                Runs as
+              </label>
+              <select
+                id="agent-principal"
+                value={principalId}
+                onChange={(e) => setPrincipalId(e.target.value)}
+                disabled={isSystemAgent}
+                className="w-full px-4 py-2 bg-accent border border-border rounded-lg text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 disabled:opacity-50"
+              >
+                <option value="">The person who triggered the run</option>
+                {principalId && !principals.some((p) => p.id === principalId) && (
+                  // The saved principal is not in the list: removed, or the
+                  // list did not load. Show that rather than the first option,
+                  // which would misreport what the agent runs as.
+                  <option value={principalId} disabled>
+                    Unknown principal ({principalId.slice(0, 8)})
+                  </option>
+                )}
+                {principals.map((p) => (
+                  <option key={p.id} value={p.id} disabled={!p.is_active}>
+                    {p.name}
+                    {p.is_active ? "" : " (inactive)"} — {p.capabilities.map((c) => c.replace(/^mcp\./, "")).join(", ") || "no capabilities"}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Aexy API tools act as this identity. A schedule or automation
+                has nobody at the keyboard, so give it a principal scoped to
+                what it needs; its writes then appear under that name in the
+                audit ledger and the review queue. Principals are managed by
+                admins under Settings → Agent Principals.
+              </p>
+            </div>
             {toolsLoading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 text-purple-700 dark:text-purple-300 animate-spin mx-auto mb-4" />

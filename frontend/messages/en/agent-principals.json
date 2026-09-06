@@ -1,0 +1,53 @@
+{
+  "agentPrincipals": {
+    "title": "Agent Principals",
+    "subtitle": "Identities that AI agents run as. Each is scoped to the capabilities you choose, has its own token, and appears under its own name in the audit trail.",
+    "createButton": "New principal",
+    "form": {
+      "heading": "New agent principal",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. \"Service desk triage\"",
+      "descriptionLabel": "What it is for",
+      "descriptionPlaceholder": "Optional — shown to whoever reviews its held actions",
+      "capabilitiesLabel": "Capabilities",
+      "capabilitiesHint": "Only what the workspace itself grants can be chosen. Reads are never held; writes still go through workspace policies.",
+      "submit": "Create",
+      "none": "None selected",
+      "capabilitiesNone": "This workspace holds no MCP capabilities yet. Enable an app first."
+    },
+    "token": {
+      "rotate": "Issue token",
+      "rotateTitle": "Issue a new token (revokes the current one)",
+      "banner": "Token for \"{name}\"",
+      "warning": "Copy it now. It is shown once, and issuing another revokes this one.",
+      "dismiss": "Dismiss",
+      "bridgeHint": "Use it as AEXY_API_TOKEN with the aexy-mcp bridge, or as a Bearer token against the MCP endpoint. The principal is already bound to this workspace."
+    },
+    "table": {
+      "name": "Name",
+      "capabilities": "Capabilities",
+      "tokens": "Live tokens",
+      "lastUsed": "Last used",
+      "status": "Status",
+      "never": "Never"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "remove": "Remove",
+      "removeTitle": "Remove principal (revokes its tokens; kept in the audit trail)",
+      "editCapabilities": "Edit capabilities",
+      "save": "Save"
+    },
+    "empty": {
+      "title": "No agent principals yet",
+      "description": "Create one to let a scheduled or event-driven agent act in this workspace as itself, rather than as a person."
+    },
+    "footer": "Deactivating revokes every token at once. Removing also detaches the principal from the workspace; its rows stay so the ledger can still name it.",
+    "adminOnly": "Only workspace admins can manage agent principals."
+  }
+}

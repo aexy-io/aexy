@@ -67,6 +67,16 @@ class CRMAgent(Base):
     goal: Mapped[str | None] = mapped_column(Text, nullable=True)
     system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # The identity this agent's catalogue tools act as. Null means "the person
+    # who triggered the run", which is right for a chat @mention and wrong for
+    # a schedule — nobody triggered that. See models/agent_principal.py.
+    principal_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("agent_principals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Available tools for this agent
     tools: Mapped[list] = mapped_column(
         JSONB,

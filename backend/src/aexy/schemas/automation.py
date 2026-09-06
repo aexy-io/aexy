@@ -60,6 +60,11 @@ TRIGGER_REGISTRY: dict[str, list[dict[str, str]]] = {
         # email.replied omitted on purpose: the dispatcher exists but no inbound
         # mail path calls it, so offering it would build automations that never run.
     ],
+    "service_desk": [
+        {"id": "service_desk.ticket_created", "description": "When the service desk opens a ticket, from email intake or manual logging"},
+        {"id": "service_desk.ticket_updated", "description": "When a service desk ticket's request type, owner, account or other fields change"},
+        {"id": "service_desk.pending_with_changed", "description": "When a service desk ticket is parked with a different stakeholder"},
+    ],
     "tickets": [
         {"id": "ticket.created", "description": "When a new support ticket is created"},
         {"id": "ticket.updated", "description": "When a support ticket is updated"},
@@ -211,6 +216,11 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
         {"id": "classify_record", "description": "Classify a record using AI categorization"},
         {"id": "generate_summary", "description": "Generate an AI summary for a record"},
     ],
+    "service_desk": [
+        {"id": "set_pending_with", "description": "Park a service desk ticket with a stakeholder (pending_with)"},
+        {"id": "set_request_type", "description": "Set a service desk ticket's request type"},
+        {"id": "assign_owner", "description": "Assign a service desk ticket to a workspace member"},
+    ],
     "tickets": [
         {"id": "assign_ticket", "description": "Assign a ticket to an agent or team"},
         {"id": "change_status", "description": "Change the status of a ticket"},
@@ -304,6 +314,7 @@ ACTION_REGISTRY: dict[str, list[dict[str, str]]] = {
 # =============================================================================
 
 ENABLED_MODULES: tuple[str, ...] = (
+    "service_desk",
     "crm",
     "tickets",
     "hiring",

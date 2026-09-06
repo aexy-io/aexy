@@ -1,50 +1,65 @@
 /**
- * Typed view over the generated MCP tool manifest.
+ * Typed view over the generated MCP manifest.
  *
- * SOURCE OF TRUTH: aexy-io/mcp-server — scripts/dump_tool_manifest.py walks the
- * live tool registry there and emits tools.json. `npm run mcp:manifest` pulls it
- * into mcpTools.generated.json; nothing in this repo hand-maintains tool names
- * or descriptions any more.
+ * SOURCE OF TRUTH: the backend. `services/mcp_catalog.py` derives the whole tool
+ * surface from the API's own OpenAPI schema, `scripts/dump_mcp_catalog.py`
+ * writes it to a fixture CI checks, and `npm run mcp:manifest` renders that
+ * fixture into mcpTools.generated.json. Nothing in this repo hand-maintains a
+ * tool name, an action or a description.
  *
- * Category display names and tool descriptions come from the manifest, which
- * means they are English-only — they are the server's own strings, the same ones
- * a client shows in its tool picker, so translating them here would make the
- * page disagree with every client. i18n covers the page chrome around them.
+ * What a signed-in person actually gets is narrower than this file: the
+ * `/workspaces/{id}/mcp/tools` endpoint filters by the apps they hold. The
+ * page uses this manifest for the full picture and the endpoint for "yours".
  */
 
 import manifest from "./mcpTools.generated.json";
 
-export interface McpTool {
-  name: string;
-  description: string;
-  /** Grant required for this tool, e.g. "mcp.temporal". Enforced server-side. */
-  capability: string;
-  /** True when the tool can change state. Drives the destructive-tool badge. */
+export interface McpAction {
+  action: string;
+  method: string;
+  path: string;
+  summary: string;
   mutating: boolean;
-  input_schema: Record<string, unknown>;
 }
 
 export interface McpToolCategory {
   key: string;
   name: string;
+  /** Grant that governs the category, e.g. "mcp.sprints". Enforced server-side. */
   capability: string;
-  tools: McpTool[];
+  /** The app whose grant IS this capability; null for the three platform modules. */
+  app: string | null;
+  privileged: boolean;
+  operation_count: number;
+  write_count: number;
+  tool: { name: string; description: string };
+  actions: McpAction[];
+}
+
+export interface McpNamedTool {
+  name: string;
+  description: string;
+  capability?: string;
+  action?: string;
 }
 
 export interface McpToolManifest {
   manifest_version: number;
-  server_version: string;
   server_name: string;
+  source: string;
+  catalog_version: number;
+  total_operations: number;
+  total_capabilities: number;
+  generic_tools: McpNamedTool[];
+  workflow_tools: McpNamedTool[];
   categories: McpToolCategory[];
 }
 
 export const MCP_TOOL_MANIFEST = manifest as McpToolManifest;
 export const MCP_TOOL_CATEGORIES = MCP_TOOL_MANIFEST.categories;
 
-export const MCP_TOOL_COUNT = MCP_TOOL_CATEGORIES.reduce(
-  (sum, category) => sum + category.tools.length,
-  0
-);
+/** Operations reachable in total, across every capability. */
+export const MCP_OPERATION_COUNT = MCP_TOOL_MANIFEST.total_operations;
 
 /** Every distinct capability the catalogue declares, in category order. */
 export const MCP_CAPABILITIES = Array.from(

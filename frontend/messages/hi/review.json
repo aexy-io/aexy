@@ -18,6 +18,9 @@
     "rejected": "अस्वीकृत",
     "failed": "यह पूरा नहीं हो सका",
     "groupAffects": "{count, plural, one {# पेज प्रभावित} other {# पेज प्रभावित}}",
-    "approveAll": "सभी {count} स्वीकृत करें"
+    "approveAll": "सभी {count} स्वीकृत करें",
+    "activityTitle": "Agent गतिविधि",
+    "activityCount": "{count, plural, one {लेजर में # लेखन} other {# सबसे हाल के लेखन}}",
+    "activityEmpty": "अभी तक किसी agent ने यहाँ कुछ नहीं बदला है।"
   }
 }

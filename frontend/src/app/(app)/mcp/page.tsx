@@ -1,22 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Plug,
   ChevronDown,
   ChevronRight,
   ExternalLink,
   KeyRound,
+  Lock,
   Pencil,
+  ShieldCheck,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
+
 import { CopyButton } from "@/components/ui/copy-button";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { mcpApi } from "@/lib/api";
 import {
+  MCP_OPERATION_COUNT,
   MCP_TOOL_CATEGORIES,
-  MCP_TOOL_COUNT,
   MCP_TOOL_MANIFEST,
+  type McpToolCategory,
 } from "@/config/mcpTools";
 import {
   getClientRecipes,
@@ -41,55 +48,91 @@ function CodeBlock({ code }: { code: string }) {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+const PREVIEW_ACTIONS = 12;
+
+/**
+ * One capability: its tool, and the actions the tool's `action` enum accepts.
+ * `granted` is undefined until the caller's own surface has loaded, then says
+ * whether this capability is theirs in the current workspace.
+ */
 function ToolCategory({
-  categoryKey,
-  name,
-  tools,
+  category,
+  granted,
 }: {
-  categoryKey: string;
-  name: string;
-  tools: { name: string; description: string; mutating: boolean }[];
+  category: McpToolCategory;
+  granted: boolean | undefined;
 }) {
   const t = useTranslations("mcp");
   const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const actions = showAll ? category.actions : category.actions.slice(0, PREVIEW_ACTIONS);
   return (
-    <div className="border border-border rounded-lg">
+    <div className={`border rounded-lg ${granted === false ? "border-border/60 opacity-70" : "border-border"}`}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/50 transition-colors rounded-lg"
         aria-expanded={open}
       >
-        <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-sm">{name}</span>
-          <span className="text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded">
-            {tools.length}
+        <div className="flex items-center gap-2 min-w-0">
+          <Wrench className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="font-medium text-sm">{category.name}</span>
+          <code className="text-[11px] font-mono text-muted-foreground truncate">
+            {category.tool.name}
+          </code>
+          <span className="text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded shrink-0">
+            {t("availableTools.operations", { count: category.operation_count })}
           </span>
+          {category.privileged && (
+            <span className="text-[10px] uppercase tracking-wide text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">
+              {t("availableTools.privileged")}
+            </span>
+          )}
+          {granted === true && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">
+              <ShieldCheck className="h-3 w-3" />
+              {t("availableTools.granted")}
+            </span>
+          )}
+          {granted === false && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-accent px-1.5 py-0.5 rounded shrink-0">
+              <Lock className="h-3 w-3" />
+              {t("availableTools.notGranted")}
+            </span>
+          )}
         </div>
         {open ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         )}
       </button>
       {open && (
-        <div className="px-4 pb-3 space-y-1" data-testid={`tools-${categoryKey}`}>
-          {tools.map((tool) => (
-            <div key={tool.name} className="flex items-start gap-3 py-1.5 text-sm">
-              <code className="text-xs bg-accent px-1.5 py-0.5 rounded font-mono text-foreground shrink-0">
-                {tool.name}
+        <div className="px-4 pb-3 space-y-1" data-testid={`tools-${category.key}`}>
+          <p className="text-xs text-muted-foreground pb-1">{category.tool.description}</p>
+          {actions.map((action) => (
+            <div key={action.action} className="flex items-start gap-3 py-1 text-sm">
+              <code className="text-[11px] bg-accent px-1.5 py-0.5 rounded font-mono text-muted-foreground shrink-0 w-14 text-center">
+                {action.method}
               </code>
-              {tool.mutating && (
-                <span
-                  title={t("availableTools.writesTitle")}
-                  className="shrink-0 mt-0.5 text-amber-400"
-                >
+              <code className="text-xs font-mono text-foreground shrink-0">{action.action}</code>
+              {action.mutating && (
+                <span title={t("availableTools.writesTitle")} className="shrink-0 mt-0.5 text-amber-400">
                   <Pencil className="h-3 w-3" />
                 </span>
               )}
-              <span className="text-muted-foreground">{tool.description}</span>
+              <span className="text-muted-foreground text-xs truncate">{action.summary}</span>
             </div>
           ))}
+          {category.actions.length > PREVIEW_ACTIONS && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="text-xs text-purple-400 hover:underline pt-1"
+            >
+              {showAll
+                ? t("availableTools.showFewer")
+                : t("availableTools.showAll", { count: category.actions.length })}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -118,6 +161,20 @@ function Snippet({ snippet }: { snippet: McpConfigSnippet }) {
 export default function McpPage() {
   const t = useTranslations("mcp");
   const [activeTab, setActiveTab] = useState<McpClientId>("claudeCode");
+  const { currentWorkspaceId } = useWorkspace();
+
+  // The caller's own surface. The manifest is the whole catalogue; this says
+  // which of it they would actually be offered, resolved by the same access
+  // model that governs the web app.
+  const { data: mine } = useQuery({
+    queryKey: ["mcp-tools", currentWorkspaceId],
+    queryFn: () => mcpApi.tools(currentWorkspaceId!),
+    enabled: Boolean(currentWorkspaceId),
+  });
+  const grantedSet = useMemo(
+    () => (mine ? new Set(mine.granted_capabilities) : null),
+    [mine]
+  );
 
   const recipes = getClientRecipes(API_BASE);
   const active = recipes.find((r) => r.id === activeTab) ?? recipes[0];
@@ -152,26 +209,38 @@ export default function McpPage() {
           </a>
           {t("overview.descriptionAfter")}
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {MCP_TOOL_CATEGORIES.map((cat) => (
-            <div
-              key={cat.key}
-              className="bg-accent/50 border border-border rounded-lg px-3 py-2"
-            >
-              <div className="text-sm font-medium">{cat.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {t("overview.toolCount", { count: cat.tools.length })}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {MCP_TOOL_CATEGORIES.map((cat) => {
+            const granted = grantedSet ? grantedSet.has(cat.capability) : undefined;
+            return (
+              <div
+                key={cat.key}
+                className={`border rounded-lg px-3 py-2 ${
+                  granted === false ? "border-border/60 bg-accent/20 opacity-60" : "border-border bg-accent/50"
+                }`}
+              >
+                <div className="text-sm font-medium truncate">{cat.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("overview.toolCount", { count: cat.operation_count })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <p className="text-xs text-muted-foreground">
           {t("overview.summary", {
-            total: MCP_TOOL_COUNT,
+            total: MCP_OPERATION_COUNT,
             categories: MCP_TOOL_CATEGORIES.length,
-            version: MCP_TOOL_MANIFEST.server_version,
           })}
         </p>
+        {mine && (
+          <p className="text-xs text-emerald-400" data-testid="mcp-yours">
+            {t("availableTools.yours", {
+              granted: mine.granted_capabilities.length,
+              total: MCP_TOOL_CATEGORIES.length,
+            })}
+          </p>
+        )}
       </section>
 
       {/* Quick Start */}
@@ -267,13 +336,13 @@ export default function McpPage() {
           )}
 
           {!active.remoteUrl && (
-            <div className="bg-accent/50 border border-border rounded-lg p-3">
+            <div className="bg-accent/50 border border-border rounded-lg p-3 space-y-2">
               <p className="text-xs text-muted-foreground">
                 <strong className="text-foreground">
                   {t("clientSetup.envReferenceLabel")}
                 </strong>
               </p>
-              <div className="mt-2 space-y-1 text-xs">
+              <div className="space-y-1 text-xs">
                 {MCP_ENV_VARS.map((v) => (
                   <div key={v.name} className="flex gap-2">
                     <code className="font-mono text-foreground shrink-0">
@@ -285,6 +354,7 @@ export default function McpPage() {
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground pt-1">{t("clientSetup.bridgeNote")}</p>
             </div>
           )}
         </div>
@@ -296,17 +366,46 @@ export default function McpPage() {
           <h2 className="text-lg font-semibold">{t("availableTools.heading")}</h2>
           <p className="text-xs text-muted-foreground">
             {t("availableTools.generatedNote", {
-              version: MCP_TOOL_MANIFEST.server_version,
+              version: MCP_TOOL_MANIFEST.catalog_version,
             })}
           </p>
         </div>
+
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t("availableTools.alwaysHeading")}
+          </h3>
+          {MCP_TOOL_MANIFEST.generic_tools.map((tool) => (
+            <div key={tool.name} className="flex items-start gap-3 text-sm border border-border rounded-lg px-4 py-2.5">
+              <code className="text-xs bg-accent px-1.5 py-0.5 rounded font-mono shrink-0">{tool.name}</code>
+              <span className="text-muted-foreground text-xs">{tool.description}</span>
+            </div>
+          ))}
+        </div>
+
+        {MCP_TOOL_MANIFEST.workflow_tools.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {t("availableTools.routinesHeading")}
+            </h3>
+            {MCP_TOOL_MANIFEST.workflow_tools.map((tool) => (
+              <div key={tool.name} className="flex items-start gap-3 text-sm border border-border rounded-lg px-4 py-2.5">
+                <code className="text-xs bg-accent px-1.5 py-0.5 rounded font-mono shrink-0">{tool.name}</code>
+                <span className="text-muted-foreground text-xs">{tool.description.split("\n")[0]}</span>
+                {tool.capability && (
+                  <code className="ml-auto text-[10px] font-mono text-muted-foreground shrink-0">{tool.capability}</code>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="space-y-2">
           {MCP_TOOL_CATEGORIES.map((cat) => (
             <ToolCategory
               key={cat.key}
-              categoryKey={cat.key}
-              name={cat.name}
-              tools={cat.tools}
+              category={cat}
+              granted={grantedSet ? grantedSet.has(cat.capability) : undefined}
             />
           ))}
         </div>

@@ -1,15 +1,8 @@
 """Data Enrichment Agent - Fill missing CRM fields from external sources."""
 
 from typing import Any
-from langchain_core.tools import BaseTool
 
 from aexy.agents.base import BaseAgent
-from aexy.agents.tools.crm_tools import GetRecordTool, UpdateRecordTool
-from aexy.agents.tools.enrichment_tools import (
-    EnrichCompanyTool,
-    EnrichPersonTool,
-    WebSearchTool,
-)
 
 
 class DataEnrichmentAgent(BaseAgent):
@@ -17,6 +10,14 @@ class DataEnrichmentAgent(BaseAgent):
 
     name = "data_enrichment"
     description = "Fill missing CRM fields by researching external data sources"
+
+    # Catalogue tools, attached per run as the person or principal the agent
+    # acts for (see `agents.tools.mcp_tools.attach_to_agent`).
+    catalog_tool_names = [
+        "get_record_by_id",
+        "update_record_by_id",
+        "list_activities",
+    ]
 
     def __init__(
         self,
@@ -30,16 +31,16 @@ class DataEnrichmentAgent(BaseAgent):
 
     @property
     def system_prompt(self) -> str:
-        return """You are a data enrichment specialist. Your job is to fill in missing or incomplete CRM record fields by researching external sources.
+        return """You are a data enrichment specialist. Your job is to fill in missing or incomplete CRM record fields from what the CRM already holds: the record itself, its activities, and related records.
 
 **Process:**
 1. Get the current record data to see what's missing
-2. Use enrichment tools to gather additional information
+2. Read the record's activities and related records for the missing facts
 3. Update the record with new data, being careful not to overwrite existing values
 
 **Data Quality Guidelines:**
 - Only add data you're confident about
-- Prefer structured data from enrichment APIs over web search
+- Prefer facts stated in activities (emails, notes, meetings) over inference
 - For person records: focus on email, title, LinkedIn, phone
 - For company records: focus on industry, size, website, location
 - Clearly indicate data source if uncertain
@@ -65,16 +66,6 @@ For Companies:
 - Don't overwrite existing data unless explicitly asked
 - Log what you updated for transparency
 """
-
-    @property
-    def tools(self) -> list[BaseTool]:
-        return [
-            GetRecordTool(db=self.db),
-            UpdateRecordTool(db=self.db),
-            EnrichCompanyTool(),
-            EnrichPersonTool(),
-            WebSearchTool(),
-        ]
 
     @property
     def goal(self) -> str:

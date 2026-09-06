@@ -2,33 +2,30 @@
   "mcp": {
     "title": "Model Context Protocol",
     "subtitle": "Connect AI coding assistants to Aexy",
-
     "overview": {
       "heading": "Overview",
       "descriptionBefore": "The ",
       "linkText": "Model Context Protocol (MCP)",
       "descriptionAfter": " lets AI assistants like Claude Code, Claude Desktop and OpenAI Codex interact directly with your Aexy workspace — managing sprints, querying analytics, running agents, and more through natural language.",
-      "toolCount": "{count, plural, =1 {1 tool} other {# tools}}",
-      "summary": "{total} tools across {categories} categories, from aexy-mcp {version}"
+      "toolCount": "{count, plural, =1 {1 operation} other {# operations}}",
+      "summary": "{total} operations across {categories} capabilities, generated from the backend's own API schema. What you are offered is filtered to the apps you hold."
     },
-
     "quickStart": {
       "heading": "Quick Start",
       "step1": {
         "title": "Create an API token",
-        "description": "Generate a token to authenticate the MCP server with your Aexy account.",
+        "description": "For a remote connection nothing is needed — you sign in when the client asks. For a local (stdio) bridge, create a token; it authenticates as you and carries only your permissions.",
         "link": "Settings → API Tokens"
       },
       "step2": {
         "title": "Pick your client",
-        "description": "The server runs through uvx, so there is nothing to clone or keep updated — your client fetches it on demand."
+        "description": "Remote clients connect straight to the server URL. Local clients run the aexy-mcp bridge through uvx, so there is nothing to clone or keep updated."
       },
       "step3": {
         "title": "Add the configuration",
         "description": "Copy the block for your client below into the file it names, then restart the client."
       }
     },
-
     "clientSetup": {
       "heading": "Client Setup",
       "tabs": {
@@ -40,12 +37,12 @@
         "other": "Other Clients"
       },
       "intro": {
-        "claudeCode": "Either run the CLI command, or commit the project file so everyone on the repo gets the server. Both are equivalent; the CLI writes to your user config, the file is shared.",
-        "claudeDesktop": "Claude Desktop reads a single config file. Create it if it does not exist, then quit and reopen the app — it only loads this file at startup.",
+        "claudeCode": "One line for the remote server, which authenticates through the browser. Or run the stdio bridge with a token — commit .mcp.json so everyone on the repo gets it.",
+        "claudeDesktop": "Add the server URL under Settings → Connectors and sign in when asked. Or point the desktop config at the stdio bridge; quit and reopen the app afterwards.",
         "chatgpt": "ChatGPT reaches Aexy over HTTP instead of running a local process. In ChatGPT, open Settings → Connectors → Create, paste the URL below, and approve the workspace it asks for.",
         "codex": "Codex reads MCP servers from its TOML config. Add this table, then restart Codex.",
         "cursor": "Cursor and VS Code use the same stdio server with slightly different file shapes. Use whichever matches your editor.",
-        "other": "Any MCP client that supports the stdio transport can run the server with this shape. Translate it into whatever format your client expects."
+        "other": "Any client that speaks streamable HTTP can use the URL with OAuth. Any client that launches processes can run the bridge with this shape."
       },
       "snippet": {
         "cli": "Add with the CLI",
@@ -56,7 +53,9 @@
         "cursorFile": "Cursor",
         "vscodeFile": "VS Code",
         "genericStdio": "stdio server definition",
-        "remoteUrl": "MCP server URL"
+        "remoteUrl": "MCP server URL",
+        "remoteCli": "Remote (recommended)",
+        "remoteConnector": "Remote server URL"
       },
       "remoteAuth": {
         "body": "No API token needed. ChatGPT registers itself and sends you here to sign in, where you pick which workspace it may use. It sees exactly the apps you already have access to in that workspace — never more. Review or revoke it any time under Settings → Connected Apps."
@@ -64,14 +63,25 @@
       "envReferenceLabel": "Environment variables:",
       "env": {
         "apiUrl": "Aexy backend API base URL",
-        "apiToken": "Your API token, created in Settings → API Tokens"
-      }
+        "apiToken": "Your API token, created in Settings → API Tokens",
+        "workspaceId": "Which workspace to act in. Needed only if you belong to more than one."
+      },
+      "bridgeNote": "The bridge holds no tools of its own. Every call goes through the same server, so the tool list, governance and the audit ledger are identical whichever route you take."
     },
-
     "availableTools": {
-      "heading": "Available Tools",
-      "generatedNote": "Generated from aexy-mcp {version}",
-      "writesTitle": "This tool can change data"
+      "heading": "Available tools",
+      "generatedNote": "Generated from the backend catalogue, version {version}",
+      "writesTitle": "This operation changes data",
+      "yours": "{granted} of {total} capabilities are available to you in this workspace",
+      "notGranted": "Not granted to you",
+      "granted": "Available to you",
+      "alwaysHeading": "Always offered",
+      "routinesHeading": "Named routines",
+      "operations": "{count, plural, =1 {1 operation} other {# operations}}",
+      "writes": "{count, plural, =1 {1 write} other {# writes}}",
+      "privileged": "Privileged",
+      "showAll": "Show all {count}",
+      "showFewer": "Show fewer"
     }
   }
 }

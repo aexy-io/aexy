@@ -5,6 +5,145 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-09-06
+
+Agents get an identity, a gate that is closed by default, a ledger of what they
+did, and one tool registry instead of three. The aim is to run day-to-day
+operations — service desk triage and turnaround sweeps, standups, leave,
+compliance, incidents, CRM follow-ups — through AI agents without anyone at the
+keyboard, and to be able to say afterwards exactly what each one did and who
+allowed it.
+
+### Added: agent principals
+
+An agent used to act as whoever happened to trigger it, holding everything that
+person held. A **principal** is an identity a workspace owns: an admin picks
+its capabilities from what the workspace grants (never more — the server
+refuses a capability the workspace does not hold), it has one live token at a
+time, every request on that token carries the agent actor claim, and its
+writes, held actions and approvals appear under its own name. Deactivating it
+revokes its token in the same transaction; removing it is permanent. Managed
+at **Settings → Agent Principals**.
+
+A principal is a plain member. To log or edit service-desk tickets it needs the
+desk's write authority like anyone else — the desk-manager permission or an
+assignment — otherwise it can read the desk and nothing more.
+
+### Changed: the gate defaults to closed
+
+Every workspace now starts with three policies: deletions, outward-facing
+actions (anything that sends, emails, publishes, invites, changes roles,
+connects an integration, charges or refunds) and administration or integration
+writes all wait in `/review` for a person. The agent is told so in words it can
+relay, and can poll its own requests to learn the outcome. Existing workspaces
+are seeded by `scripts/backfill_default_agent_policies.py`, or lazily on their
+first governed call.
+
+Policies can now select what they govern by HTTP method, action pattern or
+capability instead of listing action names. Field restrictions match nested
+arguments, which they never did on the MCP surface. Rate limits count from a
+ledger window instead of an in-memory counter that lived for one request, and a
+limit written against a selector counts every row the selector covers.
+
+**Behaviour change:** the default pack applies to existing CRM agents too. A
+sales agent's `send_email` waits for approval from the moment the pack is
+seeded. Deactivate the outward-facing default in a workspace if that is not
+wanted; the recommendation is to leave it.
+
+### Added: the ledger
+
+Every mutating call an agent makes through the MCP executor is written to
+`agent_action_logs`: who (actor and principal), which capability and action,
+method, resolved path, arguments with whole secret keys masked, status code,
+duration, and the review-queue entry it replayed if any. Reads are never
+recorded. `/review` shows it as "Agent activity" and refreshes it after a
+decision. The decision log masks arguments the same way; a held call carrying
+an API key no longer lands there in clear.
+
+### Changed: one MCP door, and a bridge that only bridges
+
+`POST /api/v1/mcp` now accepts an agent principal's token or a personal API
+token (with `X-Aexy-Workspace-Id` when the owner belongs to more than one
+workspace) as well as an OAuth grant. The standalone `aexy-mcp` package becomes
+a stdio→HTTP bridge to that endpoint — its 35 local tools, four of which called
+paths that did not exist, are gone along with the governance they bypassed. The
+`/mcp` page and its documentation are generated from the backend's own catalogue
+and show the signed-in caller's surface.
+
+The remote server also speaks `prompts/*` (nine routines: triage, TAT review,
+standup, sprint hygiene, weekly report, pipeline review, leave approvals,
+compliance sweep, incident first response) and `resources/*` (the caller's
+capabilities and per-capability catalogues), each filtered to what the caller
+holds. Discovery returns parameter and body schemas. Responses are capped at
+32 KB with a `fields` projection to ask for less.
+
+### Added: fifteen named routines and schedules
+
+`aexy_sd_open_tickets`, `aexy_sd_triage_ticket`, `aexy_sd_park_ticket`,
+`aexy_sd_tat_report`, `aexy_sd_email_stakeholder`, `aexy_sprint_standup`,
+`aexy_active_blockers`, `aexy_sprint_tasks`, `aexy_leave_pending_approvals`,
+`aexy_compliance_overdue`, `aexy_compliance_expiring`,
+`aexy_campaign_preflight`, `aexy_open_incidents`, `aexy_incident_acknowledge`
+and `aexy_crm_records`. Each binds one operation and takes flat arguments; the
+workspace is always the grant's, never something the model has to know. They
+are offered only to callers holding the capability behind them.
+
+**Agent schedules** (Settings → Agent Schedules) run a routine on a clock, as
+the agent's principal — an agent without one cannot be scheduled. A Temporal
+tick fires due schedules; a slot is claimed before dispatch so two ticks cannot
+double-fire, a failed dispatch gives the slot back, and an agent that is
+switched off or loses its principal disables its schedule instead of failing
+every five minutes forever.
+
+### Changed: one tool registry
+
+There were three: the MCP catalogue, a hand-written LangGraph registry of 18
+tools, and Ask's five built-in reads. Now there is the catalogue. In-platform
+agents, Ask and automations all run tools through the same governed executor,
+so permissions, policies and the ledger apply wherever an agent runs. Any
+catalogue action, per-capability tool, routine or the generic call can be named
+in an agent's tool list; prebuilt agents declare theirs the same way.
+
+Email, Slack and SMS had no API behind them, so they became endpoints —
+`POST /crm/outreach/email|slack|sms`, `GET /crm/outreach/email-history` — in
+the CRM capability. Under the default pack an agent's send waits for approval,
+which is the review step the old `create_draft` tool stood in for (it actually
+sent). The enrichment and web-search tools returned canned placeholder text and
+never called a provider; they are removed rather than ported. Ask keeps
+`current_time` and answers everything else from the caller's read surface.
+
+**Breaking:** stored agent tool lists must be rewritten in the same deploy —
+`scripts/migrate_agent_tools_to_catalogue.sql` maps every legacy name
+(`search_contacts` → `aexy_crm_records`, `get_record` → `get_record_by_id`,
+`create_draft` → `send_email`, …) and drops the placeholders. Without it an
+existing agent silently loses the tools it named.
+
+### Added: service-desk automations
+
+`service_desk.ticket_created`, `ticket_updated` and `pending_with_changed`
+triggers, and `set_pending_with`, `set_request_type` and `assign_owner`
+actions. An update that changes nothing is not an event, and events do not
+cascade more than two levels deep, so an automation whose action re-applies the
+value that triggered it cannot run until the monthly quota is gone.
+
+### Fixed along the way
+
+Nineteen defects found reviewing and end-to-end testing this work before it
+shipped — among them a principal that could mint itself a plain personal token
+and shed its scope, approvals of held routine calls that replayed with no
+arguments, a read-only Ask that could park a ticket through a routine tool, and
+in-platform agents that could not hold the routine tools the shipped prompts
+name. The full table is in
+`docs/plans/MCP_AGENT_OPERATIONS_PLAN.md` §7.1.
+
+### Migrations
+
+Five, in this order: `migrate_agent_action_logs.sql`,
+`migrate_agent_principals.sql`, `migrate_agent_schedules.sql`,
+`migrate_crm_agents_principal.sql`, `migrate_agent_tools_to_catalogue.sql`;
+then `scripts/backfill_default_agent_policies.py`. Restart the Temporal worker
+for the schedule tick.
+
 ## [0.36.0] - 2026-09-05
 
 Switching a module off now switches it off, reports belong to a workspace

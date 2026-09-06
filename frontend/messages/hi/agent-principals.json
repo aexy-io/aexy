@@ -1,0 +1,53 @@
+{
+  "agentPrincipals": {
+    "title": "Agent Principals",
+    "subtitle": "वे पहचान जिनके रूप में AI agents चलते हैं। हर एक आपकी चुनी capabilities तक सीमित है, अपना token रखती है, और audit trail में अपने नाम से दिखती है।",
+    "createButton": "नया principal",
+    "form": {
+      "heading": "नया agent principal",
+      "nameLabel": "नाम",
+      "namePlaceholder": "जैसे \"Service desk triage\"",
+      "descriptionLabel": "किस काम के लिए",
+      "descriptionPlaceholder": "वैकल्पिक — इसकी रुकी कार्रवाइयों की समीक्षा करने वाले को दिखेगा",
+      "capabilitiesLabel": "Capabilities",
+      "capabilitiesHint": "केवल वही चुना जा सकता है जो workspace स्वयं देता है। Reads कभी नहीं रोके जाते; writes फिर भी workspace policies से गुज़रते हैं।",
+      "submit": "बनाएं",
+      "none": "कुछ नहीं चुना",
+      "capabilitiesNone": "इस वर्कस्पेस में अभी कोई MCP क्षमता नहीं है। पहले कोई ऐप सक्षम करें।"
+    },
+    "token": {
+      "rotate": "Token जारी करें",
+      "rotateTitle": "नया token जारी करें (वर्तमान रद्द होगा)",
+      "banner": "\"{name}\" के लिए token",
+      "warning": "अभी कॉपी करें। यह एक बार दिखता है, और दूसरा जारी करने पर यह रद्द हो जाता है।",
+      "dismiss": "बंद करें",
+      "bridgeHint": "इसे aexy-mcp bridge के साथ AEXY_API_TOKEN के रूप में, या MCP endpoint पर Bearer token के रूप में उपयोग करें। Principal पहले से इस workspace से बंधा है।"
+    },
+    "table": {
+      "name": "नाम",
+      "capabilities": "Capabilities",
+      "tokens": "सक्रिय tokens",
+      "lastUsed": "अंतिम उपयोग",
+      "status": "स्थिति",
+      "never": "कभी नहीं"
+    },
+    "status": {
+      "active": "सक्रिय",
+      "inactive": "निष्क्रिय"
+    },
+    "actions": {
+      "deactivate": "निष्क्रिय करें",
+      "activate": "सक्रिय करें",
+      "remove": "हटाएं",
+      "removeTitle": "Principal हटाएं (tokens रद्द; audit trail में रहेगा)",
+      "editCapabilities": "Capabilities संपादित करें",
+      "save": "सहेजें"
+    },
+    "empty": {
+      "title": "अभी कोई agent principal नहीं",
+      "description": "एक बनाएं ताकि कोई scheduled या event-driven agent इस workspace में किसी व्यक्ति के बजाय अपने रूप में काम कर सके।"
+    },
+    "footer": "निष्क्रिय करने से सभी tokens एक साथ रद्द होते हैं। हटाने से principal workspace से अलग भी हो जाता है; ledger के लिए इसकी पंक्तियाँ बनी रहती हैं।",
+    "adminOnly": "केवल workspace admins agent principals प्रबंधित कर सकते हैं।"
+  }
+}

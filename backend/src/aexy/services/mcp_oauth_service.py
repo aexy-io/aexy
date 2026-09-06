@@ -80,6 +80,11 @@ class ResolvedGrant:
     client_id: str
     scope: str
     grant_id: str
+    # Set when the bearer is an agent principal's API token rather than an
+    # OAuth grant. `capabilities` is the principal's declared scope, which the
+    # transport intersects with what the workspace grants.
+    principal_id: str | None = None
+    capabilities: frozenset[str] | None = None
 
 
 @dataclass(frozen=True)

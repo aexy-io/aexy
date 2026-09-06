@@ -6,6 +6,7 @@ ledger. Closing sets the ticket closed + fires the closure email.
 
 """
 
+import contextvars
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -40,6 +41,66 @@ from aexy.schemas.service_desk import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def service_desk_event_payload(ticket, sd, **extra) -> dict:
+    """What an automation sees when a service desk ticket fires a trigger.
+
+    One shape for every service desk event, so a workflow built for
+    `ticket_created` reads the same fields on `pending_with_changed`.
+    """
+    payload = {
+        "ticket_id": str(ticket.id),
+        "ticket_number": ticket.ticket_number,
+        "title": ticket.title,
+        "status": ticket.status,
+        "priority": ticket.priority,
+        "request_type": getattr(sd, "request_type", None),
+        "pending_with": getattr(sd, "pending_with", None),
+        "account_id": str(sd.account_id) if getattr(sd, "account_id", None) else None,
+        "assigned_owner_id": str(ticket.assignee_id) if getattr(ticket, "assignee_id", None) else None,
+        "source": ticket.source,
+        "needs_triage": bool(getattr(sd, "needs_triage", False)),
+        "workspace_id": str(ticket.workspace_id),
+    }
+    payload.update(extra)
+    return payload
+
+
+# How deep automation-caused events may nest. An automation's action edits a
+# ticket, which is an event, which may run an automation, which edits… Two
+# levels lets "triage sets the type, then routing assigns an owner" happen;
+# anything deeper is a loop.
+_MAX_EVENT_DEPTH = 2
+_event_depth: contextvars.ContextVar[int] = contextvars.ContextVar("sd_event_depth", default=0)
+
+
+async def dispatch_service_desk_event(db, workspace_id: str, trigger_type: str, ticket, sd, **extra) -> None:
+    """Fire a service desk automation trigger. Best effort: an automation that
+    cannot be dispatched must not fail the ticket operation that caused it."""
+    depth = _event_depth.get()
+    if depth >= _MAX_EVENT_DEPTH:
+        logger.warning(
+            "Not dispatching %s for ticket %s: automations are %d deep already",
+            trigger_type, ticket.id, depth,
+        )
+        return
+    token = _event_depth.set(depth + 1)
+    try:
+        from aexy.services.automation_service import dispatch_automation_event
+
+        await dispatch_automation_event(
+            db=db,
+            workspace_id=str(workspace_id),
+            module="service_desk",
+            trigger_type=trigger_type,
+            entity_id=str(ticket.id),
+            trigger_data=service_desk_event_payload(ticket, sd, **extra),
+        )
+    except Exception:
+        logger.warning("Could not dispatch %s for ticket %s", trigger_type, ticket.id, exc_info=True)
+    finally:
+        _event_depth.reset(token)
 
 _DAY = 86400.0
 
@@ -593,6 +654,15 @@ class ServiceDeskTicketService:
                     **{k: identity[k] for k in ("reference", "title", "action_url", "workspace_id")},
                 )
 
+        await dispatch_service_desk_event(
+            self.db,
+            workspace_id,
+            "service_desk.pending_with_changed",
+            ticket,
+            sd,
+            previous_pending_with=old_value,
+            note=note,
+        )
         return await self.get_detail(workspace_id, ticket_id)
 
     async def update_fields(
@@ -631,6 +701,7 @@ class ServiceDeskTicketService:
             await self.db.execute(select(Ticket.assignee_id).where(Ticket.id == ticket_id))
         ).scalar_one_or_none()
 
+        changed = {k: v for k, v in payload.items() if getattr(sd, k, None) != v}
         for k, v in payload.items():
             setattr(sd, k, v)
         if assigned is not None:
@@ -655,6 +726,22 @@ class ServiceDeskTicketService:
                     **identity,
                 )
 
+        owner_changed = assigned is not None and str(assigned) != str(prior_assignee_id or "")
+        if owner_changed:
+            changed["assigned_owner_id"] = assigned
+        # An update that changed nothing is not an event. An automation whose
+        # action re-applies the value it was triggered by would otherwise
+        # trigger itself until the monthly run quota ran out.
+        ticket_row = await self.db.get(Ticket, ticket_id) if changed else None
+        if ticket_row is not None:
+            await dispatch_service_desk_event(
+                self.db,
+                workspace_id,
+                "service_desk.ticket_updated",
+                ticket_row,
+                sd,
+                changed_fields=changed,
+            )
         return await self.get_detail(workspace_id, ticket_id)
 
     async def split_detected_issues(

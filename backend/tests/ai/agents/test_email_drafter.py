@@ -51,51 +51,42 @@ CANNED_ACTIVITIES = "Recent activities: 2 emails sent, 1 meeting last week."
 
 @pytest.fixture
 def patched_tools(monkeypatch):
-    """Stub every tool used by EmailDrafterAgent.
+    """Stub the catalogue behind the agent's tools.
 
-    We override each tool's `_arun` so the LLM gets predictable tool
-    output. The returned list lets the test assert which tools the
-    agent actually invoked.
+    Every tool the drafter holds is a catalogue tool that goes through
+    `McpToolContext.call`; stubbing that one seam gives the LLM predictable
+    output and records which actions it reached for.
     """
     calls: list[dict] = []
+    canned = {
+        "get_record_by_id": CANNED_CONTACT,
+        "list_activities": CANNED_ACTIVITIES,
+        "get_email_history": CANNED_EMAIL_HISTORY,
+        "get_writing_style": CANNED_WRITING_STYLE,
+    }
 
-    async def mk(name: str, response: str):
-        async def _arun(*args, **kwargs):
-            calls.append({"tool": name, "args": args, "kwargs": kwargs})
-            return response
-        return _arun
+    from aexy.agents.tools import mcp_tools
+    from aexy.services.mcp_tool_executor import ToolResult
 
-    from aexy.agents.tools import crm_tools, email_tools
+    async def fake_call(self, tool_name, arguments):
+        action = arguments.get("action") or tool_name
+        calls.append({"tool": action, "kwargs": arguments})
+        if action == "send_email":
+            body = arguments.get("body") or {}
+            return ToolResult(f"Email to {body.get('to')} queued: {body.get('subject')!r}")
+        return ToolResult(canned.get(action, "{}"))
 
-    monkeypatch.setattr(
-        crm_tools.GetRecordTool, "_arun",
-        lambda self, *a, **kw: (calls.append({"tool": "get_record", "args": a, "kwargs": kw}), CANNED_CONTACT)[1],
-    )
-    monkeypatch.setattr(
-        crm_tools.GetActivitiesTool, "_arun",
-        lambda self, *a, **kw: (calls.append({"tool": "get_activities", "args": a, "kwargs": kw}), CANNED_ACTIVITIES)[1],
-    )
-    monkeypatch.setattr(
-        email_tools.GetEmailHistoryTool, "_arun",
-        lambda self, *a, **kw: (calls.append({"tool": "get_email_history", "args": a, "kwargs": kw}), CANNED_EMAIL_HISTORY)[1],
-    )
-    monkeypatch.setattr(
-        email_tools.GetWritingStyleTool, "_arun",
-        lambda self, *a, **kw: (calls.append({"tool": "get_writing_style", "args": a, "kwargs": kw}), CANNED_WRITING_STYLE)[1],
-    )
+    monkeypatch.setattr(mcp_tools.McpToolContext, "call", fake_call)
 
-    # CreateDraftTool returns a synthetic success string; the agent
-    # should call this last to finalize the draft.
-    async def create_draft(self, to: str, subject: str, body: str) -> str:
-        calls.append({
-            "tool": "create_draft",
-            "args": (),
-            "kwargs": {"to": to, "subject": subject, "body": body},
-        })
-        return f"Email draft created for {to}. Subject: '{subject}'"
+    async def fake_attach(agent, db, *, workspace_id, developer_id, principal_id=None):
+        context = mcp_tools.McpToolContext(
+            db=None, workspace_id=workspace_id, developer_id=developer_id or "user-test",
+            granted={"mcp.crm", "mcp.agents"},
+        )
+        agent.extra_tools = mcp_tools.build_tools(context, agent.unresolved_tool_names)
+        return [t.name for t in agent.extra_tools]
 
-    monkeypatch.setattr(email_tools.CreateDraftTool, "_arun", create_draft)
-
+    monkeypatch.setattr(mcp_tools, "attach_to_agent", fake_attach)
     return calls
 
 
@@ -138,6 +129,9 @@ class TestEmailDrafterAgent:
             ],
         }
 
+        from aexy.agents.tools import mcp_tools
+
+        await mcp_tools.attach_to_agent(agent, None, workspace_id="ws-test", developer_id="user-test")
         result = await agent.run(record_data=record_data, context=context)
 
         # Top-level shape

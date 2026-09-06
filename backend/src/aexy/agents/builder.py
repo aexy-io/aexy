@@ -1,68 +1,13 @@
 """Agent builder for creating custom agents from configuration."""
 
 from typing import Any
-from langchain_core.tools import BaseTool
 
 from aexy.agents.base import BaseAgent
-from aexy.agents.tools.crm_tools import (
-    SearchContactsTool,
-    GetRecordTool,
-    UpdateRecordTool,
-    CreateRecordTool,
-    GetActivitiesTool,
-)
-from aexy.agents.tools.email_tools import (
-    SendEmailTool,
-    CreateDraftTool,
-    GetEmailHistoryTool,
-    GetWritingStyleTool,
-)
-from aexy.agents.tools.enrichment_tools import (
-    EnrichCompanyTool,
-    EnrichPersonTool,
-    WebSearchTool,
-)
-from aexy.agents.tools.communication_tools import SendSlackTool, SendSMSTool
-from aexy.agents.tools.document_tools import (
-    CreateDocumentTool,
-    ProposeDocxEditTool,
-    ReadDocumentTool,
-    SearchDocumentsTool,
-)
-
-
-# Registry of available tools
-TOOL_REGISTRY: dict[str, type[BaseTool]] = {
-    # CRM tools
-    "search_contacts": SearchContactsTool,
-    "get_record": GetRecordTool,
-    "update_record": UpdateRecordTool,
-    "create_record": CreateRecordTool,
-    "get_activities": GetActivitiesTool,
-    # Email tools
-    "send_email": SendEmailTool,
-    "create_draft": CreateDraftTool,
-    "get_email_history": GetEmailHistoryTool,
-    "get_writing_style": GetWritingStyleTool,
-    # Enrichment tools
-    "enrich_company": EnrichCompanyTool,
-    "enrich_person": EnrichPersonTool,
-    "web_search": WebSearchTool,
-    # Communication tools
-    "send_slack": SendSlackTool,
-    "send_sms": SendSMSTool,
-    # Document tools
-    "read_document": ReadDocumentTool,
-    "search_documents": SearchDocumentsTool,
-    "create_document": CreateDocumentTool,
-    "propose_docx_edit": ProposeDocxEditTool,
-}
 
 
 class CustomAgent(BaseAgent):
     """Dynamically configured custom agent."""
 
-    name = "custom"
     description = "Custom agent with user-defined goal and tools"
 
     def __init__(
@@ -98,78 +43,9 @@ class CustomAgent(BaseAgent):
         return self._system_prompt
 
     @property
-    def tools(self) -> list[BaseTool]:
-        tools = []
-        for tool_name in self._tool_names:
-            tool_class = TOOL_REGISTRY.get(tool_name)
-            if tool_class:
-                # Initialize tool with appropriate context
-                tool = self._create_tool_instance(tool_class)
-                if tool:
-                    tools.append(tool)
-        return tools
-
-    def _create_tool_instance(self, tool_class: type[BaseTool]) -> BaseTool | None:
-        """Create a tool instance with the appropriate context."""
-        try:
-            # Determine what kwargs the tool needs
-            tool_name = tool_class.__name__
-
-            # CRM tools need db and possibly workspace_id
-            if "CRM" in tool_name or tool_name in [
-                "SearchContactsTool", "GetRecordTool", "UpdateRecordTool",
-                "CreateRecordTool", "GetActivitiesTool"
-            ]:
-                if tool_name in ["SearchContactsTool", "CreateRecordTool"]:
-                    return tool_class(workspace_id=self.workspace_id, db=self.db)
-                else:
-                    return tool_class(db=self.db)
-
-            # Email tools need workspace and user
-            if tool_name in ["SendEmailTool", "CreateDraftTool"]:
-                return tool_class(workspace_id=self.workspace_id, user_id=self.user_id or "")
-
-            if tool_name == "GetEmailHistoryTool":
-                return tool_class(workspace_id=self.workspace_id, db=self.db)
-
-            if tool_name == "GetWritingStyleTool":
-                return tool_class(
-                    workspace_id=self.workspace_id,
-                    user_id=self.user_id or "",
-                    db=self.db
-                )
-
-            # Communication tools need workspace
-            if tool_name in ["SendSlackTool", "SendSMSTool"]:
-                return tool_class(workspace_id=self.workspace_id)
-
-            # Document tools are workspace-scoped; creating one also needs an
-            # author, since a document with no creator cannot be attributed.
-            #
-            # Reading and searching need the user too, and did not have it. An
-            # agent acts *for* somebody and must see exactly what they see — a
-            # search that ignores the person behind it turns "summarise our
-            # docs" into a way to read the private ones.
-            if tool_name in ["ReadDocumentTool", "SearchDocumentsTool"]:
-                return tool_class(
-                    workspace_id=self.workspace_id,
-                    user_id=self.user_id or "",
-                    db=self.db,
-                )
-
-            if tool_name in ["CreateDocumentTool", "ProposeDocxEditTool"]:
-                return tool_class(
-                    workspace_id=self.workspace_id,
-                    user_id=self.user_id or "",
-                    db=self.db,
-                )
-
-            # Enrichment tools don't need special context
-            return tool_class()
-
-        except Exception:
-            return None
-
+    def unresolved_tool_names(self) -> list[str]:
+        """Every configured name is a catalogue name; there is no other registry."""
+        return list(self._tool_names)
 
 class AgentBuilder:
     """Builder for creating agent instances from database config."""
@@ -273,32 +149,12 @@ Be thorough but efficient in your approach.
 
     @staticmethod
     def get_available_tools() -> list[dict]:
-        """Get list of all available tools with descriptions."""
-        tools = []
-        for name, tool_class in TOOL_REGISTRY.items():
-            tools.append({
-                "name": name,
-                "description": tool_class.description if hasattr(tool_class, "description") else "",
-                "category": AgentBuilder._categorize_tool(name),
-            })
-        return tools
+        """Everything an agent may hold, from the one catalogue.
 
-    @staticmethod
-    def _categorize_tool(name: str) -> str:
-        """Categorize a tool by its name."""
-        if name in ["search_contacts", "get_record", "update_record", "create_record", "get_activities"]:
-            return "crm"
-        elif name in ["send_email", "create_draft", "get_email_history", "get_writing_style"]:
-            return "email"
-        elif name in ["enrich_company", "enrich_person", "web_search"]:
-            return "enrichment"
-        elif name in ["send_slack", "send_sms"]:
-            return "communication"
-        elif name in [
-            "read_document",
-            "search_documents",
-            "create_document",
-            "propose_docx_edit",
-        ]:
-            return "documents"
-        return "other"
+        The two generic tools, the named routines, and one entry per
+        capability. Any bare action name typed into an agent's tool list also
+        works; ~1,900 checkboxes is not a picker, so those are not listed.
+        """
+        from aexy.agents.tools.mcp_tools import catalog_tool_listing
+
+        return catalog_tool_listing()

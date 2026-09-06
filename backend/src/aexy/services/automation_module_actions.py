@@ -1149,9 +1149,103 @@ async def _act_create_ticket(ctx: ModuleActionContext) -> dict:
     )
 
 
+# =============================================================================
+# SERVICE DESK
+# =============================================================================
+
+async def set_service_desk_pending_with(
+    db: AsyncSession,
+    *,
+    workspace_id: str,
+    ticket_id: str | None,
+    pending_with: str,
+    note: str | None = None,
+    changed_by_id: str | None = None,
+) -> dict:
+    """Park a service desk ticket with a stakeholder."""
+    from fastapi import HTTPException
+
+    from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+
+    if not ticket_id:
+        return _missing("ticket_id")
+    if not pending_with:
+        return _missing("pending_with")
+    try:
+        detail = await ServiceDeskTicketService(db).change_pending_with(
+            workspace_id, ticket_id, pending_with, changed_by_id=changed_by_id, note=note
+        )
+    except HTTPException as exc:
+        return {"error": str(exc.detail)}
+    return {"ticket_id": ticket_id, "pending_with": detail.pending_with}
+
+
+async def set_service_desk_fields(
+    db: AsyncSession,
+    *,
+    workspace_id: str,
+    ticket_id: str | None,
+    fields: dict,
+) -> dict:
+    """Change request type, owner or other editable fields on a service desk ticket."""
+    from fastapi import HTTPException
+    from pydantic import ValidationError
+
+    from aexy.schemas.service_desk import TicketFieldsUpdate
+    from aexy.services.service_desk_ticket_service import ServiceDeskTicketService
+
+    if not ticket_id:
+        return _missing("ticket_id")
+    clean = {k: v for k, v in (fields or {}).items() if v not in (None, "")}
+    if not clean:
+        return _missing("fields")
+    try:
+        update = TicketFieldsUpdate(**clean)
+    except ValidationError as exc:
+        return {"error": f"Invalid fields: {exc.errors()[0].get('msg', 'validation error')}"}
+    try:
+        await ServiceDeskTicketService(db).update_fields(workspace_id, ticket_id, update)
+    except HTTPException as exc:
+        return {"error": str(exc.detail)}
+    return {"ticket_id": ticket_id, "updated": sorted(clean)}
+
+
+async def _act_set_pending_with(ctx: ModuleActionContext) -> dict:
+    return await set_service_desk_pending_with(
+        ctx.db,
+        workspace_id=ctx.workspace_id,
+        ticket_id=ctx.entity_id("ticket_id"),
+        pending_with=ctx.text("pending_with", "stakeholder"),
+        note=ctx.text("note") or None,
+        changed_by_id=ctx.raw("changed_by_id") or ctx.actor_id,
+    )
+
+
+async def _act_set_request_type(ctx: ModuleActionContext) -> dict:
+    return await set_service_desk_fields(
+        ctx.db,
+        workspace_id=ctx.workspace_id,
+        ticket_id=ctx.entity_id("ticket_id"),
+        fields={"request_type": ctx.text("request_type")},
+    )
+
+
+async def _act_assign_owner(ctx: ModuleActionContext) -> dict:
+    return await set_service_desk_fields(
+        ctx.db,
+        workspace_id=ctx.workspace_id,
+        ticket_id=ctx.entity_id("ticket_id"),
+        fields={"assigned_owner_id": ctx.text("assigned_owner_id", "owner_id", "developer_id")},
+    )
+
+
 # action id -> adapter. Both executors consult this table, so a module action is
 # implemented once and can never be available on one path only.
 MODULE_ACTION_ADAPTERS = {
+    # service desk
+    "set_pending_with": _act_set_pending_with,
+    "set_request_type": _act_set_request_type,
+    "assign_owner": _act_assign_owner,
     # tickets
     "add_response": _act_add_response,
     "add_tag": _act_add_tag,

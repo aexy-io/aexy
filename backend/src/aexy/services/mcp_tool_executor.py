@@ -14,12 +14,29 @@ the web app goes through.
 from __future__ import annotations
 
 import json
+import logging
+import re
+import time
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
 from aexy.services.mcp_catalog import CALL_TOOL, DISCOVER_TOOL, workflow_tool
+
+logger = logging.getLogger(__name__)
+
+# Argument keys whose values are masked in the ledger. The ledger exists to
+# show what an agent asked for; a secret an agent was handed is the one thing
+# it must not preserve.
+# Word-bounded on purpose: `page_token`, `next_token` and `token_prefix` are
+# not secrets, and a ledger that masks them stops showing what the agent asked.
+_SECRET_KEY = re.compile(
+    r"^(password|passwd|secret|token|access_token|refresh_token|api_key|apikey|"
+    r"private_key|authorization|client_secret)$",
+    re.I,
+)
 
 # An operation is normally answered well under this. The ceiling exists so a
 # slow endpoint cannot pin an MCP session open indefinitely.
@@ -32,6 +49,19 @@ AGENT_ACTOR_HEADER = "X-Aexy-Agent-Actor"
 # search is trying to narrow, and 1866 operations is not narrowing.
 MAX_DISCOVER_RESULTS = 25
 
+# A response longer than this is cut, with a note saying so and how to ask for
+# less. An unbounded list endpoint used to land whole in the model's context —
+# a sprint's tasks, every ticket — and the routine that needed it drowned.
+MAX_RESPONSE_CHARS = 32_000
+
+
+def _capability_name(value: Any) -> str | None:
+    """`service_desk` and `mcp.service_desk` name the same capability."""
+    if not value or not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value if value.startswith("mcp.") else f"mcp.{value}"
+
 
 def _spread(flat: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
     """Turn a named tool's flat arguments into the generic call shape.
@@ -42,12 +72,19 @@ def _spread(flat: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
     make a typo look like it worked.
     """
     out: dict[str, Any] = {"path_params": {}, "query": {}, "body": {}}
+    fields: Any = None
     for key, value in flat.items():
         target = mapping.get(key)
         if target is None or value is None:
             continue
+        if target == "fields":
+            fields = value
+            continue
         out["path_params" if target == "path" else target][key] = value
-    return {section: values for section, values in out.items() if values}
+    spread = {section: values for section, values in out.items() if values}
+    if fields:
+        spread["fields"] = fields
+    return spread
 
 
 @dataclass(frozen=True)
@@ -56,15 +93,44 @@ class ToolResult:
     is_error: bool = False
 
 
+def redact(value: Any) -> Any:
+    """A copy of `value` with secret-looking keys masked, at any depth."""
+    if isinstance(value, dict):
+        return {
+            k: ("***" if _SECRET_KEY.search(str(k)) else redact(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [redact(v) for v in value]
+    return value
+
+
 class McpToolExecutor:
-    def __init__(self, app, catalog: dict[str, Any], granted: set[str], db=None):
+    def __init__(
+        self,
+        app,
+        catalog: dict[str, Any],
+        granted: set[str],
+        db=None,
+        *,
+        review_policy: bool = True,
+        actor_kind: str = "mcp",
+        principal_id: str | None = None,
+    ):
         self._app = app
         self._catalog = catalog
         self._granted = granted
+        self._principal_id = principal_id
         # Optional so the executor stays constructible in tests and scripts.
-        # Without a session there is no policy evaluation — which is the
-        # pre-governance behaviour, and is why the transport always passes one.
+        # Without a session there is no policy evaluation and no ledger — which
+        # is the pre-governance behaviour, and is why the transport always
+        # passes one.
         self._db = db
+        # Off for the replay of an approved action: policy already ran, and a
+        # second evaluation would queue the approved call behind itself
+        # forever. The ledger still records the replay.
+        self._review_policy = review_policy
+        self._actor_kind = actor_kind
 
     async def call(
         self,
@@ -73,10 +139,18 @@ class McpToolExecutor:
         arguments: dict[str, Any],
         developer_id: str,
         workspace_id: str,
+        pending_action_id: str | None = None,
     ) -> ToolResult:
         if tool_name == DISCOVER_TOOL:
-            return self._discover(arguments.get("query", ""), arguments.get("capability"))
+            return self._discover(
+                arguments.get("query", ""), _capability_name(arguments.get("capability"))
+            )
 
+        # Action names are unique within a capability, not across the whole
+        # catalogue — `list_records` is both CRM and Tables. Every tool but the
+        # generic call knows which capability it speaks for; the generic call
+        # may say so with `capability`.
+        scope: str | None = None
         workflow = workflow_tool(tool_name)
         if workflow is not None:
             # A named workflow binds one action and takes flat arguments, so
@@ -84,9 +158,15 @@ class McpToolExecutor:
             # body each value belongs in. That split is an artefact of HTTP,
             # not something an agent should have to reason about.
             action = workflow["action"]
-            arguments = _spread(arguments, workflow["argument_map"])
+            scope = workflow["capability"]
+            if pending_action_id is None:
+                arguments = _spread(arguments, workflow["argument_map"])
+            # else: a replay from the approval queue. The queue stores what the
+            # gate saw, which is the spread shape; spreading it again would map
+            # nothing and run the action with no arguments at all.
         elif tool_name == CALL_TOOL:
             action = arguments.get("action")
+            scope = _capability_name(arguments.get("capability"))
         else:
             capability = self._capability_for_tool(tool_name)
             if capability is None:
@@ -99,11 +179,12 @@ class McpToolExecutor:
                     is_error=True,
                 )
             action = arguments.get("action")
+            scope = capability
 
         if not action:
             return ToolResult("`action` is required.", is_error=True)
 
-        operation = self._find_operation(action)
+        operation = self._find_operation(action, scope)
         if operation is None:
             return ToolResult(
                 f"Unknown action: {action}. Use {DISCOVER_TOOL} to find one.",
@@ -122,7 +203,7 @@ class McpToolExecutor:
         # This is the other question: should an agent do this unattended? A
         # refusal here never reaches the API at all, which is the point — the
         # call must not happen, not happen and be undone.
-        if self._db is not None:
+        if self._db is not None and self._review_policy:
             from aexy.services.mcp_governance import McpGovernance
 
             verdict = await McpGovernance(self._db).review(
@@ -132,6 +213,8 @@ class McpToolExecutor:
                 workspace_id=workspace_id,
                 tool_name=tool_name,
                 granted=self._granted,
+                principal_id=self._principal_id,
+                actor_kind=self._actor_kind,
             )
             if not verdict.allowed:
                 return ToolResult(verdict.message or "Not permitted.", is_error=True)
@@ -141,6 +224,8 @@ class McpToolExecutor:
             arguments=arguments,
             developer_id=developer_id,
             workspace_id=workspace_id,
+            tool_name=tool_name,
+            pending_action_id=pending_action_id,
         )
 
     # ------------------------------------------------------------------
@@ -151,14 +236,26 @@ class McpToolExecutor:
                 return group["capability"]
         return None
 
-    def _find_operation(self, action: str) -> dict[str, Any] | None:
-        for group in self._catalog["capabilities"]:
+    def _find_operation(self, action: str, capability: str | None = None) -> dict[str, Any] | None:
+        """The operation called `action`, within `capability` when given.
+
+        Without a scope the first match wins, granted capabilities first, so
+        an ambiguous name from `aexy_call` resolves to something the caller
+        can actually use rather than to whichever capability sorts first.
+        """
+        groups = self._catalog["capabilities"]
+        if capability:
+            groups = [g for g in groups if g["capability"] == capability]
+        else:
+            groups = sorted(groups, key=lambda g: g["capability"] not in self._granted)
+        for group in groups:
             for op in group["operations"]:
                 if op["action"] == action:
                     return {**op, "_capability": group["capability"]}
         return None
 
     def _discover(self, query: str, capability: str | None) -> ToolResult:
+        capability = _capability_name(capability)
         terms = [t for t in query.lower().split() if t]
         matches: list[dict[str, Any]] = []
 
@@ -170,16 +267,21 @@ class McpToolExecutor:
             for op in group["operations"]:
                 haystack = f"{op['action']} {op['summary']} {op['path']}".lower()
                 if all(term in haystack for term in terms):
-                    matches.append(
-                        {
-                            "action": op["action"],
-                            "capability": group["capability"],
-                            "method": op["method"],
-                            "path": op["path"],
-                            "summary": op["summary"],
-                            "mutating": op["mutating"],
-                        }
-                    )
+                    match = {
+                        "action": op["action"],
+                        "capability": group["capability"],
+                        "method": op["method"],
+                        "path": op["path"],
+                        "summary": op["summary"],
+                        "mutating": op["mutating"],
+                    }
+                    # What to send, when the catalogue was built with schemas.
+                    # This is the part the model used to guess at.
+                    if op.get("parameters"):
+                        match["parameters"] = op["parameters"]
+                    if op.get("request_body"):
+                        match["request_body"] = op["request_body"]
+                    matches.append(match)
 
         truncated = len(matches) > MAX_DISCOVER_RESULTS
         payload = {
@@ -202,6 +304,8 @@ class McpToolExecutor:
         arguments: dict[str, Any],
         developer_id: str,
         workspace_id: str,
+        tool_name: str = "",
+        pending_action_id: str | None = None,
     ) -> ToolResult:
         path = operation["path"]
         path_params = dict(arguments.get("path_params") or {})
@@ -214,6 +318,16 @@ class McpToolExecutor:
         # consent this whole flow is built on: the consent screen, Connected Apps
         # and the docs all promise one workspace.
         path_params["workspace_id"] = workspace_id
+        # Some endpoints — compliance reports, for one — take the workspace as
+        # a query parameter instead. The grant fills that in as well, so a
+        # routine never has to ask the model for an id it should not know.
+        if any(
+            p.get("name") == "workspace_id" and p.get("in") == "query"
+            for p in operation.get("parameters", [])
+        ):
+            query = dict(arguments.get("query") or {})
+            query["workspace_id"] = workspace_id
+            arguments = {**arguments, "query": query}
 
         try:
             path = path.format(**path_params)
@@ -244,39 +358,171 @@ class McpToolExecutor:
             AGENT_ACTOR_HEADER: "mcp",
         }
 
+        started = time.monotonic()
+        try:
+            response = await self._send(operation, path, arguments, headers)
+        except httpx.TimeoutException:
+            await self._record(
+                operation=operation,
+                arguments=arguments,
+                developer_id=developer_id,
+                workspace_id=workspace_id,
+                tool_name=tool_name,
+                resolved_path=path,
+                status_code=None,
+                is_error=True,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                pending_action_id=pending_action_id,
+            )
+            return ToolResult(
+                f"`{operation['action']}` did not respond within "
+                f"{int(REQUEST_TIMEOUT_SECONDS)}s.",
+                is_error=True,
+            )
+
+        await self._record(
+            operation=operation,
+            arguments=arguments,
+            developer_id=developer_id,
+            workspace_id=workspace_id,
+            tool_name=tool_name,
+            resolved_path=path,
+            status_code=response.status_code,
+            is_error=not response.is_success,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            pending_action_id=pending_action_id,
+        )
+        return _render(response, operation, fields=arguments.get("fields"))
+
+    async def _send(
+        self,
+        operation: dict[str, Any],
+        path: str,
+        arguments: dict[str, Any],
+        headers: dict[str, str],
+    ) -> httpx.Response:
+        """The HTTP re-entry itself, separated so tests can stand in for it."""
         transport = httpx.ASGITransport(app=self._app)
         async with httpx.AsyncClient(
             transport=transport,
             base_url="http://mcp.internal",
             timeout=REQUEST_TIMEOUT_SECONDS,
         ) as client:
-            try:
-                response = await client.request(
-                    operation["method"],
-                    path,
-                    params=arguments.get("query") or None,
-                    json=arguments.get("body") if arguments.get("body") else None,
-                    headers=headers,
+            return await client.request(
+                operation["method"],
+                path,
+                params=arguments.get("query") or None,
+                json=arguments.get("body") if arguments.get("body") else None,
+                headers=headers,
+            )
+
+    async def _record(
+        self,
+        *,
+        operation: dict[str, Any],
+        arguments: dict[str, Any],
+        developer_id: str,
+        workspace_id: str,
+        tool_name: str,
+        resolved_path: str,
+        status_code: int | None,
+        is_error: bool,
+        duration_ms: int,
+        pending_action_id: str | None,
+    ) -> None:
+        """Write the call to the agent action ledger.
+
+        Mutating operations only — a read changes nothing and the volume would
+        bury the writes. Best effort: a ledger that cannot be written must not
+        turn a completed call into an error the agent then retries.
+        """
+        if self._db is None or not operation.get("mutating"):
+            return
+        try:
+            from aexy.models.agent_action_log import AgentActionLog
+
+            self._db.add(
+                AgentActionLog(
+                    id=str(uuid4()),
+                    workspace_id=workspace_id,
+                    actor_kind=self._actor_kind,
+                    actor_developer_id=developer_id,
+                    principal_id=self._principal_id,
+                    tool_name=tool_name or operation["action"],
+                    action=operation["action"],
+                    capability=operation.get("_capability"),
+                    method=str(operation["method"]).upper(),
+                    path=operation["path"],
+                    resolved_path=resolved_path[:1000],
+                    arguments=redact(arguments),
+                    status_code=status_code,
+                    is_error=is_error,
+                    duration_ms=duration_ms,
+                    pending_action_id=pending_action_id,
                 )
-            except httpx.TimeoutException:
-                return ToolResult(
-                    f"`{operation['action']}` did not respond within "
-                    f"{int(REQUEST_TIMEOUT_SECONDS)}s.",
-                    is_error=True,
-                )
+            )
+            await self._db.flush()
+        except Exception:
+            logger.exception(
+                "Could not record agent action %s in workspace %s",
+                operation.get("action"),
+                workspace_id,
+            )
 
-        return _render(response, operation)
+
+def _project(body: Any, fields: list[str]) -> Any:
+    """Keep only `fields` of each object in the response.
+
+    Lists are projected item by item. A paginated envelope (`items`,
+    `results`, `data`, `records`) keeps its envelope and projects the list
+    inside. Anything else is returned as it was.
+    """
+    keep = [f for f in fields if isinstance(f, str)]
+    if not keep:
+        return body
+
+    def pick(obj: Any) -> Any:
+        return {k: v for k, v in obj.items() if k in keep} if isinstance(obj, dict) else obj
+
+    if isinstance(body, list):
+        return [pick(item) for item in body]
+    if isinstance(body, dict):
+        for envelope in ("items", "results", "data", "records", "tickets", "tasks"):
+            inner = body.get(envelope)
+            if isinstance(inner, list):
+                return {**body, envelope: [pick(item) for item in inner]}
+        return pick(body)
+    return body
 
 
-def _render(response: httpx.Response, operation: dict[str, Any]) -> ToolResult:
+def _cap(rendered: str, operation: dict[str, Any]) -> str:
+    if len(rendered) <= MAX_RESPONSE_CHARS:
+        return rendered
+    accepts = [p["name"] for p in operation.get("parameters", []) if p.get("in") == "query"]
+    hint = ""
+    if accepts:
+        hint = f" This operation accepts query parameters: {', '.join(accepts[:8])}."
+    return (
+        rendered[:MAX_RESPONSE_CHARS]
+        + f"\n\n[Truncated: showing {MAX_RESPONSE_CHARS:,} of {len(rendered):,} characters. "
+        f"Narrow the request (limit, offset, filters) or pass `fields` to keep only the "
+        f"keys you need.{hint}]"
+    )
+
+
+def _render(
+    response: httpx.Response, operation: dict[str, Any], fields: list[str] | None = None
+) -> ToolResult:
     try:
         body = response.json()
+        if fields and response.is_success:
+            body = _project(body, fields)
         rendered = json.dumps(body, indent=2, default=str)
     except ValueError:
         rendered = response.text
 
     if response.is_success:
-        return ToolResult(rendered or f"{response.status_code} (no content)")
+        return ToolResult(_cap(rendered, operation) or f"{response.status_code} (no content)")
 
     # Report the API's own refusal verbatim. Rewriting it would hide the real
     # reason — "you do not have the CRM app" reads very differently from a

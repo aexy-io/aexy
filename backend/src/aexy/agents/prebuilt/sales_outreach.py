@@ -1,26 +1,8 @@
 """Sales Outreach Agent - Research prospects and craft personalized outreach."""
 
 from typing import Any
-from langchain_core.tools import BaseTool
 
 from aexy.agents.base import BaseAgent
-from aexy.agents.tools.crm_tools import (
-    SearchContactsTool,
-    GetRecordTool,
-    UpdateRecordTool,
-    GetActivitiesTool,
-)
-from aexy.agents.tools.email_tools import (
-    SendEmailTool,
-    CreateDraftTool,
-    GetEmailHistoryTool,
-    GetWritingStyleTool,
-)
-from aexy.agents.tools.enrichment_tools import (
-    EnrichCompanyTool,
-    EnrichPersonTool,
-    WebSearchTool,
-)
 
 
 class SalesOutreachAgent(BaseAgent):
@@ -28,6 +10,18 @@ class SalesOutreachAgent(BaseAgent):
 
     name = "sales_outreach"
     description = "Research prospects, identify pain points, and craft personalized outreach emails"
+
+    # Catalogue tools, attached per run as the person or principal the agent
+    # acts for (see `agents.tools.mcp_tools.attach_to_agent`).
+    catalog_tool_names = [
+        "aexy_crm_records",
+        "get_record_by_id",
+        "update_record_by_id",
+        "list_activities",
+        "get_email_history",
+        "get_writing_style",
+        "send_email",
+    ]
 
     def __init__(
         self,
@@ -60,31 +54,15 @@ Guidelines for outreach emails:
 
 Research approach:
 1. First, get the record data and any existing activities
-2. Look up the company and person for enrichment data
+2. Use what the CRM already knows about the company and person
 3. Check email history for any prior conversations
 4. Consider the prospect's role, company size, and industry
 
 Always:
-- Create drafts for review unless explicitly told to send
+- Sending goes through send_email; workspace policy holds it for a person to approve, so a send is a draft until approved
 - Explain your reasoning for the approach you're taking
 - Be respectful of the prospect's time
 """
-
-    @property
-    def tools(self) -> list[BaseTool]:
-        return [
-            SearchContactsTool(workspace_id=self.workspace_id, db=self.db),
-            GetRecordTool(db=self.db),
-            UpdateRecordTool(db=self.db),
-            GetActivitiesTool(db=self.db),
-            CreateDraftTool(workspace_id=self.workspace_id, user_id=self.user_id),
-            SendEmailTool(workspace_id=self.workspace_id, user_id=self.user_id),
-            GetEmailHistoryTool(workspace_id=self.workspace_id, db=self.db),
-            GetWritingStyleTool(workspace_id=self.workspace_id, user_id=self.user_id, db=self.db),
-            EnrichCompanyTool(),
-            EnrichPersonTool(),
-            WebSearchTool(),
-        ]
 
     @property
     def goal(self) -> str:
@@ -119,9 +97,9 @@ I need you to research and craft a personalized {outreach_type} outreach email f
 
 **Instructions:**
 1. First, get the full record data and any prior activities/email history
-2. Research the company and person using enrichment tools
+2. Research the company and person from the CRM record and activities
 3. Get my writing style to match the tone
-4. Create a personalized email draft
+4. Send a personalized email with send_email (held for approval by policy)
 
 Focus on creating genuine value and connection, not a generic pitch.
 """

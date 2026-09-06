@@ -1,15 +1,8 @@
 """Email Drafter Agent - Generate emails matching user's writing style."""
 
 from typing import Any
-from langchain_core.tools import BaseTool
 
 from aexy.agents.base import BaseAgent
-from aexy.agents.tools.crm_tools import GetRecordTool, GetActivitiesTool
-from aexy.agents.tools.email_tools import (
-    CreateDraftTool,
-    GetEmailHistoryTool,
-    GetWritingStyleTool,
-)
 
 
 class EmailDrafterAgent(BaseAgent):
@@ -17,6 +10,16 @@ class EmailDrafterAgent(BaseAgent):
 
     name = "email_drafter"
     description = "Generate personalized emails matching your unique writing style"
+
+    # Catalogue tools, attached per run as the person or principal the agent
+    # acts for (see `agents.tools.mcp_tools.attach_to_agent`).
+    catalog_tool_names = [
+        "get_record_by_id",
+        "list_activities",
+        "get_email_history",
+        "get_writing_style",
+        "send_email",
+    ]
 
     def __init__(
         self,
@@ -58,18 +61,8 @@ class EmailDrafterAgent(BaseAgent):
 - Closing should include a clear next step
 - Keep it as short as possible while being complete
 
-Always create a draft rather than sending directly, unless explicitly instructed otherwise.
+Use send_email for the finished draft; workspace policy holds it for a person to approve before anything goes out.
 """
-
-    @property
-    def tools(self) -> list[BaseTool]:
-        return [
-            GetRecordTool(db=self.db),
-            GetActivitiesTool(db=self.db),
-            GetEmailHistoryTool(workspace_id=self.workspace_id, db=self.db),
-            GetWritingStyleTool(workspace_id=self.workspace_id, user_id=self.user_id, db=self.db),
-            CreateDraftTool(workspace_id=self.workspace_id, user_id=self.user_id),
-        ]
 
     @property
     def goal(self) -> str:

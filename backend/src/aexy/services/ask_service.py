@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from aexy.models.ask import AskConversation, AskConversationParticipant, AskMessage, AskShareLink
 from aexy.models.developer import Developer
 from aexy.services.ask_collaboration_service import get_ask_collaboration_service
-from aexy.services.ask_tools import TOOL_DEFINITIONS, execute_tool
+from aexy.services.ask_tools import TOOL_DEFINITIONS, build_tool_definitions, execute_tool
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +39,15 @@ When presenting results, format them clearly. Use bullet points or numbered list
 If a tool returns an error, explain what happened and suggest alternatives. If a tool returns empty results, tell the user clearly that no records were found."""
 
 
-def _anthropic_tool_defs() -> list[dict]:
+def _anthropic_tool_defs(definitions: list[dict] | None = None) -> list[dict]:
     """Return tool definitions in Anthropic format."""
-    return TOOL_DEFINITIONS
+    return definitions if definitions is not None else TOOL_DEFINITIONS
 
 
-def _gemini_tool_defs() -> list[dict]:
+def _gemini_tool_defs(definitions: list[dict] | None = None) -> list[dict]:
     """Convert tool definitions to Gemini function_declarations format."""
     declarations = []
-    for tool in TOOL_DEFINITIONS:
+    for tool in (definitions if definitions is not None else TOOL_DEFINITIONS):
         decl = {
             "name": tool["name"],
             "description": tool["description"],
@@ -57,10 +57,10 @@ def _gemini_tool_defs() -> list[dict]:
     return [{"function_declarations": declarations}]
 
 
-def _openai_tool_defs() -> list[dict]:
+def _openai_tool_defs(definitions: list[dict] | None = None) -> list[dict]:
     """Convert tool definitions to OpenAI function calling format."""
     tools = []
-    for tool in TOOL_DEFINITIONS:
+    for tool in (definitions if definitions is not None else TOOL_DEFINITIONS):
         tools.append({
             "type": "function",
             "function": {
@@ -90,6 +90,10 @@ class AskService:
         self._api_key: str | None = None
         self._model: str = ""
         self._api_url: str = OPENAI_API_URL
+        # The tools offered on the current request: `current_time` plus the
+        # MCP surface this person holds in this workspace. Resolved per request
+        # in `stream_response`, because it depends on who is asking and where.
+        self._tools: list[dict] = list(TOOL_DEFINITIONS)
 
     async def _resolve(self, workspace_id: str) -> str | None:
         """Resolve this workspace's model and credential. Returns an error, or None.
@@ -512,6 +516,8 @@ class AskService:
             yield self._sse({"type": "error", "message": "Conversation not found"})
             return
 
+        self._tools = await build_tool_definitions(self.db, workspace_id, developer_id)
+
         # Check write access for participants
         if str(conv.developer_id) != developer_id:
             access = await self.check_access(conversation_id, developer_id)
@@ -638,7 +644,7 @@ class AskService:
             payload = {
                 "model": self._model,
                 "messages": messages,
-                "tools": _openai_tool_defs(),
+                "tools": _openai_tool_defs(self._tools),
                 "max_tokens": 4096,
                 "temperature": 0.7,
                 "stream": True,
@@ -870,7 +876,7 @@ class AskService:
             url = f"{GEMINI_API_URL}/models/{self._model}:generateContent"
             payload = {
                 "contents": contents,
-                "tools": _gemini_tool_defs(),
+                "tools": _gemini_tool_defs(self._tools),
                 "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
                 "generationConfig": {
                     "maxOutputTokens": 4096,
@@ -1187,7 +1193,7 @@ class AskService:
             "max_tokens": 4096,
             "system": SYSTEM_PROMPT,
             "messages": messages,
-            "tools": _anthropic_tool_defs(),
+            "tools": _anthropic_tool_defs(self._tools),
             "stream": True,
         }
 

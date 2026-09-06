@@ -33,7 +33,11 @@ class AgentCreate(BaseModel):
     goal: str | None = None
     system_prompt: str | None = None
     custom_instructions: str | None = None
+    # MCP catalogue names: routines, `aexy_<capability>`, any action, `aexy_discover` /
+    # `aexy_call`. Catalogue names run through the governed executor.
     tools: list[str] = Field(default_factory=list)
+    # Run catalogue tools as this principal rather than as the triggering person.
+    principal_id: str | None = None
 
     # LLM configuration
     llm_provider: Literal["claude", "gemini", "ollama", "openrouter", "deepseek", "lmstudio"] = "claude"
@@ -69,6 +73,7 @@ class AgentUpdate(BaseModel):
     system_prompt: str | None = None
     custom_instructions: str | None = None
     tools: list[str] | None = None
+    principal_id: str | None = None
 
     # LLM configuration
     llm_provider: Literal["claude", "gemini", "ollama", "openrouter", "deepseek", "lmstudio"] | None = None
@@ -115,6 +120,7 @@ class AgentResponse(BaseModel):
     system_prompt: str | None
     custom_instructions: str | None
     tools: list[str]
+    principal_id: str | None = None
 
     # LLM configuration
     llm_provider: str

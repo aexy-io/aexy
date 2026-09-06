@@ -37,7 +37,7 @@ The registry endpoints are used by the no-code builder UI to know what to displa
 
 See [crm.md](./crm.md#automations) for the full doc — triggers, conditions, actions, execution model. Quick reference:
 
-- **Triggers**: record events, scheduled, date-based, external webhooks, communication events (email opened/replied), user events
+- **Triggers**: record events, scheduled, date-based, external webhooks, communication events (email opened/replied), user events. The `service_desk` module fires `service_desk.ticket_created`, `service_desk.ticket_updated` and `service_desk.pending_with_changed`, and offers `set_pending_with`, `set_request_type` and `assign_owner` as actions.
 - **Actions**: record CRUD, send email/Slack/SMS, create task/notification, sequence enrollment, list membership, webhook call, AI enrich/classify/summarize
 
 Automations have `run_limit_per_month`, error-handling policy (`stop` / `continue` / `retry`), and a per-run log (`CRMAutomationRun.steps_executed` JSONB) for observability.
@@ -98,29 +98,69 @@ This is how a CRM automation can say "when a lead replies, run the Sales agent t
 
 ## Agent policies
 
-A separate governance layer for agents — what they can do, who needs to approve.
+A separate governance layer for agents — what they can do unattended, and who needs to approve the rest. Permissions answer "may this person touch this?"; policies answer "should an agent, acting for them, do it without asking?".
 
-### Endpoints (`api/agent_policies.py`)
+Evaluated in two places: the CRM agent runtime (per tool call) and the MCP boundary (`services/mcp_governance.py`, per mutating tool call, for every MCP client). Reads are never gated.
+
+### Endpoints
 
 ```
-GET/POST/PATCH/DELETE /workspaces/{ws}/agent-policies
+GET/POST/PATCH/DELETE /workspaces/{ws}/crm/agent-policies
+GET                   /workspaces/{ws}/agent-actions               held actions (admins decide)
+POST                  /workspaces/{ws}/agent-actions/{id}/approve   replays under the original grant
+POST                  /workspaces/{ws}/agent-actions/{id}/reject
+GET                   /workspaces/{ws}/agent-actions/mine           the caller's own requests — the one part reachable over MCP
+GET                   /workspaces/{ws}/agent-actions/activity       the ledger of agent writes
 ```
 
-### Models (`models/agent_policy.py:14-80`)
+### Models (`models/agent_policy.py`)
 
 **`AgentPolicy`** with `PolicyType` enum:
 
-| Type | Behavior |
+| Type | Behavior | Config |
+|---|---|---|
+| `TOOL_BLOCK` | Refuse the call | selectors (below) |
+| `TOOL_REQUIRE_APPROVAL` | Queue the call in `/review`; an admin approves or rejects | selectors |
+| `FIELD_RESTRICTION` | Refuse a call whose arguments contain a listed field, at any depth | `{"tool": "update_contact", "blocked_fields": ["email", "body.salary"]}`; `"all_tools": true` (or `"tools": ["*"]`) applies it to every action — an empty `tool` with no `tools` stays inert |
+| `RATE_LIMIT` | Refuse once an actor has done this action too often | `{"tool": "send_campaign", "max_per_hour": 20, "max_per_day": 100}` counted from the ledger. With a selector — `{"methods": ["DELETE"], "max_per_hour": 10}` — every row the selector covers counts, so that is ten deletes of any kind, not ten per action. `max_per_execution` applies to the CRM runtime only |
+| `TOKEN_BUDGET` | Cap LLM token spend | `{"max_tokens": 50000}` — LLM-side; does not apply at the tool boundary |
+
+**Selectors** for block and require-approval. A policy triggers when *any* of them matches:
+
+```jsonc
+{
+  "tools": ["update_contact", "send_email"],        // exact action names
+  "methods": ["DELETE"],                            // HTTP method of the operation
+  "action_patterns": ["(^|_)send(_|$)", "publish"], // regex over the action name
+  "capabilities": ["mcp.admin", "mcp.integrations"] // capability the operation belongs to
+}
+```
+
+`methods` and `capabilities` are known only at the MCP boundary; CRM-runtime calls match on `tools` and `action_patterns`.
+
+`PolicyDecisionType`: `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `RATE_LIMITED`. Non-allow decisions are written to `agent_policy_decisions`.
+
+Policies are workspace-scoped. `agent_id` restricts one to a single CRM agent; `NULL` means every agent, and only those apply over MCP.
+
+### The default pack (`services/agent_policy_defaults.py`)
+
+A workspace with no policies used to allow every mutating operation unattended. Every workspace now starts with three `TOOL_REQUIRE_APPROVAL` rows, seeded on creation, on the first governed MCP call, or by `scripts/backfill_default_agent_policies.py`:
+
+| Default | Holds |
 |---|---|
-| `TOOL_BLOCK` | Disallow the agent from calling a tool entirely |
-| `TOOL_REQUIRE_APPROVAL` | Tool call pauses for human approval |
-| `FIELD_RESTRICTION` | Agent can read/write only listed attributes |
-| `RATE_LIMIT` | Cap tool calls per period |
-| `TOKEN_BUDGET` | Cap LLM token spend per period |
+| Deletions need approval | any `DELETE` |
+| Outward-facing and irreversible actions need approval | send, publish, invite, remove member, role changes, connect/disconnect integrations, charge/refund/terminate, bulk delete |
+| Administration and integration writes need approval | every write in `mcp.admin` and `mcp.integrations` |
 
-`PolicyDecisionType`: `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `RATE_LIMITED`. Decisions are evaluated at every tool invocation; declined invocations are logged and surfaced in the agent run history.
+Each carries `config.default_key`. **To opt out, deactivate rather than delete**: seeding runs only for a workspace with no workspace-wide policies at all, so a switched-off default is respected while a deleted set looks like an unconfigured workspace.
 
-Policies are workspace-scoped. They apply blanket-style (to every agent) or per-agent.
+### Held actions and notifications
+
+A require-approval decision queues a `ProposedChange` of kind `action` and notifies workspace admins and owners (`agent_approval_required`). Approving replays the call as the identity that requested it — a principal's held write is ledgered under that principal — under the capabilities held at queue time. A person who requested it is notified of the outcome (`agent_action_decided`); an agent has no inbox and polls `GET .../agent-actions/mine` instead. A held routine tool (`aexy_sd_park_ticket` and its kind) replays with the arguments it was held with.
+
+### The ledger (`models/agent_action_log.py`)
+
+Every mutating call that reaches the application through the MCP executor is written to `agent_action_logs`: actor (and principal), capability, action, method, resolved path, arguments (whole secret keys such as `token`, `api_key` or `client_secret` masked; `page_token` is not a secret), status code, duration, and the queue entry it replayed if any. The decision log (`agent_policy_decisions`) masks arguments the same way. Reads are never recorded. The `/review` page shows it as "Agent activity"; rate limits count from it.
 
 ## Choosing where to put logic
 

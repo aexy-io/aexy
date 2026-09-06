@@ -1,0 +1,58 @@
+{
+  "agentSchedules": {
+    "title": "Agent Schedules",
+    "subtitle": "वे routines जो कोई agent घड़ी के हिसाब से चलाता है। हर run एक सामान्य agent execution है, जो agent के principal के रूप में काम करता है, और उसके writes बाकी सभी की तरह governed और ledgered होते हैं।",
+    "createButton": "नया schedule",
+    "form": {
+      "heading": "नया schedule",
+      "agentLabel": "Agent",
+      "agentHint": "केवल principal वाले agents schedule किए जा सकते हैं — schedule में keyboard पर कोई नहीं होता।",
+      "agentNone": "अभी कोई principal वाला agent नहीं। Agent के Tools tab पर एक सेट करें।",
+      "nameLabel": "नाम",
+      "namePlaceholder": "जैसे \"Morning triage\"",
+      "routineLabel": "Routine",
+      "routinePlaceholder": "हर run में agent को क्या करना है। /mcp पेज की named routines अच्छी शुरुआत हैं।",
+      "intervalLabel": "हर",
+      "submit": "बनाएं"
+    },
+    "interval": {
+      "m15": "15 मिनट",
+      "m30": "30 मिनट",
+      "h1": "घंटा",
+      "h4": "4 घंटे",
+      "h12": "12 घंटे",
+      "d1": "दिन",
+      "w1": "सप्ताह"
+    },
+    "table": {
+      "name": "नाम",
+      "agent": "Agent",
+      "every": "हर",
+      "nextRun": "अगला run",
+      "lastRun": "अंतिम run",
+      "runs": "Runs",
+      "status": "स्थिति",
+      "never": "कभी नहीं",
+      "paused": "रुका"
+    },
+    "status": {
+      "enabled": "चालू",
+      "disabled": "बंद"
+    },
+    "actions": {
+      "runNow": "अभी चलाएं",
+      "runNowTitle": "Routine को अभी एक बार चलाएं",
+      "pause": "रोकें",
+      "resume": "फिर चालू करें",
+      "remove": "हटाएं",
+      "removeTitle": "Schedule हटाएं",
+      "started": "Run शुरू हुआ"
+    },
+    "empty": {
+      "title": "अभी कोई schedule नहीं",
+      "description": "किसी के request टाइप किए बिना standup summary, triage pass या TAT sweep चलाने के लिए एक बनाएं।"
+    },
+    "footer": "घड़ी हर पाँच मिनट में जाँची जाती है। रुका schedule अपना इतिहास रखता है; हटाया गया चला जाता है।",
+    "adminOnly": "केवल workspace admins agent schedules प्रबंधित कर सकते हैं।"
+  }
+}

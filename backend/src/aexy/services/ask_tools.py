@@ -1,105 +1,63 @@
 """Tool definitions and execution for the Ask AI agentic loop."""
 
+import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from aexy.models.sprint import Sprint, SprintTask
-from aexy.models.ticketing import Ticket
 
 logger = logging.getLogger(__name__)
 
 
 # --- Tool definitions in Anthropic API format ---
 
+# The one tool that is not an API operation. Everything else Ask can do comes
+# from the MCP catalogue, filtered to what the asker holds.
 TOOL_DEFINITIONS = [
-    {
-        "name": "list_sprints",
-        "description": "List sprints in the workspace. Can filter by status (planning, active, review, retrospective, completed).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "description": "Filter by sprint status",
-                    "enum": ["planning", "active", "review", "retrospective", "completed"],
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of sprints to return (default 10)",
-                },
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "get_sprint",
-        "description": "Get detailed information about a specific sprint by its ID, including task counts and progress.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "sprint_id": {
-                    "type": "string",
-                    "description": "The sprint UUID",
-                },
-            },
-            "required": ["sprint_id"],
-        },
-    },
-    {
-        "name": "list_sprint_tasks",
-        "description": "List all tasks in a specific sprint. Can filter by status.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "sprint_id": {
-                    "type": "string",
-                    "description": "The sprint UUID",
-                },
-                "status": {
-                    "type": "string",
-                    "description": "Filter tasks by status (e.g. todo, in_progress, done)",
-                },
-            },
-            "required": ["sprint_id"],
-        },
-    },
-    {
-        "name": "list_tickets",
-        "description": "List support tickets in the workspace. Can filter by status and priority.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "description": "Filter by ticket status (open, in_progress, resolved, closed)",
-                },
-                "priority": {
-                    "type": "string",
-                    "description": "Filter by priority (low, medium, high, critical)",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of tickets to return (default 20)",
-                },
-            },
-            "required": [],
-        },
-    },
     {
         "name": "current_time",
         "description": "Get the current date and time in UTC.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
 ]
+
+
+ASK_ALLOW_WRITES = os.environ.get("ASK_ALLOW_WRITES", "false").lower() == "true"
+
+
+async def build_tool_definitions(
+    db: AsyncSession, workspace_id: str, developer_id: str
+) -> list[dict[str, Any]]:
+    """The tools Ask offers this person in this workspace.
+
+    `current_time`, then the MCP surface: discovery, the generic call, the
+    read-only routines and one tool per capability the person holds, listing
+    only read operations unless writes are switched on. The catalogue is what
+    makes "how many service desk tickets are pending with Finance" answerable
+    without somebody writing a tool for it first.
+    """
+    definitions = list(TOOL_DEFINITIONS)
+    try:
+        from aexy.agents.tools.mcp_tools import resolve_context, tool_definitions
+
+        context = await resolve_context(
+            db,
+            workspace_id=workspace_id,
+            developer_id=developer_id,
+            actor_kind="ask",
+            allow_writes=ASK_ALLOW_WRITES,
+        )
+        legacy = {d["name"] for d in definitions}
+        definitions.extend(
+            d for d in tool_definitions(context, reads_only=not ASK_ALLOW_WRITES)
+            if d["name"] not in legacy
+        )
+    except Exception:
+        logger.exception("Could not build the MCP tool surface for Ask; using the built-in tools")
+    return definitions
 
 
 async def execute_tool(
@@ -116,188 +74,41 @@ async def execute_tool(
     """
     try:
         handler = TOOL_HANDLERS.get(tool_name)
-        if not handler:
-            return {"error": f"Unknown tool: {tool_name}"}
-        return await handler(tool_input, db, workspace_id, developer_id)
+        if handler:
+            return await handler(tool_input, db, workspace_id, developer_id)
+        return await _execute_catalog_tool(tool_name, tool_input, db, workspace_id, developer_id)
     except Exception as e:
         logger.error(f"Tool execution error ({tool_name}): {e}", exc_info=True)
         return {"error": f"Tool '{tool_name}' failed to execute"}
 
 
+async def _execute_catalog_tool(
+    tool_name: str,
+    tool_input: dict[str, Any],
+    db: AsyncSession,
+    workspace_id: str,
+    developer_id: str,
+) -> dict[str, Any]:
+    """Run an MCP surface tool through the governed executor, as this person."""
+    from aexy.agents.tools.mcp_tools import resolve_context
+
+    context = await resolve_context(
+        db,
+        workspace_id=workspace_id,
+        developer_id=developer_id,
+        actor_kind="ask",
+        allow_writes=ASK_ALLOW_WRITES,
+    )
+    result = await context.call(tool_name, tool_input)
+    if result.is_error:
+        return {"error": result.content}
+    try:
+        return {"result": json.loads(result.content)}
+    except (ValueError, TypeError):
+        return {"result": result.content}
+
+
 # --- Tool handler implementations ---
-
-
-async def _list_sprints(
-    tool_input: dict[str, Any],
-    db: AsyncSession,
-    workspace_id: str,
-    developer_id: str,
-) -> dict[str, Any]:
-    status = tool_input.get("status")
-    limit = tool_input.get("limit", 10)
-
-    stmt = (
-        select(Sprint)
-        .where(Sprint.workspace_id == workspace_id)
-        .options(selectinload(Sprint.tasks))
-        .order_by(Sprint.start_date.desc())
-        .limit(limit)
-    )
-    if status:
-        stmt = stmt.where(Sprint.status == status)
-
-    result = await db.execute(stmt)
-    sprints = result.scalars().all()
-
-    return {
-        "result": [
-            {
-                "id": str(s.id),
-                "name": s.name,
-                "status": s.status,
-                "goal": s.goal,
-                "start_date": str(s.start_date) if s.start_date else None,
-                "end_date": str(s.end_date) if s.end_date else None,
-                "task_count": len(s.tasks) if s.tasks else 0,
-            }
-            for s in sprints
-        ]
-    }
-
-
-async def _get_sprint(
-    tool_input: dict[str, Any],
-    db: AsyncSession,
-    workspace_id: str,
-    developer_id: str,
-) -> dict[str, Any]:
-    sprint_id = tool_input.get("sprint_id")
-    if not sprint_id:
-        return {"error": "sprint_id is required"}
-
-    stmt = (
-        select(Sprint)
-        .where(Sprint.id == sprint_id, Sprint.workspace_id == workspace_id)
-        .options(selectinload(Sprint.tasks))
-    )
-    result = await db.execute(stmt)
-    sprint = result.scalar_one_or_none()
-
-    if not sprint:
-        return {"error": f"Sprint {sprint_id} not found"}
-
-    tasks = sprint.tasks or []
-    status_counts: dict[str, int] = {}
-    for t in tasks:
-        s = t.status or "unknown"
-        status_counts[s] = status_counts.get(s, 0) + 1
-
-    return {
-        "result": {
-            "id": str(sprint.id),
-            "name": sprint.name,
-            "status": sprint.status,
-            "goal": sprint.goal,
-            "start_date": str(sprint.start_date) if sprint.start_date else None,
-            "end_date": str(sprint.end_date) if sprint.end_date else None,
-            "task_count": len(tasks),
-            "status_breakdown": status_counts,
-            "total_points": sum(t.story_points or 0 for t in tasks),
-        }
-    }
-
-
-async def _list_sprint_tasks(
-    tool_input: dict[str, Any],
-    db: AsyncSession,
-    workspace_id: str,
-    developer_id: str,
-) -> dict[str, Any]:
-    sprint_id = tool_input.get("sprint_id")
-    if not sprint_id:
-        return {"error": "sprint_id is required"}
-
-    # Validate sprint belongs to this workspace before listing tasks
-    sprint_check = await db.execute(
-        select(Sprint.id).where(
-            Sprint.id == sprint_id, Sprint.workspace_id == workspace_id
-        )
-    )
-    if not sprint_check.scalar_one_or_none():
-        return {"error": f"Sprint {sprint_id} not found in this workspace"}
-
-    status = tool_input.get("status")
-
-    stmt = select(SprintTask).where(SprintTask.sprint_id == sprint_id)
-    if status:
-        stmt = stmt.where(SprintTask.status == status)
-    stmt = stmt.order_by(SprintTask.created_at)
-
-    result = await db.execute(stmt)
-    tasks = result.scalars().all()
-
-    return {
-        "result": [
-            {
-                "id": str(t.id),
-                "title": t.title,
-                "status": t.status,
-                "priority": t.priority,
-                "story_points": t.story_points,
-                "assignee_id": str(t.assignee_id) if t.assignee_id else None,
-            }
-            for t in tasks
-        ]
-    }
-
-
-async def _list_tickets(
-    tool_input: dict[str, Any],
-    db: AsyncSession,
-    workspace_id: str,
-    developer_id: str,
-) -> dict[str, Any]:
-    status = tool_input.get("status")
-    priority = tool_input.get("priority")
-    limit = tool_input.get("limit", 20)
-
-    # Service Desk tickets share this table and field_values carries the
-    # requester's email subject and body, so asking the assistant to "list
-    # tickets" would otherwise read out every ticket the desk's row scope hides.
-    from aexy.services.service_desk_service import generic_ticket_scope_clause
-
-    visibility = await generic_ticket_scope_clause(db, workspace_id, developer_id)
-
-    stmt = (
-        select(Ticket)
-        .where(Ticket.workspace_id == workspace_id)
-        .order_by(Ticket.created_at.desc())
-        .limit(limit)
-    )
-    if visibility is not None:
-        stmt = stmt.where(visibility)
-    if status:
-        stmt = stmt.where(Ticket.status == status)
-    if priority:
-        stmt = stmt.where(Ticket.priority == priority)
-
-    result = await db.execute(stmt)
-    tickets = result.scalars().all()
-
-    return {
-        "result": [
-            {
-                "id": str(t.id),
-                "ticket_number": t.ticket_number,
-                "submitter_name": t.submitter_name,
-                "status": t.status,
-                "priority": t.priority,
-                "created_at": str(t.created_at),
-                "field_values": t.field_values or {},
-            }
-            for t in tickets
-        ]
-    }
 
 
 async def _current_time(
@@ -318,9 +129,5 @@ async def _current_time(
 
 
 TOOL_HANDLERS = {
-    "list_sprints": _list_sprints,
-    "get_sprint": _get_sprint,
-    "list_sprint_tasks": _list_sprint_tasks,
-    "list_tickets": _list_tickets,
     "current_time": _current_time,
 }

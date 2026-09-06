@@ -1,6 +1,7 @@
 """Agent Policy Engine for governance, audit, and notification."""
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -29,6 +30,85 @@ class PolicyEvalResult:
     policy_id: str | None = None
     confidence_score: float | None = None
     confidence_threshold: float | None = None
+
+
+# ---------------------------------------------------------------------------
+# Selectors
+# ---------------------------------------------------------------------------
+#
+# A block or require-approval policy names what it applies to. `tools` is the
+# original form: exact action names. The other three exist because the MCP
+# surface has ~1,100 mutating operations and "every delete needs approval" is
+# not something anyone should express as a list.
+#
+#   tools:            ["update_contact", "send_email"]   exact action names
+#   methods:          ["DELETE"]                          HTTP method of the operation
+#   action_patterns:  ["^send_", "publish", "_member$"]  regex, searched in the action
+#   capabilities:     ["mcp.admin", "mcp.integrations"]  the capability the operation belongs to
+#
+# A policy triggers when ANY selector matches. Methods and capabilities are
+# only known at the MCP boundary; a caller that passes no context (the CRM
+# agent runtime) is matched on `tools` and `action_patterns` alone.
+
+
+def policy_selects(
+    config: dict[str, Any],
+    tool_name: str,
+    context: dict[str, Any] | None,
+) -> str | None:
+    """Which selector, if any, picks this call. Returns a short reason or None."""
+    if tool_name in (config.get("tools") or []):
+        return f"tool {tool_name}"
+
+    for pattern in config.get("action_patterns") or []:
+        try:
+            if re.search(pattern, tool_name):
+                return f"matches /{pattern}/"
+        except re.error:
+            logger.warning("Ignoring invalid action_pattern %r in policy config", pattern)
+
+    if context:
+        method = (context.get("method") or "").upper()
+        if method and method in {m.upper() for m in (config.get("methods") or [])}:
+            return f"method {method}"
+
+        capability = context.get("capability")
+        if capability:
+            wanted = set(config.get("capabilities") or [])
+            # Accept either spelling: the catalogue says "mcp.admin", a person
+            # typing a policy will very likely say "admin".
+            if capability in wanted or capability.removeprefix("mcp.") in wanted:
+                return f"capability {capability}"
+
+    return None
+
+
+def restricted_fields_present(
+    tool_args: dict[str, Any], blocked_fields: list[str]
+) -> list[str]:
+    """The blocked fields that appear anywhere in the arguments.
+
+    A field matches by its own name at any depth (`email` matches
+    `body.email` and `body.contact.email`) or by its dotted path
+    (`body.contact.email`). Lists are walked; a blocked field inside the third
+    item of a bulk payload is still the blocked field.
+    """
+    blocked = set(blocked_fields)
+    found: list[str] = []
+
+    def walk(node: Any, prefix: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                path = f"{prefix}.{key}" if prefix else str(key)
+                if key in blocked or path in blocked:
+                    found.append(path)
+                walk(value, path)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, prefix)
+
+    walk(tool_args, "")
+    return found
 
 
 class AgentPolicyEngine:
@@ -81,8 +161,17 @@ class AgentPolicyEngine:
         tool_args: dict,
         execution_id: str = "",
         policies: list[AgentPolicy] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> PolicyEvalResult | None:
         """Evaluate loaded policies and return the first non-allow decision.
+
+        `context` describes the operation beyond its name — `method`,
+        `capability`, `mutating` — so a policy can select on "every DELETE" or
+        "anything in admin" rather than having to list 1,100 action names by
+        hand. The CRM agent path passes none, so `methods` and `capabilities`
+        selectors never match there — but `action_patterns` still do, against
+        the tool name. That is deliberate: the default pack's "anything that
+        sends" holds a CRM agent's `send_email` for approval too.
 
         Deciding, without writing anything down. Split out because the audit
         row's shape depends on who is calling: a CRM agent has an execution to
@@ -103,7 +192,7 @@ class AgentPolicyEngine:
         candidates = policies if policies is not None else (self._cached_policies or [])
         for policy in candidates:
             result = self._evaluate_single_policy(
-                policy, tool_name, tool_args, execution_id
+                policy, tool_name, tool_args, execution_id, context
             )
             if result is not None:
                 return result
@@ -165,45 +254,72 @@ class AgentPolicyEngine:
         tool_name: str,
         tool_args: dict,
         execution_id: str,
+        context: dict[str, Any] | None = None,
     ) -> PolicyEvalResult | None:
         """Evaluate a single policy. Returns result if policy triggers, None otherwise."""
         config = policy.config or {}
 
         if policy.policy_type == PolicyType.TOOL_BLOCK.value:
-            blocked_tools = config.get("tools", [])
-            if tool_name in blocked_tools:
+            matched = policy_selects(config, tool_name, context)
+            if matched:
                 return PolicyEvalResult(
                     decision=PolicyDecisionType.BLOCK.value,
-                    reason=f"Tool '{tool_name}' is blocked by policy '{policy.name}'",
+                    reason=f"Tool '{tool_name}' is blocked by policy '{policy.name}' ({matched})",
                     policy_id=policy.id,
                 )
 
         elif policy.policy_type == PolicyType.TOOL_REQUIRE_APPROVAL.value:
-            approval_tools = config.get("tools", [])
-            if tool_name in approval_tools:
+            matched = policy_selects(config, tool_name, context)
+            if matched:
                 return PolicyEvalResult(
                     decision=PolicyDecisionType.REQUIRE_APPROVAL.value,
-                    reason=f"Tool '{tool_name}' requires approval (policy '{policy.name}'). [REQUIRES APPROVAL]",
+                    reason=(
+                        f"Tool '{tool_name}' requires approval (policy '{policy.name}', "
+                        f"{matched}). [REQUIRES APPROVAL]"
+                    ),
                     policy_id=policy.id,
                 )
 
         elif policy.policy_type == PolicyType.FIELD_RESTRICTION.value:
             restricted_tool = config.get("tool", "")
             blocked_fields = config.get("blocked_fields", [])
-            if tool_name == restricted_tool:
-                # Check if any blocked field is in the tool args
-                for field in blocked_fields:
-                    if field in tool_args:
-                        return PolicyEvalResult(
-                            decision=PolicyDecisionType.BLOCK.value,
-                            reason=f"Field '{field}' is restricted by policy '{policy.name}'",
-                            policy_id=policy.id,
-                        )
+            # `tool` names one action; `tools` a list; `all_tools: true` (or
+            # `tools: ["*"]`) means every action — a field like `salary` is
+            # sensitive whoever writes it. An empty `tool` with no `tools`
+            # stays inert, as it always was: rows saved that way predate the
+            # global option and must not become workspace-wide blocks.
+            tools_list = config.get("tools") or []
+            applies = (
+                bool(config.get("all_tools"))
+                or "*" in tools_list
+                or (bool(restricted_tool) and tool_name == restricted_tool)
+                or tool_name in tools_list
+            )
+            if applies and blocked_fields:
+                # MCP arguments arrive as {path_params, query, body}, so a
+                # restricted field is nested one level down at least. Matching
+                # top-level keys only — what this did — never matched anything
+                # an MCP caller sent, and the policy type was inert on the
+                # surface most agents write through.
+                present = restricted_fields_present(tool_args, blocked_fields)
+                if present:
+                    return PolicyEvalResult(
+                        decision=PolicyDecisionType.BLOCK.value,
+                        reason=(
+                            f"Field '{present[0]}' is restricted by policy '{policy.name}'"
+                        ),
+                        policy_id=policy.id,
+                    )
 
         elif policy.policy_type == PolicyType.RATE_LIMIT.value:
+            # Only the per-execution form is decidable here. `max_per_hour` and
+            # `max_per_day` need a count that outlives one request; the MCP
+            # boundary evaluates those against the action ledger (see
+            # `McpGovernance._rate_limited`). This branch is reached with an
+            # `execution_id` only from the CRM agent runtime.
             rate_tool = config.get("tool", "")
             max_per_execution = config.get("max_per_execution", 0)
-            if tool_name == rate_tool and max_per_execution > 0:
+            if execution_id and tool_name == rate_tool and max_per_execution > 0:
                 # Count allow decisions for this tool in this execution
                 count = self._count_allow_decisions_sync(execution_id, tool_name)
                 if count >= max_per_execution:

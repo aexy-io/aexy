@@ -1309,6 +1309,12 @@ class ServiceDeskIntakeService:
             "Service desk: created ticket %s",
             await ticket_prefix_display(self.db, workspace_id, ticket.ticket_number),
         )
+
+        from aexy.services.service_desk_ticket_service import dispatch_service_desk_event
+
+        await dispatch_service_desk_event(
+            self.db, workspace_id, "service_desk.ticket_created", ticket, sd
+        )
         return ticket
 
     async def _insert_ticket(self, workspace_id: str, **fields) -> Ticket:

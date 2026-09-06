@@ -71,7 +71,8 @@ class TestTheToolList:
         names = [t["name"] for t in build_tools(CATALOG, {"mcp.docs"})]
 
         for tool in WORKFLOW_TOOLS:
-            assert tool["name"] in names
+            if tool["capability"] == "mcp.docs":
+                assert tool["name"] in names
 
     def test_they_are_withheld_from_a_caller_without_the_capability(self):
         """A shortcut to an operation outside your grants must be absent, not
@@ -97,11 +98,8 @@ class TestTheToolList:
         props = propose["input_schema"]["properties"]
         assert "markdown" in props
         assert "summary" in props
-        assert set(propose["input_schema"]["required"]) == {
-            "workspace_id",
-            "document_id",
-            "markdown",
-        }
+        # The workspace is the grant's, never the model's to supply.
+        assert set(propose["input_schema"]["required"]) == {"document_id", "markdown"}
 
 
 class TestRouting:
@@ -116,7 +114,7 @@ class TestRouting:
         executor = self._executor()
         seen = {}
 
-        async def _perform(*, operation, arguments, developer_id, workspace_id):
+        async def _perform(*, operation, arguments, developer_id, workspace_id, **_):
             seen.update(operation=operation, arguments=arguments)
             return ToolResult("ok")
 
@@ -148,7 +146,7 @@ class TestRouting:
         executor = self._executor()
         seen = {}
 
-        async def _perform(*, operation, arguments, developer_id, workspace_id):
+        async def _perform(*, operation, arguments, developer_id, workspace_id, **_):
             seen.update(arguments=arguments)
             return ToolResult("ok")
 
@@ -171,7 +169,7 @@ class TestRouting:
         executor = self._executor()
         seen = {}
 
-        async def _perform(*, operation, arguments, developer_id, workspace_id):
+        async def _perform(*, operation, arguments, developer_id, workspace_id, **_):
             seen.update(arguments=arguments)
             return ToolResult("ok")
 
@@ -195,7 +193,7 @@ class TestRouting:
         executor = self._executor()
         seen = {}
 
-        async def _perform(*, operation, arguments, developer_id, workspace_id):
+        async def _perform(*, operation, arguments, developer_id, workspace_id, **_):
             seen.update(operation=operation)
             return ToolResult("ok")
 
@@ -253,7 +251,10 @@ class TestAgainstTheRealCatalogue:
         names = [t["name"] for t in build_tools(catalog, {"mcp.docs"})]
 
         for tool in WORKFLOW_TOOLS:
-            assert tool["name"] in names
+            if tool["capability"] == "mcp.docs":
+                assert tool["name"] in names
+            else:
+                assert tool["name"] not in names, f"{tool['name']} leaked into a docs-only surface"
 
     def test_the_declared_path_params_match_the_real_path(self):
         """A named tool maps arguments into path_params; if the real path takes
@@ -265,14 +266,17 @@ class TestAgainstTheRealCatalogue:
         from aexy.services.mcp_catalog import build_catalog
 
         catalog = build_catalog(app.openapi())
+        # Keyed on (capability, action): action names are unique within a
+        # capability, not across the catalogue — `list_records` is both CRM
+        # and Tables, and a routine binds one of them.
         by_action = {
-            op["action"]: op
+            (g["capability"], op["action"]): op
             for g in catalog["capabilities"]
             for op in g["operations"]
         }
 
         for tool in WORKFLOW_TOOLS:
-            op = by_action[tool["action"]]
+            op = by_action[(tool["capability"], tool["action"])]
             needed = set(re.findall(r"\{(\w+)\}", op["path"]))
             supplied = {
                 key

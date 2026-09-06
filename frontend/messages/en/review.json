@@ -18,6 +18,9 @@
     "rejected": "Rejected",
     "failed": "That could not be completed",
     "groupAffects": "{count, plural, one {# page affected} other {# pages affected}}",
-    "approveAll": "Approve all {count}"
+    "approveAll": "Approve all {count}",
+    "activityTitle": "Agent activity",
+    "activityCount": "{count, plural, one {# write in the ledger} other {# most recent writes}}",
+    "activityEmpty": "No agent has changed anything here yet."
   }
 }

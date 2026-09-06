@@ -548,6 +548,36 @@ export const settingsNavigation: SettingsNavCategory[] = [
         ],
       },
       {
+        id: "agent-principals",
+        label: "Agent Principals",
+        href: "/settings/agent-principals",
+        icon: Fingerprint,
+        description:
+          "Identities that AI agents run as: scoped to chosen capabilities, with their own tokens and audit trail",
+        // Creating a principal and minting it a token is writing a grant, so
+        // it is owner/admin-only and never reachable over MCP itself.
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
+        keywords: [
+          "agent",
+          "principal",
+          "bot",
+          "service account",
+          "mcp",
+          "token",
+          "automation",
+          "identity",
+        ],
+      },
+      {
+        id: "agent-schedules",
+        label: "Agent Schedules",
+        href: "/settings/agent-schedules",
+        icon: Clock,
+        description: "Routines an agent runs on a clock: standups, triage passes, TAT sweeps",
+        permission: PERMISSIONS.CAN_MANAGE_WORKSPACE_SETTINGS,
+        keywords: ["agent", "schedule", "routine", "cron", "daily", "standup", "triage", "automation"],
+      },
+      {
         id: "workflow-secrets",
         label: "Workflow Secrets",
         href: "/settings/workflow-secrets",

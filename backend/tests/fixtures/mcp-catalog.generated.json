@@ -493,7 +493,7 @@
       "capability": "mcp.agents",
       "app": "agents",
       "privileged": false,
-      "operation_count": 56,
+      "operation_count": 61,
       "operations": [
         {
           "operation_id": "analyze_writing_style_api_v1_workspaces__workspace_id__crm_writing_style_analyze_post",
@@ -525,6 +525,14 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/crm/agents",
           "summary": "Create Agent",
+          "mutating": true
+        },
+        {
+          "operation_id": "create_agent_schedule_api_v1_workspaces__workspace_id__agent_schedules_post",
+          "action": "create_agent_schedule",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-schedules",
+          "summary": "Create Agent Schedule",
           "mutating": true
         },
         {
@@ -565,6 +573,14 @@
           "method": "DELETE",
           "path": "/api/v1/workspaces/{workspace_id}/crm/agents/{agent_id}",
           "summary": "Delete Agent",
+          "mutating": true
+        },
+        {
+          "operation_id": "delete_agent_schedule_api_v1_workspaces__workspace_id__agent_schedules__schedule_id__delete",
+          "action": "delete_agent_schedule",
+          "method": "DELETE",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-schedules/{schedule_id}",
+          "summary": "Delete Agent Schedule",
           "mutating": true
         },
         {
@@ -768,6 +784,14 @@
           "mutating": false
         },
         {
+          "operation_id": "list_agent_schedules_api_v1_workspaces__workspace_id__agent_schedules_get",
+          "action": "list_agent_schedules",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-schedules",
+          "summary": "List Agent Schedules",
+          "mutating": false
+        },
+        {
           "operation_id": "list_agent_triggers_api_v1_workspaces__workspace_id__crm_automations__automation_id__agent_triggers_get",
           "action": "list_agent_triggers",
           "method": "GET",
@@ -864,6 +888,14 @@
           "mutating": true
         },
         {
+          "operation_id": "run_agent_schedule_now_api_v1_workspaces__workspace_id__agent_schedules__schedule_id__run_post",
+          "action": "run_agent_schedule_now",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-schedules/{schedule_id}/run",
+          "summary": "Run Agent Schedule Now",
+          "mutating": true
+        },
+        {
           "operation_id": "send_message_api_v1_workspaces__workspace_id__crm_agents__agent_id__conversations__conversation_id__messages_post",
           "action": "send_message",
           "method": "POST",
@@ -909,6 +941,14 @@
           "method": "PATCH",
           "path": "/api/v1/workspaces/{workspace_id}/crm/agents/{agent_id}",
           "summary": "Update Agent",
+          "mutating": true
+        },
+        {
+          "operation_id": "update_agent_schedule_api_v1_workspaces__workspace_id__agent_schedules__schedule_id__patch",
+          "action": "update_agent_schedule",
+          "method": "PATCH",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-schedules/{schedule_id}",
+          "summary": "Update Agent Schedule",
           "mutating": true
         },
         {
@@ -2861,7 +2901,7 @@
       "capability": "mcp.crm",
       "app": "crm",
       "privileged": false,
-      "operation_count": 95,
+      "operation_count": 99,
       "operations": [
         {
           "operation_id": "add_list_entry_api_v1_workspaces__workspace_id__crm_lists__list_id__entries_post",
@@ -3141,6 +3181,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/crm/automation-runs/{run_id}",
           "summary": "Get Automation Run",
+          "mutating": false
+        },
+        {
+          "operation_id": "get_email_history_api_v1_workspaces__workspace_id__crm_outreach_email_history_get",
+          "action": "get_email_history",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/crm/outreach/email-history",
+          "summary": "Get Email History",
           "mutating": false
         },
         {
@@ -3453,6 +3501,30 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/crm/objects/seed-standard",
           "summary": "Seed Standard Objects",
+          "mutating": true
+        },
+        {
+          "operation_id": "send_email_api_v1_workspaces__workspace_id__crm_outreach_email_post",
+          "action": "send_email",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/crm/outreach/email",
+          "summary": "Send Email",
+          "mutating": true
+        },
+        {
+          "operation_id": "send_slack_message_api_v1_workspaces__workspace_id__crm_outreach_slack_post",
+          "action": "send_slack_message",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/crm/outreach/slack",
+          "summary": "Send Slack Message",
+          "mutating": true
+        },
+        {
+          "operation_id": "send_sms_api_v1_workspaces__workspace_id__crm_outreach_sms_post",
+          "action": "send_sms",
+          "method": "POST",
+          "path": "/api/v1/workspaces/{workspace_id}/crm/outreach/sms",
+          "summary": "Send Sms",
           "mutating": true
         },
         {
@@ -10669,7 +10741,7 @@
       "capability": "mcp.platform",
       "app": null,
       "privileged": false,
-      "operation_count": 146,
+      "operation_count": 143,
       "operations": [
         {
           "operation_id": "accept_invite_api_v1_invites__token__accept_post",
@@ -10776,14 +10848,6 @@
           "mutating": true
         },
         {
-          "operation_id": "create_api_token_api_v1_developers_me_api_tokens_post",
-          "action": "create_api_token",
-          "method": "POST",
-          "path": "/api/v1/developers/me/api-tokens",
-          "summary": "Create Api Token",
-          "mutating": true
-        },
-        {
           "operation_id": "create_role_api_v1_workspaces__workspace_id__roles_post",
           "action": "create_role",
           "method": "POST",
@@ -10821,14 +10885,6 @@
           "method": "POST",
           "path": "/api/v1/workspaces",
           "summary": "Create Workspace",
-          "mutating": true
-        },
-        {
-          "operation_id": "delete_api_token_api_v1_developers_me_api_tokens__token_id__delete",
-          "action": "delete_api_token",
-          "method": "DELETE",
-          "path": "/api/v1/developers/me/api-tokens/{token_id}",
-          "summary": "Delete Api Token",
           "mutating": true
         },
         {
@@ -11312,14 +11368,6 @@
           "mutating": false
         },
         {
-          "operation_id": "list_api_tokens_api_v1_developers_me_api_tokens_get",
-          "action": "list_api_tokens",
-          "method": "GET",
-          "path": "/api/v1/developers/me/api-tokens",
-          "summary": "List Api Tokens",
-          "mutating": false
-        },
-        {
           "operation_id": "list_board_api_v1_workspaces__workspace_id__feedback_get",
           "action": "list_board",
           "method": "GET",
@@ -11357,6 +11405,14 @@
           "method": "GET",
           "path": "/api/v1/workspaces/{workspace_id}/members",
           "summary": "List Members",
+          "mutating": false
+        },
+        {
+          "operation_id": "list_my_agent_actions_api_v1_workspaces__workspace_id__agent_actions_mine_get",
+          "action": "list_my_agent_actions",
+          "method": "GET",
+          "path": "/api/v1/workspaces/{workspace_id}/agent-actions/mine",
+          "summary": "List My Agent Actions",
           "mutating": false
         },
         {
@@ -11621,14 +11677,6 @@
           "method": "POST",
           "path": "/api/v1/workspaces/{workspace_id}/roles/{role_id}/reset",
           "summary": "Reset Role To Template",
-          "mutating": true
-        },
-        {
-          "operation_id": "revoke_api_token_api_v1_developers_me_api_tokens__token_id__revoke_post",
-          "action": "revoke_api_token",
-          "method": "POST",
-          "path": "/api/v1/developers/me/api-tokens/{token_id}/revoke",
-          "summary": "Revoke Api Token",
           "mutating": true
         },
         {
@@ -15914,10 +15962,128 @@
       ]
     }
   ],
+  "workflow_tools": [
+    {
+      "name": "aexy_docs_needing_update",
+      "capability": "mcp.docs",
+      "action": "list_documents_needing_update",
+      "description": "List documents whose linked source code has changed since they were written. Start here: each item names the repository path to read and whether an update is already queued. Detecting this costs nothing, so poll it freely."
+    },
+    {
+      "name": "aexy_docs_merged_changes",
+      "capability": "mcp.docs",
+      "action": "list_merged_changes",
+      "description": "List recently merged pull requests in this workspace's repositories, as candidates for documentation that does not exist yet. The other half of the work list: `aexy_docs_needing_update` only finds pages that already exist and have fallen behind. Says nothing about whether a change is already documented \u2014 check the repository's documents before writing."
+    },
+    {
+      "name": "aexy_docs_propose",
+      "capability": "mcp.docs",
+      "action": "propose_document_update",
+      "description": "Propose a rewrite of a document, in Markdown. Nothing is applied \u2014 it waits in the workspace review queue with a diff against the current text. This is the way to write a document: sending editor JSON is refused, because one invalid node renders the page blank."
+    },
+    {
+      "name": "aexy_docs_create_from_code",
+      "capability": "mcp.docs",
+      "action": "create_document_from_repository",
+      "description": "Write a document for a repository path and link it to that path, so it can be told later when the code changes. Use link_type 'file' for one file or 'directory' for a module.\n\nPass `markdown` with prose you have written yourself \u2014 you have read the actual files and can say more than the server can from a directory listing. Omit it to have the server generate instead.\n\nTo document a whole repository: create one parent document, then call this once per module with `parent_id` set to it. Calling it again for a path that is already documented proposes a revision to that document rather than creating a second one, so a re-run is safe."
+    },
+    {
+      "name": "aexy_sd_open_tickets",
+      "capability": "mcp.service_desk",
+      "action": "list_tickets",
+      "description": "Service desk work list. Lists tickets with their request type, who they are pending with, owner and age. Start a triage or TAT pass here: filter needs_triage=true for tickets the classifier was unsure about, or pending_with=<stakeholder> to see one queue. Pass `fields` to keep the answer short. Each row carries `ticket_id`: that is the id every other ticket routine and action takes (`id` is the desk row, and will 404)."
+    },
+    {
+      "name": "aexy_sd_triage_ticket",
+      "capability": "mcp.service_desk",
+      "action": "update_ticket_fields",
+      "description": "Classify or correct a service desk ticket: set its request type, the product, account or vendor it concerns, its owner, and clear needs_triage once you are sure. Read the ticket first (aexy_service_desk action get_ticket) and only set fields you have evidence for. Reassigning a ticket to a different owner is a change a person may want to approve; if the call is held, say so and stop."
+    },
+    {
+      "name": "aexy_sd_park_ticket",
+      "capability": "mcp.service_desk",
+      "action": "change_pending_with",
+      "description": "Move a service desk ticket to a different stakeholder's queue (pending_with) with a note saying why. This is how the TAT clock is handed over; the ledger records the segment. Use a stakeholder slug the workspace defines \u2014 the ticket detail lists them."
+    },
+    {
+      "name": "aexy_sd_tat_report",
+      "capability": "mcp.service_desk",
+      "action": "get_tat_report",
+      "description": "Turnaround-time report for service desk tickets: time spent with each stakeholder against target, per ticket. Use it for a TAT sweep \u2014 find breaches and near-breaches, then nudge the owner (aexy_sd_email_stakeholder) or park the ticket onward (aexy_sd_park_ticket). Filter to one stakeholder or request type to keep it readable."
+    },
+    {
+      "name": "aexy_sd_email_stakeholder",
+      "capability": "mcp.service_desk",
+      "action": "email_stakeholder",
+      "description": "Email a stakeholder about a service desk ticket, from the desk's mailbox, threaded on the ticket. To park the ticket with them as well, call aexy_sd_park_ticket with that stakeholder. Sending mail is outward-facing: workspace policy normally holds it for a person to approve. Draft it well and expect to wait."
+    },
+    {
+      "name": "aexy_sprint_standup",
+      "capability": "mcp.tracking",
+      "action": "get_sprint_standup_summary",
+      "description": "Everyone's standup for a sprint in one call: what they did, what is next, what is blocking. The daily standup routine: fetch this, fetch aexy_active_blockers, and write the summary a person would \u2014 who is blocked and on what, what is at risk, who has not reported. Find the sprint id with aexy_sprints action get_active_sprint."
+    },
+    {
+      "name": "aexy_active_blockers",
+      "capability": "mcp.tracking",
+      "action": "get_active_blockers",
+      "description": "Open blockers, optionally for one team, with how long each has been open. Anything older than a day belongs in the standup summary by name."
+    },
+    {
+      "name": "aexy_sprint_tasks",
+      "capability": "mcp.sprints",
+      "action": "list_tasks",
+      "description": "Tasks in a sprint, filterable by status or assignee. Sprint hygiene: look for unassigned tasks, tasks with no estimate, and in-progress tasks that have not moved. Comment or ask rather than reassign \u2014 changing status or owner is a decision the team makes, and policy may hold it."
+    },
+    {
+      "name": "aexy_leave_pending_approvals",
+      "capability": "mcp.leave",
+      "action": "list_pending_approvals",
+      "description": "Leave requests waiting on the caller's approval. The leave routine: for each, check the requester's balance (aexy_leave action get_developer_balance) and the team calendar for clashes, then recommend. Approving or rejecting is a person's decision; approve_leave_request and reject_leave_request exist, but say what you would do and why rather than doing it unless you were asked to."
+    },
+    {
+      "name": "aexy_compliance_overdue",
+      "capability": "mcp.compliance",
+      "action": "get_overdue_report",
+      "description": "Training and certification assignments that are overdue, by person. The compliance sweep: pair this with aexy_compliance_expiring, then notify owners. Waiving a requirement is held for approval."
+    },
+    {
+      "name": "aexy_compliance_expiring",
+      "capability": "mcp.compliance",
+      "action": "get_expiring_certifications_report",
+      "description": "Certifications expiring within a window (default 30 days), by person, so renewals can be chased before they lapse."
+    },
+    {
+      "name": "aexy_campaign_preflight",
+      "capability": "mcp.email_marketing",
+      "action": "get_audience_count",
+      "description": "How many recipients a campaign will go to right now. Preflight before any send: a count of zero or an unexpectedly large one is a reason to stop and ask. Sending itself (send_campaign) is held for approval by default."
+    },
+    {
+      "name": "aexy_open_incidents",
+      "capability": "mcp.uptime",
+      "action": "list_incidents",
+      "description": "Uptime incidents, filterable by monitor and status. Incident first response: acknowledge new ones (aexy_incident_acknowledge), open a ticket if the monitor is customer-facing, and escalate through the matrix only if nobody has responded \u2014 escalation is held for approval."
+    },
+    {
+      "name": "aexy_incident_acknowledge",
+      "capability": "mcp.uptime",
+      "action": "acknowledge_incident",
+      "description": "Acknowledge an uptime incident so the on-call knows someone is looking. Safe to do unattended; it changes nothing about the service."
+    },
+    {
+      "name": "aexy_crm_records",
+      "capability": "mcp.crm",
+      "action": "list_records",
+      "description": "Records of one CRM object (people, companies, deals), with filters and sorts as JSON strings. CRM follow-up routine: list deals sorted by last activity, find the stale ones, and draft the follow-up \u2014 sending is held for approval. Find object ids with aexy_crm action list_objects."
+    }
+  ],
   "duplicate_operation_ids": {},
   "excluded": {
+    "agent_identity": 6,
+    "credentials": 4,
     "public": 65,
-    "review_gate": 5,
+    "review_gate": 6,
     "system": 4
   },
   "unmapped_tags": [],

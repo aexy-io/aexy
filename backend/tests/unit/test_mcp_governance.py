@@ -329,8 +329,12 @@ class TestTheTransportPassesTheSession:
 
         from aexy.api import mcp_transport
 
+        import re
+
         source = inspect.getsource(mcp_transport)
-        assert "McpToolExecutor(request.app, catalog, granted, db=db)" in source
+        construction = re.search(r"McpToolExecutor\((.*?)\)\n", source, re.S)
+        assert construction is not None
+        assert "db=db" in construction.group(1)
 
 class TestWhenTheGateCannotDecide:
     """A gate that fails open leaves no trace of what it let through.
